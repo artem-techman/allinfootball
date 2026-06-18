@@ -1,5 +1,4 @@
 import type { Match, Standing } from "@/lib/providers/types";
-import type { FollowingRow } from "@/components/cards/FollowingCard";
 import type { StoryItem } from "@/components/cards/TopStoriesCard";
 
 /**
@@ -144,14 +143,6 @@ export const PREVIEW_STANDINGS: Standing[] = [
   standing(3, 40, "Liverpool", "LIV", 36, 43, 78),
   standing(4, 66, "Aston Villa", "AVL", 36, 20, 68),
   standing(5, 47, "Tottenham", "TOT", 36, 12, 60),
-];
-
-export const PREVIEW_FOLLOWING: FollowingRow[] = [
-  { id: 33, name: "Manchester United", sublabel: "Premier League", crest: TEAM(33) },
-  { id: 529, name: "FC Barcelona", sublabel: "La Liga", crest: TEAM(529) },
-  { id: 541, name: "Real Madrid", sublabel: "La Liga", crest: TEAM(541) },
-  { id: 2002, name: "UEFA Champions League", sublabel: "Europe", crest: LEAGUE(2) },
-  { id: 1100, name: "Erling Haaland", sublabel: "Manchester City", crest: PLAYER(1100) },
 ];
 
 export const PREVIEW_STORIES: { featured: StoryItem; items: StoryItem[] } = {

@@ -92,7 +92,7 @@ export default async function HomePage() {
         <TopStoriesCard featured={stories.featured} items={stories.items} />
         <PlayerSpotlightCard
           name={spotlight?.name ?? PREVIEW_SPOTLIGHT.name}
-          href={spotlight?.href ?? "/players"}
+          href={spotlight?.href ?? "/competition/premier-league/scorers"}
           club={spotlight?.club ?? PREVIEW_SPOTLIGHT.club}
           position={spotlight?.position ?? PREVIEW_SPOTLIGHT.position}
           verified={!spotlight && PREVIEW_SPOTLIGHT.verified}

@@ -5,30 +5,26 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Logo } from "@/components/primitives/Logo";
-import { Crest } from "@/components/primitives/Crest";
 import { ThemeToggle } from "./ThemeToggle";
 import { STOCK_IMAGES } from "@/lib/preview/homePreview";
 import {
   HomeIcon,
   MatchesIcon,
   TrophyIcon,
-  ShieldIcon,
-  UserIcon,
   TransferIcon,
   NewsIcon,
-  VideoIcon,
-  StarIcon,
-  PlusIcon,
   BellIcon,
   PanelLeftIcon,
 } from "@/components/primitives/icons";
 
 /**
  * Left sidebar (dark reference) — COLLAPSIBLE. Expanded: 248px panel with the
- * All In Football logo, labelled nav, "YOUR TEAMS" and a promo card. Collapsed: ~76px
- * icon rail with the mark, icon-only nav (tooltips), team crests and a hidden
- * promo. The collapsed state persists in localStorage; the layout adapts
- * automatically because AppShell's main column is flex-1.
+ * All In Football logo, labelled nav, a theme toggle and a promo card. Collapsed:
+ * ~76px icon rail with the mark and icon-only nav (tooltips). The collapsed state
+ * persists in localStorage; the layout adapts because AppShell's main is flex-1.
+ *
+ * Nav only links to routes that exist and are reachable — individual team and
+ * player pages are reached from tables/scorers, not a top-level index.
  */
 
 const STORAGE_KEY = "allinfootball.sidebar.collapsed";
@@ -37,26 +33,14 @@ interface NavItem {
   label: string;
   href: string;
   Icon: ComponentType<{ size?: number; className?: string }>;
-  soon?: boolean;
 }
 
 const NAV: NavItem[] = [
   { label: "Home", href: "/", Icon: HomeIcon },
   { label: "Matches", href: "/matches", Icon: MatchesIcon },
   { label: "Competitions", href: "/competition/premier-league", Icon: TrophyIcon },
-  { label: "Teams", href: "/teams", Icon: ShieldIcon },
-  { label: "Players", href: "/players", Icon: UserIcon },
   { label: "Transfers", href: "/news?tag=transfers", Icon: TransferIcon },
   { label: "News", href: "/news", Icon: NewsIcon },
-  { label: "Videos", href: "/videos", Icon: VideoIcon, soon: true },
-  { label: "Following", href: "/following", Icon: StarIcon },
-];
-
-// Preview of followed teams (backed by the localStorage profile; populated in M3).
-const YOUR_TEAMS = [
-  { id: 33, name: "Manchester United", crest: "https://media.api-sports.io/football/teams/33.png", primary: true },
-  { id: 529, name: "FC Barcelona", crest: "https://media.api-sports.io/football/teams/529.png", primary: false },
-  { id: 541, name: "Real Madrid", crest: "https://media.api-sports.io/football/teams/541.png", primary: false },
 ];
 
 export function Sidebar() {
@@ -66,14 +50,11 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Restore persisted state on mount (kept out of the initial render to avoid a
-  // hydration mismatch; a one-time width transition on load is intentional).
   useEffect(() => {
     setCollapsed(window.localStorage.getItem(STORAGE_KEY) === "1");
     setMounted(true);
   }, []);
 
-  // Persist whenever the user toggles (effect keeps the updater pure).
   useEffect(() => {
     if (!mounted) return;
     try {
@@ -84,6 +65,12 @@ export function Sidebar() {
   }, [collapsed, mounted]);
 
   const toggle = () => setCollapsed((c) => !c);
+
+  function enableNotifications() {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      void Notification.requestPermission().catch(() => {});
+    }
+  }
 
   return (
     <aside
@@ -108,7 +95,7 @@ export function Sidebar() {
       </div>
 
       <nav className="mt-7 flex flex-col gap-1">
-        {NAV.map(({ label, href, Icon, soon }) => {
+        {NAV.map(({ label, href, Icon }) => {
           // News and Transfers both live under /news — disambiguate via ?tag.
           const active =
             href === "/"
@@ -134,63 +121,10 @@ export function Sidebar() {
             >
               <Icon size={18} />
               {!collapsed && <span className="flex-1">{label}</span>}
-              {!collapsed && soon && (
-                <span
-                  className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase ${
-                    active ? "bg-black/15 text-text-on-accent" : "bg-white/8 text-text-muted"
-                  }`}
-                >
-                  Soon
-                </span>
-              )}
             </Link>
           );
         })}
       </nav>
-
-      <div className="mt-7">
-        {!collapsed && (
-          <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted">
-            Your Teams
-          </p>
-        )}
-        <ul className={`mt-2 flex flex-col gap-0.5 ${collapsed ? "items-center" : ""}`}>
-          {YOUR_TEAMS.map((t) => (
-            <li key={t.id} className={collapsed ? "" : "w-full"}>
-              <Link
-                href="/teams"
-                title={collapsed ? t.name : undefined}
-                className={`flex items-center rounded-tile text-meta text-text-secondary transition-colors hover:bg-white/5 hover:text-text-primary ${
-                  collapsed ? "relative justify-center p-1.5" : "gap-2.5 px-3 py-1.5"
-                }`}
-              >
-                <Crest src={t.crest} name={t.name} size={20} />
-                {!collapsed && <span className="flex-1 truncate">{t.name}</span>}
-                {t.primary &&
-                  (collapsed ? (
-                    <StarIcon size={9} filled className="absolute right-0 top-0 text-star" />
-                  ) : (
-                    <StarIcon size={13} filled className="text-star" />
-                  ))}
-              </Link>
-            </li>
-          ))}
-          <li className={collapsed ? "" : "w-full"}>
-            <Link
-              href="/teams"
-              title={collapsed ? "Add team" : undefined}
-              className={`flex items-center rounded-tile text-meta text-text-muted transition-colors hover:text-text-primary ${
-                collapsed ? "justify-center p-1.5" : "gap-2.5 px-3 py-1.5"
-              }`}
-            >
-              <span className="grid h-5 w-5 place-items-center">
-                <PlusIcon size={14} />
-              </span>
-              {!collapsed && "Add Team"}
-            </Link>
-          </li>
-        </ul>
-      </div>
 
       <div className="mt-auto pt-4">
         <div className={`mb-2 ${collapsed ? "flex justify-center" : ""}`}>
@@ -218,6 +152,7 @@ export function Sidebar() {
               </p>
               <button
                 type="button"
+                onClick={enableNotifications}
                 className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-tile bg-accent-lime py-2 text-[12px] font-semibold text-text-on-accent transition-colors hover:bg-accent-lime-dim"
               >
                 Enable Notifications

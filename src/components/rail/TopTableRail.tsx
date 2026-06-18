@@ -45,11 +45,11 @@ export function TopTableRail({
   }
 
   return (
-    <section className="relative overflow-hidden rounded-card border border-hairline bg-card p-card">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -bottom-10 right-0 h-28 w-40 rounded-full bg-accent-lime-soft blur-2xl"
-      />
+    <section className="relative rounded-card border border-hairline bg-card p-card">
+      {/* glow, clipped to the card shape so it doesn't also clip the dropdown */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-card">
+        <div className="absolute -bottom-10 right-0 h-28 w-40 rounded-full bg-accent-lime-soft blur-2xl" />
+      </div>
       <header className="relative mb-3">
         <h3 className="text-cardtitle text-text-primary">Top Table</h3>
         <button

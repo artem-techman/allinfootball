@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Match } from "@/lib/providers/types";
-import { formatKickoffTime, formatShortDate } from "@/lib/utils/date";
 import { Crest } from "@/components/primitives/Crest";
+import { LocalTime } from "@/components/primitives/LocalTime";
 
 /**
  * Compact match row used in lists/rails. Status drives the right-hand cell:
@@ -81,9 +81,11 @@ function StatusCell({ match }: { match: Match }) {
     default:
       return (
         <div className="leading-tight">
-          <div className="text-[11px] text-text-secondary">{formatShortDate(match.kickoffUtc)}</div>
+          <div className="text-[11px] text-text-secondary">
+            <LocalTime iso={match.kickoffUtc} mode="date" />
+          </div>
           <div className="tabular text-body font-bold text-text-primary">
-            {formatKickoffTime(match.kickoffUtc)}
+            <LocalTime iso={match.kickoffUtc} mode="time" />
           </div>
         </div>
       );

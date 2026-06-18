@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Match } from "@/lib/providers/types";
 import { Crest } from "@/components/primitives/Crest";
 import { EmptyState } from "@/components/primitives/EmptyState";
-import { formatShortDate } from "@/lib/utils/date";
+import { LocalTime } from "@/components/primitives/LocalTime";
 
 /**
  * Head-to-head tab (CLAUDE.md section 8). Recent meetings between the two teams
@@ -53,7 +53,9 @@ export function HeadToHead({ fixtures, match }: { fixtures: Match[]; match: Matc
                 <span className="truncate">{f.awayTeam?.name}</span>
               </span>
             </Link>
-            <p className="pb-1 text-center text-[11px] text-text-muted">{formatShortDate(f.kickoffUtc)}</p>
+            <p className="pb-1 text-center text-[11px] text-text-muted">
+              <LocalTime iso={f.kickoffUtc} mode="date" />
+            </p>
           </li>
         ))}
       </ul>

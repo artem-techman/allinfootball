@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Match, MatchEvent } from "@/lib/providers/types";
 import { Crest } from "@/components/primitives/Crest";
-import { formatKickoffTime, formatShortDate } from "@/lib/utils/date";
+import { LocalTime } from "@/components/primitives/LocalTime";
 
 /**
  * Match center header (CLAUDE.md section 8): competition/round breadcrumb, both
@@ -59,8 +59,12 @@ function ScoreCol({ match }: { match: Match }) {
   if (match.status === "scheduled") {
     return (
       <div className="px-4 text-center">
-        <div className="text-[11px] text-text-on-dark-dim">{formatShortDate(match.kickoffUtc)}</div>
-        <div className="tabular text-[22px] font-bold">{formatKickoffTime(match.kickoffUtc)}</div>
+        <div className="text-[11px] text-text-on-dark-dim">
+          <LocalTime iso={match.kickoffUtc} mode="date" />
+        </div>
+        <div className="tabular text-[22px] font-bold">
+          <LocalTime iso={match.kickoffUtc} mode="time" />
+        </div>
       </div>
     );
   }

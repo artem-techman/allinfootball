@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { shiftDateKey, todayKey } from "@/lib/utils/date";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/primitives/icons";
@@ -20,7 +21,16 @@ function dayParts(dateKey: string) {
 }
 
 export function DateStrip({ selected }: { selected: string }) {
-  const today = todayKey();
+  // "Today" in the viewer's local timezone (UTC baseline until mount to avoid a
+  // hydration mismatch).
+  const [today, setToday] = useState(() => todayKey("UTC"));
+  useEffect(() => {
+    try {
+      setToday(todayKey(Intl.DateTimeFormat().resolvedOptions().timeZone));
+    } catch {
+      setToday(todayKey());
+    }
+  }, []);
   const days = Array.from({ length: 7 }, (_, i) => shiftDateKey(selected, i - 3));
 
   return (

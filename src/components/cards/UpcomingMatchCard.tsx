@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Match } from "@/lib/providers/types";
-import { formatKickoffTime, formatShortDate } from "@/lib/utils/date";
 import { Crest } from "@/components/primitives/Crest";
+import { LocalTime } from "@/components/primitives/LocalTime";
 
 /**
  * Upcoming match card (CLAUDE.md section 12): competition label + logo on top,
@@ -25,9 +25,11 @@ export function UpcomingMatchCard({ match }: { match: Match }) {
       <div className="flex items-center justify-between gap-1">
         <TeamSide name={home?.name ?? "Home"} crest={home?.crest} />
         <div className="shrink-0 px-1 text-center">
-          <div className="text-[10px] text-text-secondary">{formatShortDate(match.kickoffUtc)}</div>
+          <div className="text-[10px] text-text-secondary">
+            <LocalTime iso={match.kickoffUtc} mode="date" />
+          </div>
           <div className="tabular text-cardtitle font-bold text-text-primary">
-            {formatKickoffTime(match.kickoffUtc)}
+            <LocalTime iso={match.kickoffUtc} mode="time" />
           </div>
         </div>
         <TeamSide name={away?.name ?? "Away"} crest={away?.crest} />

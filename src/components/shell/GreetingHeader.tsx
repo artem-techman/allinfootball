@@ -22,7 +22,14 @@ export function GreetingHeader() {
   useEffect(() => {
     const p = loadProfile();
     setNameState(p.name);
-    setGreeting(greetingFor());
+    // Time-of-day greeting in the viewer's local timezone.
+    let tz: string | undefined;
+    try {
+      tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {
+      tz = undefined;
+    }
+    setGreeting(greetingFor(new Date(), tz));
     function onChange() {
       setNameState(loadProfile().name);
     }

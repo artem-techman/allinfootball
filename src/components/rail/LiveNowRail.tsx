@@ -36,9 +36,12 @@ export function LiveNowRail({ previewMatches = [] }: { previewMatches?: Match[] 
         if (cancelled) return;
         // A real provider degradation (429/5xx) — not just the no-key preview path.
         setDegraded(Boolean(data.delayed) && data.reason !== "no_key");
-        if (data.matches.length === 0 && (data.delayed || previewMatches.length)) {
+        // Sample fixtures are ONLY for the keyless demo. With a real key, show the
+        // actual live matches — or the empty state when none are in play. Never
+        // present placeholders as if they were live.
+        if (data.reason === "no_key" && previewMatches.length) {
           setMatches(previewMatches);
-          setIsPreview(previewMatches.length > 0);
+          setIsPreview(true);
         } else {
           setMatches(data.matches);
           setIsPreview(false);
@@ -48,8 +51,8 @@ export function LiveNowRail({ previewMatches = [] }: { previewMatches?: Match[] 
       } catch {
         if (cancelled) return;
         setDegraded(true);
-        setMatches((prev) => prev ?? previewMatches);
-        setIsPreview(previewMatches.length > 0);
+        setMatches((prev) => prev ?? []); // keep last-good real data; never fake it
+        setIsPreview(false);
       }
     }
 

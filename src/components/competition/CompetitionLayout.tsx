@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/shell/AppShell";
 import { Crest } from "@/components/primitives/Crest";
 import { JsonLd, breadcrumb } from "@/components/seo/JsonLd";
-import { getCompetitionBySlug } from "@/lib/constants/competitions";
+import { getCompetitionBySlug, COMPETITIONS } from "@/lib/constants/competitions";
 
 export type CompetitionTab = "fixtures" | "table" | "scorers" | "news";
 
@@ -46,6 +46,28 @@ export function CompetitionLayout({
           { name: comp.name, path: `/competition/${slug}/${active}` },
         ])}
       />
+      {/* league switcher — all nine competitions; switching keeps the active tab */}
+      <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+        {COMPETITIONS.map((c) => {
+          const isActive = c.slug === slug;
+          return (
+            <Link
+              key={c.slug}
+              href={`/competition/${c.slug}/${active}`}
+              aria-current={isActive ? "page" : undefined}
+              className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-meta font-semibold transition-colors ${
+                isActive
+                  ? "border-accent-lime bg-accent-lime text-text-on-accent"
+                  : "border-hairline bg-card text-text-secondary hover:border-white/15 hover:text-text-primary"
+              }`}
+            >
+              <Crest src={LEAGUE_LOGO(c.leagueId)} name={c.name} size={18} />
+              {c.name}
+            </Link>
+          );
+        })}
+      </div>
+
       <header className="mb-5 flex items-center gap-4">
         <Crest src={LEAGUE_LOGO(comp.leagueId)} name={comp.name} size={52} />
         <div>

@@ -43,7 +43,7 @@ export default async function HomePage() {
       rail={
         <>
           <LiveNowRail previewMatches={PREVIEW_LIVE} />
-          <TopTableRail competitionName="Premier League" competitionSlug={DEFAULT_COMPETITION_SLUG} rows={standingsToShow} />
+          <TopTableRail initialSlug={DEFAULT_COMPETITION_SLUG} initialRows={standingsToShow} />
           <TransferRumoursRail articles={transferNews} />
         </>
       }

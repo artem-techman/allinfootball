@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Lineup, Match, MatchEvent, MatchStats, Odds, Standing } from "@/lib/providers/types";
+import { ChevronLeftIcon } from "@/components/primitives/icons";
 import { MatchHeader } from "./MatchHeader";
 import { EventTimeline } from "./EventTimeline";
 import { CommentaryFeed } from "./CommentaryFeed";
@@ -54,6 +56,7 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
   const [tab, setTab] = useState<TabId>(defaultTab(bundle.match.status));
   const [degraded, setDegraded] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const router = useRouter();
 
   const inPlay = match.status === "live" || match.status === "ht";
 
@@ -88,6 +91,14 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
 
   return (
     <div className="space-y-5">
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="inline-flex items-center gap-1.5 text-meta font-semibold text-text-secondary transition-colors hover:text-text-primary"
+      >
+        <ChevronLeftIcon size={16} />
+        Back
+      </button>
       {degraded && <ErrorBanner />}
       <MatchHeader match={match} events={events} />
 

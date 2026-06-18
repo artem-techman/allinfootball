@@ -23,7 +23,7 @@ export function MatchHeader({ match, events }: { match: Match; events: MatchEven
     <section className="overflow-hidden rounded-card border border-hairline bg-surface-dark p-6 text-text-on-dark">
       <div className="mb-5 flex items-center justify-center gap-1.5 text-[11px] text-text-on-dark-dim">
         {match.competition && (
-          <Link href={`/competition/${match.competition.slug}`} className="hover:text-text-on-dark">
+          <Link href={`/competition/${match.competition.slug}/table`} className="hover:text-text-on-dark">
             {match.competition.name}
           </Link>
         )}

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
-import { MenuIcon } from "@/components/primitives/icons";
+import { MobileNav } from "./MobileNav";
 
 /**
  * 3-column responsive shell (CLAUDE.md section 12). Sidebar 240px fixed, main
@@ -27,13 +27,7 @@ export function AppShell({
       {/* mobile top bar (sidebar collapses below 820px) */}
       <div className="sticky top-0 z-20 flex items-center justify-between border-b border-hairline bg-card px-4 py-3 min-[821px]:hidden">
         <span className="text-cardtitle font-bold text-text-primary">All In Football</span>
-        <button
-          type="button"
-          aria-label="Open menu"
-          className="grid h-9 w-9 place-items-center rounded-tile border border-hairline text-text-secondary"
-        >
-          <MenuIcon size={18} />
-        </button>
+        <MobileNav />
       </div>
 
       <div className="mx-auto flex max-w-[1440px] gap-6 px-0 min-[821px]:px-6">

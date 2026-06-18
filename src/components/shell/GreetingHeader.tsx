@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { greetingFor } from "@/lib/utils/date";
 import { loadProfile, setName } from "@/lib/profile";
 import { SearchAutocomplete } from "./SearchAutocomplete";
-import { BellIcon, ChevronDownIcon } from "@/components/primitives/icons";
+import { NotificationsBell } from "./NotificationsBell";
+import { ChevronDownIcon } from "@/components/primitives/icons";
 import { STOCK_IMAGES } from "@/lib/preview/homePreview";
 
 /**
@@ -58,17 +59,7 @@ export function GreetingHeader() {
       </div>
 
       <div className="flex items-center gap-3">
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="relative grid h-10 w-10 place-items-center rounded-full border border-hairline bg-card text-text-secondary transition-colors hover:text-text-primary"
-        >
-          <BellIcon size={18} />
-          <span
-            aria-hidden
-            className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-accent-lime ring-2 ring-card"
-          />
-        </button>
+        <NotificationsBell />
 
         <div className="relative">
           <button

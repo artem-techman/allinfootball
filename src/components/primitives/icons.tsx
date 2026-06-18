@@ -157,6 +157,12 @@ export const MenuIcon = (p: IconProps) => (
   </Svg>
 );
 
+export const CloseIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M18 6 6 18M6 6l12 12" />
+  </Svg>
+);
+
 export const SunIcon = (p: IconProps) => (
   <Svg {...p}>
     <circle cx="12" cy="12" r="4" />

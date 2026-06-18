@@ -758,6 +758,18 @@ export const apiFootball: FootballProvider = {
       return env.response[0] ? mapVenue(env.response[0]) : undefined;
     });
   },
+
+  async searchTeams(query: string): Promise<Team[]> {
+    const q = query.trim();
+    if (q.length < 3) return []; // API-Football requires >= 3 chars for search
+    return swr(`searchteams:${q.toLowerCase()}`, TTL.teams, async () => {
+      const env = await apiGet<RawTeamEnvelope>("/teams", { search: q });
+      return env.response.map((r) => ({
+        ...mapTeam({ id: r.team.id, name: r.team.name, logo: r.team.logo }),
+        country: r.team.country,
+      }));
+    });
+  },
 };
 
 /**

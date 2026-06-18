@@ -284,4 +284,5 @@ export interface FootballProvider {
   getPlayer(playerId: number, season: number): Promise<PlayerProfile | undefined>;
   getCoach(coachId: number): Promise<Coach | undefined>;
   getVenue(venueId: number): Promise<Venue | undefined>;
+  searchTeams(query: string): Promise<Team[]>;
 }

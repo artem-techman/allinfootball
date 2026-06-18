@@ -26,11 +26,7 @@ export async function CalendarShell({ dateKey }: { dateKey: string }) {
       rail={
         <>
           <LiveNowRail />
-          <TopTableRail
-            competitionName="Premier League"
-            competitionSlug={DEFAULT_COMPETITION_SLUG}
-            rows={standings}
-          />
+          <TopTableRail initialSlug={DEFAULT_COMPETITION_SLUG} initialRows={standings} />
         </>
       }
     >

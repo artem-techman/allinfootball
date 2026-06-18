@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens — dark theme is the DEFAULT for All In Football (matches the approved
+ * dark reference + the 42 Soccer Visual Style Guide). Brand accents: 42 Lime
+ * (#D9FF3F) used sparingly for actions/live/active states, and 42 Electric
+ * (#5A38FF) for rare premium/hero highlights. These CSS variables are the single
+ * source of truth for color; tailwind.config.ts and design/tokens.ts mirror
+ * them. A light variant lives under [data-theme="light"] — theme is a token
+ * swap, never a rewrite.
+ */
+:root {
+  /* brand accents */
+  --accent-lime: #d9ff3f;
+  --accent-lime-dim: #c2e635; /* hover */
+  --accent-lime-soft: rgba(217, 255, 63, 0.12); /* soft fills, active glow */
+  --accent-electric: #5a38ff;
+  --accent-electric-soft: rgba(90, 56, 255, 0.18);
+
+  /* surfaces (dark) */
+  --page-bg: #08090c;
+  --card-bg: #131419;
+  --card-bg-2: #1a1c22; /* raised / hover */
+  --surface-dark: #131419;
+  --surface-dark-2: #1f2128; /* score chip, raised tiles on dark */
+  --border-hairline: rgba(255, 255, 255, 0.08);
+
+  /* text */
+  --text-primary: #ffffff;
+  --text-secondary: #9aa0aa;
+  --text-muted: #878d97; /* AA contrast on dark surfaces */
+  --text-on-dark: #ffffff;
+  --text-on-dark-dim: #9aa0aa;
+  --text-on-accent: #0a0b0d; /* dark text on lime / white surfaces */
+
+  /* status */
+  --live-red: #ff4d4d;
+  --live-minute: #d9ff3f;
+  --star-gold: #ffb627;
+}
+
+/* Light variant — token swap only (accent + live colors stay). */
+[data-theme="light"] {
+  --page-bg: #f6f7f9;
+  --card-bg: #ffffff;
+  --card-bg-2: #f8f9fb;
+  --surface-dark: #101114;
+  --surface-dark-2: #1a1c20;
+  --border-hairline: #eceef1;
+  --text-primary: #111111;
+  --text-secondary: #5b606b;
+  --text-muted: #70757e; /* AA contrast on light surfaces */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: var(--page-bg);
+  color: var(--text-primary);
+  font-family: var(--font-inter), "SF Pro Display", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Scores, points, and stats use tabular figures. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Visible focus ring for keyboard nav (lime, per style guide focus states). */
+:focus-visible {
+  outline: 2px solid var(--accent-lime);
+  outline-offset: 2px;
+}
+
+/* prefers-reduced-motion disables the live pulse. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

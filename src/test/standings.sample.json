@@ -1,0 +1,78 @@
+{
+  "linear": {
+    "league": {
+      "id": 39,
+      "season": 2025,
+      "standings": [
+        [
+          {
+            "rank": 1,
+            "team": { "id": 50, "name": "Manchester City", "logo": "https://media.api-sports.io/football/teams/50.png" },
+            "all": { "played": 10, "win": 8, "draw": 1, "lose": 1, "goals": { "for": 24, "against": 8 } },
+            "goalsDiff": 16,
+            "points": 25,
+            "form": "WWDWL",
+            "group": "Premier League"
+          },
+          {
+            "rank": 2,
+            "team": { "id": 40, "name": "Liverpool", "logo": "https://media.api-sports.io/football/teams/40.png" },
+            "all": { "played": 10, "win": 7, "draw": 2, "lose": 1, "goals": { "for": 20, "against": 9 } },
+            "goalsDiff": 11,
+            "points": 23,
+            "form": "WWWDL",
+            "group": "Premier League"
+          }
+        ]
+      ]
+    }
+  },
+  "group": {
+    "league": {
+      "id": 1,
+      "season": 2026,
+      "standings": [
+        [
+          {
+            "rank": 1,
+            "team": { "id": 2384, "name": "Brazil", "logo": "https://media.api-sports.io/football/teams/2384.png" },
+            "all": { "played": 3, "win": 2, "draw": 1, "lose": 0, "goals": { "for": 6, "against": 2 } },
+            "goalsDiff": 4,
+            "points": 7,
+            "form": "WDW",
+            "group": "Group A"
+          },
+          {
+            "rank": 2,
+            "team": { "id": 27, "name": "Serbia", "logo": "https://media.api-sports.io/football/teams/27.png" },
+            "all": { "played": 3, "win": 1, "draw": 1, "lose": 1, "goals": { "for": 3, "against": 3 } },
+            "goalsDiff": 0,
+            "points": 4,
+            "form": "LWD",
+            "group": "Group A"
+          }
+        ],
+        [
+          {
+            "rank": 1,
+            "team": { "id": 25, "name": "Germany", "logo": "https://media.api-sports.io/football/teams/25.png" },
+            "all": { "played": 3, "win": 3, "draw": 0, "lose": 0, "goals": { "for": 7, "against": 1 } },
+            "goalsDiff": 6,
+            "points": 9,
+            "form": "WWW",
+            "group": "Group B"
+          },
+          {
+            "rank": 2,
+            "team": { "id": 1118, "name": "Japan", "logo": "https://media.api-sports.io/football/teams/1118.png" },
+            "all": { "played": 3, "win": 1, "draw": 1, "lose": 1, "goals": { "for": 4, "against": 4 } },
+            "goalsDiff": 0,
+            "points": 4,
+            "form": "WLD",
+            "group": "Group B"
+          }
+        ]
+      ]
+    }
+  }
+}

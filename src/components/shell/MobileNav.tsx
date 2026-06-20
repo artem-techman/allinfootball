@@ -47,7 +47,7 @@ export function MobileNav() {
       {open && (
         <div className="fixed inset-0 z-50 min-[821px]:hidden" role="dialog" aria-modal="true" aria-label="Menu">
           <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} aria-hidden />
-          <div className="absolute inset-y-0 right-0 flex w-[260px] max-w-[80%] flex-col border-l border-hairline bg-page px-4 py-5">
+          <div className="absolute inset-0 flex w-full flex-col bg-page px-4 py-5">
             <div className="flex items-center justify-between px-2">
               <Logo />
               <button

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Match } from "@/lib/providers/types";
 import { Crest } from "@/components/primitives/Crest";
 import { LocalTime } from "@/components/primitives/LocalTime";
+import { Countdown } from "@/components/primitives/Countdown";
 
 /**
  * Upcoming match card (CLAUDE.md section 12): competition label + logo on top,
@@ -14,7 +15,7 @@ export function UpcomingMatchCard({ match }: { match: Match }) {
   return (
     <Link
       href={`/match/${match.slug}`}
-      className="flex flex-col rounded-card border border-hairline bg-card p-card transition-colors duration-200 hover:border-white/15 hover:bg-card-2"
+      className="flex h-full min-h-[196px] flex-col rounded-card border border-hairline bg-card p-card transition-colors duration-200 hover:border-white/15 hover:bg-card-2"
     >
       <div className="mb-4 flex items-center gap-2">
         <Crest src={match.competition?.logo} name={match.competition?.name ?? "Competition"} size={16} />
@@ -34,6 +35,7 @@ export function UpcomingMatchCard({ match }: { match: Match }) {
         </div>
         <TeamSide name={away?.name ?? "Away"} crest={away?.crest} />
       </div>
+      <Countdown kickoffUtc={match.kickoffUtc} />
     </Link>
   );
 }
@@ -48,7 +50,7 @@ function TeamSide({
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
       <Crest src={crest} name={name} size={30} />
-      <span className="line-clamp-2 w-full text-center text-[11px] font-semibold leading-tight text-text-primary">
+      <span className="line-clamp-2 min-h-[28px] w-full text-center text-[11px] font-semibold leading-tight text-text-primary">
         {name}
       </span>
     </div>

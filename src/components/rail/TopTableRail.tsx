@@ -29,6 +29,14 @@ export function TopTableRail({
   const [pickerOpen, setPickerOpen] = useState(false);
   const comp = COMPETITIONS.find((c) => c.slug === slug) ?? COMPETITIONS[0];
 
+  // Grouped competitions (e.g. World Cup) have several mini-tables. In this
+  // compact widget show just the first group so positions don't reset mid-list.
+  const groupLabels = [...new Set(rows.map((r) => r.groupLabel).filter(Boolean))] as string[];
+  const grouped = groupLabels.length > 1;
+  const displayRows = grouped
+    ? rows.filter((r) => r.groupLabel === groupLabels[0]).sort((a, b) => a.position - b.position)
+    : rows.slice(0, 5);
+
   async function select(c: CompetitionConst) {
     setPickerOpen(false);
     if (c.slug === slug) return;
@@ -60,6 +68,7 @@ export function TopTableRail({
         >
           <Crest src={LEAGUE_LOGO(comp.leagueId)} name={comp.name} size={15} />
           <span className="font-semibold">{comp.name}</span>
+          {grouped && <span className="text-text-muted">· {groupLabels[0]}</span>}
           <ChevronDownIcon size={14} />
         </button>
 
@@ -91,7 +100,7 @@ export function TopTableRail({
             <Skeleton key={i} className="h-7 w-full" />
           ))}
         </div>
-      ) : rows.length === 0 ? (
+      ) : displayRows.length === 0 ? (
         <p className="py-3 text-center text-meta text-text-secondary">Table not available</p>
       ) : (
         <table className="relative w-full text-meta">
@@ -105,7 +114,7 @@ export function TopTableRail({
             </tr>
           </thead>
           <tbody>
-            {rows.slice(0, 5).map((r) => (
+            {displayRows.slice(0, 5).map((r) => (
               <tr key={`${r.groupLabel ?? ""}-${r.teamId}`} className="border-t border-hairline">
                 <td className="tabular py-1.5 text-text-secondary">{r.position}</td>
                 <td className="py-1.5">

@@ -25,6 +25,9 @@ export const dynamic = "force-dynamic";
  * API key; Upcoming / Live / Top Table / Player Spotlight use live football data.
  * Each section falls back to preview content if its source is unavailable.
  */
+/** Competition the home Top Table widget defaults to. */
+const TOP_TABLE_SLUG = "world-cup";
+
 export default async function HomePage() {
   const { upcoming, standings, spotlight, news, transferNews } = await loadHomeData();
 
@@ -43,7 +46,7 @@ export default async function HomePage() {
       rail={
         <>
           <LiveNowRail previewMatches={PREVIEW_LIVE} />
-          <TopTableRail initialSlug={DEFAULT_COMPETITION_SLUG} initialRows={standingsToShow} />
+          <TopTableRail initialSlug={TOP_TABLE_SLUG} initialRows={standingsToShow} />
           <TransferRumoursRail articles={transferNews} />
         </>
       }
@@ -155,11 +158,14 @@ async function loadHomeData(): Promise<{
     return { upcoming: [], standings: null, spotlight: null, news, transferNews };
   }
 
-  const comp = getCompetitionBySlug(DEFAULT_COMPETITION_SLUG);
+  // Top Table defaults to the World Cup (the current marquee event); the Player
+  // Spotlight stays on the Premier League top scorer.
+  const tableComp = getCompetitionBySlug(TOP_TABLE_SLUG);
+  const spotlightComp = getCompetitionBySlug(DEFAULT_COMPETITION_SLUG);
   const [upcoming, standings, spotlight] = await Promise.all([
     loadUpcoming(),
-    comp ? provider.getStandings(comp.leagueId, comp.defaultSeason).catch(() => []) : Promise.resolve([]),
-    loadSpotlight(comp?.leagueId ?? 39, comp?.defaultSeason ?? 2025),
+    tableComp ? provider.getStandings(tableComp.leagueId, tableComp.defaultSeason).catch(() => []) : Promise.resolve([]),
+    loadSpotlight(spotlightComp?.leagueId ?? 39, spotlightComp?.defaultSeason ?? 2025),
   ]);
   return { upcoming, standings, spotlight, news, transferNews };
 }

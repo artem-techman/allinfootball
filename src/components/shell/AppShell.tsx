@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { Sidebar } from "./Sidebar";
 import { MobileNav } from "./MobileNav";
 
@@ -26,7 +27,9 @@ export function AppShell({
     <div className="min-h-screen bg-page">
       {/* mobile top bar (sidebar collapses below 820px) */}
       <div className="sticky top-0 z-20 flex items-center justify-between border-b border-hairline bg-card px-4 py-3 min-[821px]:hidden">
-        <span className="text-cardtitle font-bold text-text-primary">All In Football</span>
+        <Link href="/" className="text-cardtitle font-bold text-text-primary">
+          All In Football
+        </Link>
         <MobileNav />
       </div>
 

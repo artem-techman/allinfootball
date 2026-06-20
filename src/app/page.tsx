@@ -3,7 +3,7 @@ import { AppShell } from "@/components/shell/AppShell";
 import { GreetingHeader } from "@/components/shell/GreetingHeader";
 import { HeroFeatureCard } from "@/components/cards/HeroFeatureCard";
 import { HeroCarousel } from "@/components/cards/HeroCarousel";
-import { UpcomingMatchCard } from "@/components/cards/UpcomingMatchCard";
+import { UpcomingMatches } from "@/components/cards/UpcomingMatches";
 import { TopStoriesCard } from "@/components/cards/TopStoriesCard";
 import type { StoryItem } from "@/components/cards/TopStoriesCard";
 import { PlayerSpotlightCard } from "@/components/cards/PlayerSpotlightCard";
@@ -43,6 +43,22 @@ export default async function HomePage() {
       ? { featured: toStory(storyPool[0]), items: storyPool.slice(1, 5).map(toStory) }
       : PREVIEW_STORIES;
 
+  // Rendered beside Top Stories on desktop, but moved to the very end on mobile
+  // (after the stacked rail widgets), so it's the last thing the user scrolls to.
+  const playerSpotlight = (
+    <PlayerSpotlightCard
+      name={spotlight?.name ?? PREVIEW_SPOTLIGHT.name}
+      href={spotlight?.href ?? "/competition/premier-league/scorers"}
+      club={spotlight?.club ?? PREVIEW_SPOTLIGHT.club}
+      position={spotlight?.position ?? PREVIEW_SPOTLIGHT.position}
+      verified={!spotlight && PREVIEW_SPOTLIGHT.verified}
+      matches={spotlight?.matches ?? PREVIEW_SPOTLIGHT.matches}
+      goals={spotlight?.goals ?? PREVIEW_SPOTLIGHT.goals}
+      assists={spotlight?.assists ?? PREVIEW_SPOTLIGHT.assists}
+      portraitUrl={spotlight?.portraitUrl ?? PREVIEW_SPOTLIGHT.portraitUrl}
+    />
+  );
+
   return (
     <AppShell
       rail={
@@ -54,6 +70,10 @@ export default async function HomePage() {
           </div>
           <TopTableRail initialSlug={TOP_TABLE_SLUG} initialRows={standingsToShow} />
           <TransferRumoursRail articles={transferNews} />
+          {/* On mobile the rail stacks below main, so Player Spotlight here makes
+              it the last section. On desktop (≥1024px) it shows beside Top
+              Stories instead (see below) and is hidden here. */}
+          <div className="lg:hidden">{playerSpotlight}</div>
         </>
       }
     >
@@ -96,31 +116,14 @@ export default async function HomePage() {
             See all <ChevronRightIcon size={15} />
           </Link>
         </div>
-        {/* Mobile/tablet: stacked grid. Desktop (≥1024px): a horizontal
-            carousel scrollable with the trackpad (two-finger swipe). */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:flex lg:snap-x lg:snap-proximity lg:gap-4 lg:overflow-x-auto lg:overscroll-x-contain lg:pb-2 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-          {upcomingToShow.map((m) => (
-            <div key={m.id} className="lg:w-[260px] lg:flex-shrink-0 lg:snap-start">
-              <UpcomingMatchCard match={m} />
-            </div>
-          ))}
-        </div>
+        <UpcomingMatches matches={upcomingToShow} />
       </section>
 
-      {/* Top Stories (enlarged) · Player Spotlight */}
+      {/* Top Stories (enlarged) · Player Spotlight (desktop only here; on mobile
+          it's rendered at the end of the rail instead). */}
       <section className="mt-7 grid gap-4 lg:grid-cols-[1.85fr_1fr]">
         <TopStoriesCard featured={stories.featured} items={stories.items} />
-        <PlayerSpotlightCard
-          name={spotlight?.name ?? PREVIEW_SPOTLIGHT.name}
-          href={spotlight?.href ?? "/competition/premier-league/scorers"}
-          club={spotlight?.club ?? PREVIEW_SPOTLIGHT.club}
-          position={spotlight?.position ?? PREVIEW_SPOTLIGHT.position}
-          verified={!spotlight && PREVIEW_SPOTLIGHT.verified}
-          matches={spotlight?.matches ?? PREVIEW_SPOTLIGHT.matches}
-          goals={spotlight?.goals ?? PREVIEW_SPOTLIGHT.goals}
-          assists={spotlight?.assists ?? PREVIEW_SPOTLIGHT.assists}
-          portraitUrl={spotlight?.portraitUrl ?? PREVIEW_SPOTLIGHT.portraitUrl}
-        />
+        <div className="hidden lg:block">{playerSpotlight}</div>
       </section>
     </AppShell>
   );

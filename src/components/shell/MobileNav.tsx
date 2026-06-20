@@ -13,11 +13,30 @@ import { MenuIcon, CloseIcon } from "@/components/primitives/icons";
  * primary nav, since the desktop sidebar is hidden below 820px. Closes on
  * backdrop click, the close button, Escape, or navigating.
  */
+/** Matches the CSS transition duration below (ms) for the exit animation. */
+const TRANSITION_MS = 300;
+
 export function MobileNav() {
   const [open, setOpen] = useState(false);
+  // `mounted` keeps the drawer in the DOM through its exit transition; `show`
+  // drives the in/out classes a frame after mount so the enter animation runs.
+  const [mounted, setMounted] = useState(false);
+  const [show, setShow] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isTransfers = searchParams.get("tag") === "transfers";
+
+  // Drive the enter/exit transition off `open`.
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      const id = requestAnimationFrame(() => setShow(true));
+      return () => cancelAnimationFrame(id);
+    }
+    setShow(false);
+    const id = setTimeout(() => setMounted(false), TRANSITION_MS);
+    return () => clearTimeout(id);
+  }, [open]);
 
   // Close on Escape; lock body scroll while open.
   useEffect(() => {
@@ -44,10 +63,20 @@ export function MobileNav() {
         <MenuIcon size={18} />
       </button>
 
-      {open && (
+      {mounted && (
         <div className="fixed inset-0 z-50 min-[821px]:hidden" role="dialog" aria-modal="true" aria-label="Menu">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} aria-hidden />
-          <div className="absolute inset-0 flex w-full flex-col bg-page px-4 py-5">
+          <div
+            className={`absolute inset-0 bg-black/60 transition-opacity duration-300 ease-out motion-reduce:transition-none ${
+              show ? "opacity-100" : "opacity-0"
+            }`}
+            onClick={() => setOpen(false)}
+            aria-hidden
+          />
+          <div
+            className={`absolute inset-0 flex w-full flex-col bg-page px-4 py-5 transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none ${
+              show ? "translate-y-0 opacity-100" : "-translate-y-3 opacity-0"
+            }`}
+          >
             <div className="flex items-center justify-between px-2">
               <Logo />
               <button

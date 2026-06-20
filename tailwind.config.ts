@@ -82,9 +82,14 @@ const config: Config = {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.35" },
         },
+        "page-in": {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "live-pulse": "live-pulse 1.4s ease-in-out infinite",
+        "page-in": "page-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) both",
       },
     },
   },

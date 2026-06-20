@@ -25,7 +25,7 @@ export function GreetingHeader() {
 
   return (
     <header className="mb-6 flex flex-wrap items-center gap-4">
-      <div className="min-w-0">
+      <div className="hidden min-w-0 min-[821px]:block">
         <h1 className="flex items-center gap-2 text-greeting text-text-primary">
           {greeting}! <span aria-hidden>👋</span>
         </h1>

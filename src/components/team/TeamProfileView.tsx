@@ -51,7 +51,7 @@ export function TeamProfileView({
         </div>
       </header>
 
-      <nav className="flex gap-1 overflow-x-auto border-b border-hairline">
+      <nav className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-hairline">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -63,7 +63,7 @@ export function TeamProfileView({
             }`}
           >
             {t.label}
-            {tab === t.id && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent-lime" />}
+            {tab === t.id && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent-lime" />}
           </button>
         ))}
       </nav>

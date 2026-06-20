@@ -78,7 +78,7 @@ export function CompetitionLayout({
         </div>
       </header>
 
-      <nav className="mb-5 flex gap-1 overflow-x-auto border-b border-hairline">
+      <nav className="mb-5 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-hairline">
         {TABS.map((t) => {
           const isActive = t.id === active;
           return (
@@ -91,7 +91,7 @@ export function CompetitionLayout({
               }`}
             >
               {t.label}
-              {isActive && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent-lime" />}
+              {isActive && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent-lime" />}
             </Link>
           );
         })}

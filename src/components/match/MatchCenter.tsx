@@ -103,7 +103,7 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
       <MatchHeader match={match} events={events} />
 
       {/* tab bar */}
-      <div role="tablist" aria-label="Match sections" className="flex gap-1 overflow-x-auto border-b border-hairline">
+      <div role="tablist" aria-label="Match sections" className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-hairline">
         {TABS.map((t) => {
           const active = t.id === tab;
           return (
@@ -117,7 +117,7 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
               }`}
             >
               {t.label}
-              {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent-lime" />}
+              {active && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent-lime" />}
             </button>
           );
         })}

@@ -20,7 +20,7 @@ export interface Profile {
 }
 
 const DEFAULT_PROFILE: Profile = {
-  name: "Alex",
+  name: "", // unset — greeting stays generic until the user personalises it
   followingTeamIds: [],
   followingPlayerIds: [],
   favoriteTeamIds: [],

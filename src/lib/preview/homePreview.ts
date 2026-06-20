@@ -72,6 +72,8 @@ function match(
 const PL = comp(39, "premier-league", "Premier League");
 const LL = comp(140, "la-liga", "La Liga");
 const SA = comp(135, "serie-a", "Serie A");
+const BL = comp(78, "bundesliga", "Bundesliga");
+const L1 = comp(61, "ligue-1", "Ligue 1");
 
 export const PREVIEW_UPCOMING: Match[] = [
   match(90001, PL, team(33, "Man United", "MUN"), team(49, "Chelsea", "CHE"), {
@@ -83,6 +85,21 @@ export const PREVIEW_UPCOMING: Match[] = [
   }),
   match(90003, SA, team(496, "Juventus", "JUV"), team(505, "Inter", "INT"), {
     kickoffUtc: hoursFromNow(52),
+  }),
+  match(90004, BL, team(157, "Bayern Munich", "BAY"), team(165, "Dortmund", "DOR"), {
+    kickoffUtc: hoursFromNow(56),
+  }),
+  match(90005, L1, team(85, "Paris SG", "PSG"), team(81, "Marseille", "MAR"), {
+    kickoffUtc: hoursFromNow(68),
+  }),
+  match(90006, PL, team(42, "Arsenal", "ARS"), team(40, "Liverpool", "LIV"), {
+    kickoffUtc: hoursFromNow(72),
+  }),
+  match(90007, LL, team(541, "Real Madrid", "RMA"), team(530, "Atletico Madrid", "ATM"), {
+    kickoffUtc: hoursFromNow(90),
+  }),
+  match(90008, SA, team(492, "Napoli", "NAP"), team(497, "Roma", "ROM"), {
+    kickoffUtc: hoursFromNow(96),
   }),
 ];
 

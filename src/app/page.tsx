@@ -96,9 +96,13 @@ export default async function HomePage() {
             See all <ChevronRightIcon size={15} />
           </Link>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Mobile/tablet: stacked grid. Desktop (≥1024px): a horizontal
+            carousel scrollable with the trackpad (two-finger swipe). */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:flex lg:snap-x lg:snap-proximity lg:gap-4 lg:overflow-x-auto lg:overscroll-x-contain lg:pb-2 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
           {upcomingToShow.map((m) => (
-            <UpcomingMatchCard key={m.id} match={m} />
+            <div key={m.id} className="lg:w-[260px] lg:flex-shrink-0 lg:snap-start">
+              <UpcomingMatchCard match={m} />
+            </div>
           ))}
         </div>
       </section>
@@ -213,7 +217,7 @@ async function loadUpcoming(): Promise<Match[]> {
       .flat()
       .filter((m) => m.status === "scheduled" && isInScope(m.competitionId))
       .sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc))
-      .slice(0, 3);
+      .slice(0, 12);
   } catch {
     return [];
   }

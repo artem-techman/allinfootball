@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/shell/AppShell";
 import { GreetingHeader } from "@/components/shell/GreetingHeader";
 import { HeroFeatureCard } from "@/components/cards/HeroFeatureCard";
+import { HeroCarousel } from "@/components/cards/HeroCarousel";
 import { UpcomingMatchCard } from "@/components/cards/UpcomingMatchCard";
 import { TopStoriesCard } from "@/components/cards/TopStoriesCard";
 import type { StoryItem } from "@/components/cards/TopStoriesCard";
@@ -34,8 +35,9 @@ export default async function HomePage() {
   const upcomingToShow = upcoming.length > 0 ? upcoming : PREVIEW_UPCOMING;
   const standingsToShow = standings && standings.length > 0 ? standings : PREVIEW_STANDINGS;
 
-  const heroArticle = news.find((a) => a.image);
-  const storyPool = news.filter((a) => a !== heroArticle);
+  const heroArticles = news.filter((a) => a.image).slice(0, 5);
+  const heroArticle = heroArticles[0];
+  const storyPool = news.filter((a) => !heroArticles.includes(a));
   const stories =
     storyPool.length >= 3
       ? { featured: toStory(storyPool[0]), items: storyPool.slice(1, 5).map(toStory) }
@@ -57,15 +59,16 @@ export default async function HomePage() {
     >
       <GreetingHeader />
 
-      {heroArticle ? (
-        <HeroFeatureCard
-          tag={heroTag(heroArticle)}
-          headline={heroArticle.title}
-          dek={heroArticle.dek}
-          href={`/news/${heroArticle.slug}`}
-          ctaLabel="Read story"
-          imageUrl={heroArticle.image}
-          dots={0}
+      {heroArticles.length > 0 ? (
+        <HeroCarousel
+          slides={heroArticles.map((a) => ({
+            tag: heroTag(a),
+            headline: a.title,
+            dek: a.dek,
+            href: `/news/${a.slug}`,
+            ctaLabel: "Read story",
+            imageUrl: a.image,
+          }))}
         />
       ) : (
         <HeroFeatureCard

@@ -45,7 +45,11 @@ export default async function HomePage() {
     <AppShell
       rail={
         <>
-          <LiveNowRail previewMatches={PREVIEW_LIVE} />
+          {/* On the right rail for desktop only — on mobile Live Now is surfaced
+              above Upcoming Matches in the main column (see below). */}
+          <div className="hidden min-[1201px]:block">
+            <LiveNowRail previewMatches={PREVIEW_LIVE} />
+          </div>
           <TopTableRail initialSlug={TOP_TABLE_SLUG} initialRows={standingsToShow} />
           <TransferRumoursRail articles={transferNews} />
         </>
@@ -74,6 +78,12 @@ export default async function HomePage() {
           score={PREVIEW_HERO.score}
         />
       )}
+
+      {/* Live Now — surfaced above Upcoming on mobile so live games come first
+          while scrolling; hidden on desktop where it lives in the right rail. */}
+      <div className="mt-7 min-[1201px]:hidden">
+        <LiveNowRail previewMatches={PREVIEW_LIVE} />
+      </div>
 
       {/* Upcoming Matches */}
       <section className="mt-7">

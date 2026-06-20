@@ -11,20 +11,20 @@ const inter = Inter({
 /**
  * Root metadata (CLAUDE.md section 13). metadataBase + og:site_name already
  * point at the production domain so canonical URLs are correct before the
- * allinfootball.com custom domain is connected. The brand is "All In Football"
- * everywhere.
+ * allinfootball.com custom domain is connected. The brand is "Good Football
+ * Company" everywhere.
  */
 export const metadata: Metadata = {
   metadataBase: new URL("https://allinfootball.com"),
   title: {
-    default: "All In Football — Live scores, tables & match stats",
-    template: "%s · All In Football",
+    default: "Good Football Company — Live scores, tables & match stats",
+    template: "%s · Good Football Company",
   },
   description:
-    "All In Football tracks the Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Europa League, MLS and the FIFA World Cup — live scores, tables, lineups and stats.",
-  applicationName: "All In Football",
+    "Good Football Company tracks the Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Europa League, MLS and the FIFA World Cup — live scores, tables, lineups and stats.",
+  applicationName: "Good Football Company",
   openGraph: {
-    siteName: "All In Football",
+    siteName: "Good Football Company",
     type: "website",
     url: "https://allinfootball.com",
   },

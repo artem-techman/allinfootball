@@ -1,17 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { greetingFor } from "@/lib/utils/date";
+import { todayKey, formatLongDate } from "@/lib/utils/date";
 import { SearchAutocomplete } from "./SearchAutocomplete";
 
 /**
- * Home header: a time-of-day greeting (in the viewer's local timezone) + a
- * subtitle on the left, and the search on the right. Intentionally minimal — no
- * personal name, account menu or notifications for now, to keep the dashboard
- * uncluttered.
+ * Home header (desktop): today's date (in the viewer's local timezone) + a
+ * subtitle on the left, and the search on the right. The whole text block is
+ * hidden on mobile (AppShell handles that); the search stays. Intentionally
+ * minimal — no personal name, account menu or notifications for now.
+ *
+ * Hydration: server and first client render both use the default timezone, then
+ * we switch to the resolved local timezone after mount (a one-time update).
  */
 export function GreetingHeader() {
-  const [greeting, setGreeting] = useState("Good evening");
+  const [today, setToday] = useState(() => formatLongDate(todayKey()));
 
   useEffect(() => {
     let tz: string | undefined;
@@ -20,14 +23,14 @@ export function GreetingHeader() {
     } catch {
       tz = undefined;
     }
-    setGreeting(greetingFor(new Date(), tz));
+    setToday(formatLongDate(todayKey(tz)));
   }, []);
 
   return (
     <header className="mb-6 flex flex-wrap items-center gap-4">
       <div className="hidden min-w-0 min-[821px]:block">
-        <h1 className="flex items-center gap-2 text-greeting text-text-primary">
-          {greeting}! <span aria-hidden>👋</span>
+        <h1 className="text-greeting text-text-primary" suppressHydrationWarning>
+          {today}
         </h1>
         <p className="mt-1 text-meta text-text-secondary">
           Here&apos;s what&apos;s happening in the world of football.

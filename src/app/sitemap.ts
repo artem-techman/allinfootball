@@ -3,7 +3,7 @@ import { COMPETITIONS } from "@/lib/constants/competitions";
 import { provider } from "@/lib/providers";
 import { entitySlug } from "@/lib/utils/slug";
 
-const SITE = "https://allinfootball.com";
+const SITE = "https://goodfootballcompany.com";
 
 /**
  * Sitemap (CLAUDE.md section 13): home, the nine competition hubs (+ sub-pages),

@@ -98,12 +98,28 @@ interface RawPlaylistItems {
   }[];
 }
 
-/** Heuristic: is this upload a match-highlights video (vs. an interview, etc.)? */
+/**
+ * Heuristic: is this upload a match-highlights reel? Official channels post lots
+ * of other things with a scoreline in the title — press conferences, interviews,
+ * single-goal clips, cartoon recaps — so we require the word "highlights" and
+ * exclude the common non-match formats.
+ */
+const NON_HIGHLIGHT = [
+  "interview",
+  "conference",
+  "reaction",
+  "podcast",
+  "preview",
+  "powered by",
+  "442oons",
+  "trailer",
+  "behind the scenes",
+];
+
 function looksLikeHighlights(title: string): boolean {
   const t = title.toLowerCase();
-  if (t.includes("highlight")) return true;
-  // "Team 2-1 Team" score patterns are almost always highlight reels.
-  return /\d\s*[-–]\s*\d/.test(t);
+  if (NON_HIGHLIGHT.some((w) => t.includes(w))) return false;
+  return t.includes("highlight");
 }
 
 async function uploadsFor(channel: ResolvedChannel): Promise<Highlight[]> {

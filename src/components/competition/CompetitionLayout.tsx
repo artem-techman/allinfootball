@@ -17,6 +17,12 @@ const TABS: { id: CompetitionTab; label: string }[] = [
 
 const LEAGUE_LOGO = (id: number) => `https://media.api-sports.io/football/leagues/${id}.png`;
 
+/** Switcher order: World Cup first (the current marquee event), then the rest. */
+const SWITCHER_ORDER = [
+  ...COMPETITIONS.filter((c) => c.slug === "world-cup"),
+  ...COMPETITIONS.filter((c) => c.slug !== "world-cup"),
+];
+
 /**
  * Competition hub chrome (CLAUDE.md section 8): crest + name + country header and
  * a Fixtures / Table / Scorers / News tab bar. Each sub-page renders its own data
@@ -42,13 +48,13 @@ export function CompetitionLayout({
     <AppShell wide>
       <JsonLd
         data={breadcrumb([
-          { name: "Competitions", path: "/competition/premier-league" },
+          { name: "Competitions", path: "/competition/world-cup" },
           { name: comp.name, path: `/competition/${slug}/${active}` },
         ])}
       />
-      {/* league switcher — all nine competitions; switching keeps the active tab */}
+      {/* league switcher — all nine competitions (World Cup first); switching keeps the active tab */}
       <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
-        {COMPETITIONS.map((c) => {
+        {SWITCHER_ORDER.map((c) => {
           const isActive = c.slug === slug;
           return (
             <Link

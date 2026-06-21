@@ -15,13 +15,13 @@ export interface NavItem {
 
 /**
  * Primary navigation — only routes that exist. "Competitions" links straight to
- * the Premier League table (not /competition/premier-league, which redirects) so
- * clicking it doesn't blank the screen during the redirect hop.
+ * the World Cup table (not /competition/world-cup, which redirects) so clicking
+ * it doesn't blank the screen during the redirect hop.
  */
 export const NAV: NavItem[] = [
   { label: "Home", href: "/", Icon: HomeIcon },
   { label: "Matches", href: "/matches", Icon: MatchesIcon },
-  { label: "Competitions", href: "/competition/premier-league/table", Icon: TrophyIcon },
+  { label: "Competitions", href: "/competition/world-cup/table", Icon: TrophyIcon },
   { label: "Transfers", href: "/news?tag=transfers", Icon: TransferIcon },
   { label: "News", href: "/news", Icon: NewsIcon },
 ];

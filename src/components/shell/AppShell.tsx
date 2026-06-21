@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { Sidebar } from "./Sidebar";
 import { MobileNav } from "./MobileNav";
+import { PageTransition } from "./PageTransition";
 import { BallMark } from "@/components/primitives/BallMark";
 
 /**
@@ -44,7 +45,7 @@ export function AppShell({
         {/* main + rail */}
         <div className="flex min-w-0 flex-1 flex-col gap-6 py-6 min-[1201px]:flex-row min-[1201px]:items-start">
           <main className={`min-w-0 flex-1 px-4 min-[821px]:px-7 ${wide ? "" : "min-[1201px]:max-w-main"}`}>
-            {children}
+            <PageTransition>{children}</PageTransition>
           </main>
           {rail && (
             <div className="w-full shrink-0 space-y-5 px-4 min-[821px]:px-7 min-[1201px]:w-rail min-[1201px]:px-0">

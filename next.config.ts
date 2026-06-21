@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "media-*.api-sports.io" },
       // Stock football photography for preview/editorial imagery.
       { protocol: "https", hostname: "images.unsplash.com" },
+      // YouTube video thumbnails for highlights (official-channel embeds only).
+      { protocol: "https", hostname: "i.ytimg.com" },
+      { protocol: "https", hostname: "img.youtube.com" },
     ],
   },
 };

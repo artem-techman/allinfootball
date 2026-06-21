@@ -4,6 +4,7 @@ import { AppShell } from "@/components/shell/AppShell";
 import { MatchCenter, type MatchBundle } from "@/components/match/MatchCenter";
 import { JsonLd, sportsEvent, breadcrumb } from "@/components/seo/JsonLd";
 import { provider } from "@/lib/providers";
+import { highlights } from "@/lib/highlights";
 import { idFromSlug } from "@/lib/utils/slug";
 import type { Lineup, Match, MatchEvent, MatchStats, Odds, Standing } from "@/lib/providers/types";
 
@@ -38,16 +39,27 @@ export default async function MatchPage({
   const match = await provider.getMatch(id).catch(() => undefined);
   if (!match) notFound();
 
-  const [events, lineups, stats, h2h, standings, odds] = await Promise.all([
+  const [events, lineups, stats, h2h, standings, odds, highlight] = await Promise.all([
     provider.getEvents(id).catch(() => [] as MatchEvent[]),
     provider.getLineups(id).catch(() => [] as Lineup[]),
     provider.getStatistics(id).catch(() => [] as MatchStats[]),
     provider.getHeadToHead(match.homeTeamId, match.awayTeamId, 5).catch(() => [] as Match[]),
     provider.getStandings(match.competitionId, match.seasonYear).catch(() => [] as Standing[]),
     provider.getOdds(id).catch(() => undefined as Odds | undefined),
+    // Post-match highlights only become available once a match has finished.
+    match.status === "finished"
+      ? highlights
+          .getMatchHighlight({
+            home: match.homeTeam?.name ?? "",
+            away: match.awayTeam?.name ?? "",
+            dateIso: match.kickoffUtc,
+            competitionSlug: match.competition?.slug,
+          })
+          .catch(() => undefined)
+      : Promise.resolve(undefined),
   ]);
 
-  const bundle: MatchBundle = { match, events, lineups, stats, h2h, standings, odds };
+  const bundle: MatchBundle = { match, events, lineups, stats, h2h, standings, odds, highlight };
 
   return (
     <AppShell>

@@ -14,6 +14,8 @@ import { MatchInfo } from "./MatchInfo";
 import { OddsView } from "./OddsView";
 import { StandingsTable } from "@/components/tables/StandingsTable";
 import { ErrorBanner } from "@/components/primitives/ErrorBanner";
+import { HighlightEmbed } from "@/components/highlights/HighlightEmbed";
+import type { Highlight } from "@/lib/highlights";
 
 export interface MatchBundle {
   match: Match;
@@ -23,15 +25,17 @@ export interface MatchBundle {
   h2h: Match[];
   standings: Standing[];
   odds?: Odds;
+  highlight?: Highlight;
 }
 
-type TabId = "summary" | "live" | "lineups" | "stats" | "h2h" | "table" | "odds";
+type TabId = "summary" | "live" | "lineups" | "stats" | "highlights" | "h2h" | "table" | "odds";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "summary", label: "Summary" },
   { id: "live", label: "Live" },
   { id: "lineups", label: "Lineups" },
   { id: "stats", label: "Stats" },
+  { id: "highlights", label: "Highlights" },
   { id: "h2h", label: "Head-to-head" },
   { id: "table", label: "Table" },
   { id: "odds", label: "Odds" },
@@ -128,6 +132,7 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
         {tab === "live" && <CommentaryFeed events={events} match={match} />}
         {tab === "lineups" && <LineupsView lineups={lineups} match={match} />}
         {tab === "stats" && <StatsView home={homeStats} away={awayStats} />}
+        {tab === "highlights" && <HighlightsTab highlight={bundle.highlight} status={match.status} />}
         {tab === "h2h" && <HeadToHead fixtures={bundle.h2h} match={match} />}
         {tab === "table" && (
           <StandingsTable rows={bundle.standings} highlightTeamIds={[match.homeTeamId, match.awayTeamId]} />
@@ -136,6 +141,29 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
       </div>
 
       <MatchInfo match={match} />
+    </div>
+  );
+}
+
+/** Post-match highlights: the official embed once available, else a clear state. */
+function HighlightsTab({ highlight, status }: { highlight?: Highlight; status: Match["status"] }) {
+  if (highlight) {
+    return (
+      <div>
+        <HighlightEmbed title={highlight.title} thumbnailUrl={highlight.thumbnailUrl} embedUrl={highlight.embedUrl} />
+        <p className="mt-3 text-meta text-text-secondary">
+          {highlight.title} · <span className="text-text-muted">{highlight.channelTitle}</span>
+        </p>
+      </div>
+    );
+  }
+  const message =
+    status === "finished"
+      ? "Highlights for this match aren't available yet — official clips usually appear shortly after full time."
+      : "Highlights become available once the match has finished.";
+  return (
+    <div className="rounded-card border border-dashed border-hairline px-6 py-10 text-center">
+      <p className="text-meta text-text-secondary">{message}</p>
     </div>
   );
 }

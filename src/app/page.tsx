@@ -6,7 +6,8 @@ import { HeroCarousel } from "@/components/cards/HeroCarousel";
 import { UpcomingMatches } from "@/components/cards/UpcomingMatches";
 import { TopStoriesCard } from "@/components/cards/TopStoriesCard";
 import type { StoryItem } from "@/components/cards/TopStoriesCard";
-import { PlayerSpotlightCard } from "@/components/cards/PlayerSpotlightCard";
+import { WorldCupScorersCard } from "@/components/cards/WorldCupScorersCard";
+import type { ScorerItem } from "@/components/cards/WorldCupScorersCard";
 import { LiveNowRail } from "@/components/rail/LiveNowRail";
 import { TopTableRail } from "@/components/rail/TopTableRail";
 import { TransferRumoursRail } from "@/components/rail/TransferRumoursRail";
@@ -15,8 +16,8 @@ import { provider } from "@/lib/providers";
 import { getNews } from "@/lib/news";
 import type { Article, Match, Standing } from "@/lib/providers/types";
 import { todayKey, shiftDateKey } from "@/lib/utils/date";
-import { DEFAULT_COMPETITION_SLUG, getCompetitionBySlug, isInScope } from "@/lib/constants/competitions";
-import { PREVIEW_UPCOMING, PREVIEW_LIVE, PREVIEW_STANDINGS, PREVIEW_STORIES, PREVIEW_SPOTLIGHT, PREVIEW_HERO } from "@/lib/preview/homePreview";
+import { getCompetitionBySlug, isInScope } from "@/lib/constants/competitions";
+import { PREVIEW_UPCOMING, PREVIEW_LIVE, PREVIEW_STANDINGS, PREVIEW_STORIES, PREVIEW_SCORERS, PREVIEW_HERO } from "@/lib/preview/homePreview";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export const dynamic = "force-dynamic";
 const TOP_TABLE_SLUG = "world-cup";
 
 export default async function HomePage() {
-  const { upcoming, standings, spotlight, news, transferNews } = await loadHomeData();
+  const { upcoming, standings, scorers, news, transferNews } = await loadHomeData();
 
   const upcomingToShow = upcoming.length > 0 ? upcoming : PREVIEW_UPCOMING;
   const standingsToShow = standings && standings.length > 0 ? standings : PREVIEW_STANDINGS;
@@ -43,21 +44,11 @@ export default async function HomePage() {
       ? { featured: toStory(storyPool[0]), items: storyPool.slice(1, 5).map(toStory) }
       : PREVIEW_STORIES;
 
-  // Rendered beside Top Stories on desktop, but moved to the very end on mobile
-  // (after the stacked rail widgets), so it's the last thing the user scrolls to.
-  const playerSpotlight = (
-    <PlayerSpotlightCard
-      name={spotlight?.name ?? PREVIEW_SPOTLIGHT.name}
-      href={spotlight?.href ?? "/competition/premier-league/scorers"}
-      club={spotlight?.club ?? PREVIEW_SPOTLIGHT.club}
-      position={spotlight?.position ?? PREVIEW_SPOTLIGHT.position}
-      verified={!spotlight && PREVIEW_SPOTLIGHT.verified}
-      matches={spotlight?.matches ?? PREVIEW_SPOTLIGHT.matches}
-      goals={spotlight?.goals ?? PREVIEW_SPOTLIGHT.goals}
-      assists={spotlight?.assists ?? PREVIEW_SPOTLIGHT.assists}
-      portraitUrl={spotlight?.portraitUrl ?? PREVIEW_SPOTLIGHT.portraitUrl}
-    />
-  );
+  // World Cup top scorers — rendered beside Top Stories on desktop, but moved to
+  // the very end on mobile (after the stacked rail widgets), so it's the last
+  // section the user scrolls to.
+  const scorersToShow = scorers.length > 0 ? scorers : PREVIEW_SCORERS;
+  const worldCupScorers = <WorldCupScorersCard scorers={scorersToShow} />;
 
   return (
     <AppShell
@@ -70,10 +61,10 @@ export default async function HomePage() {
           </div>
           <TopTableRail initialSlug={TOP_TABLE_SLUG} initialRows={standingsToShow} />
           <TransferRumoursRail articles={transferNews} />
-          {/* On mobile the rail stacks below main, so Player Spotlight here makes
-              it the last section. On desktop (≥1024px) it shows beside Top
-              Stories instead (see below) and is hidden here. */}
-          <div className="lg:hidden">{playerSpotlight}</div>
+          {/* On mobile the rail stacks below main, so the World Cup scorers card
+              here makes it the last section. On desktop (≥1024px) it shows beside
+              Top Stories instead (see below) and is hidden here. */}
+          <div className="lg:hidden">{worldCupScorers}</div>
         </>
       }
     >
@@ -119,11 +110,11 @@ export default async function HomePage() {
         <UpcomingMatches matches={upcomingToShow} />
       </section>
 
-      {/* Top Stories (enlarged) · Player Spotlight (desktop only here; on mobile
-          it's rendered at the end of the rail instead). */}
+      {/* Top Stories (enlarged) · World Cup top scorers (desktop only here; on
+          mobile it's rendered at the end of the rail instead). */}
       <section className="mt-7 grid gap-4 lg:grid-cols-[1.85fr_1fr]">
         <TopStoriesCard featured={stories.featured} items={stories.items} />
-        <div className="hidden lg:block">{playerSpotlight}</div>
+        <div className="hidden lg:block">{worldCupScorers}</div>
       </section>
     </AppShell>
   );
@@ -148,21 +139,10 @@ function toStory(a: Article): StoryItem {
   };
 }
 
-interface HomeSpotlight {
-  name: string;
-  href: string;
-  club: string;
-  position?: string;
-  matches?: number;
-  goals?: number;
-  assists?: number;
-  portraitUrl?: string;
-}
-
 async function loadHomeData(): Promise<{
   upcoming: Match[];
   standings: Standing[] | null;
-  spotlight: HomeSpotlight | null;
+  scorers: ScorerItem[];
   news: Article[];
   transferNews: Article[];
 }> {
@@ -175,39 +155,38 @@ async function loadHomeData(): Promise<{
   ]);
 
   if (keyMissing) {
-    return { upcoming: [], standings: null, spotlight: null, news, transferNews };
+    return { upcoming: [], standings: null, scorers: [], news, transferNews };
   }
 
-  // Top Table defaults to the World Cup (the current marquee event); the Player
-  // Spotlight stays on the Premier League top scorer.
+  // Top Table and the scorers leaderboard both default to the World Cup (the
+  // current marquee event).
   const tableComp = getCompetitionBySlug(TOP_TABLE_SLUG);
-  const spotlightComp = getCompetitionBySlug(DEFAULT_COMPETITION_SLUG);
-  const [upcoming, standings, spotlight] = await Promise.all([
+  const [upcoming, standings, scorers] = await Promise.all([
     loadUpcoming(),
     tableComp ? provider.getStandings(tableComp.leagueId, tableComp.defaultSeason).catch(() => []) : Promise.resolve([]),
-    loadSpotlight(spotlightComp?.leagueId ?? 39, spotlightComp?.defaultSeason ?? 2025),
+    loadWorldCupScorers(),
   ]);
-  return { upcoming, standings, spotlight, news, transferNews };
+  return { upcoming, standings, scorers, news, transferNews };
 }
 
-async function loadSpotlight(leagueId: number, season: number): Promise<HomeSpotlight | null> {
+/** Biggest goal scorers of the World Cup, as a compact leaderboard (top 5). */
+async function loadWorldCupScorers(): Promise<ScorerItem[]> {
+  const wc = getCompetitionBySlug(TOP_TABLE_SLUG);
+  if (!wc) return [];
   try {
-    const scorers = await provider.getTopScorers(leagueId, season);
-    const top = scorers[0];
-    if (!top?.player) return null;
-    const profile = await provider.getPlayer(top.playerId, season).catch(() => undefined);
-    return {
-      name: top.player.name,
-      href: `/player/${top.player.slug}`,
-      club: top.team?.name ?? "",
-      position: profile?.player.position,
-      matches: profile?.stats.appearances,
-      goals: top.goals,
-      assists: top.assists,
-      portraitUrl: `https://media.api-sports.io/football/players/${top.playerId}.png`,
-    };
+    const scorers = await provider.getTopScorers(wc.leagueId, wc.defaultSeason);
+    return scorers.slice(0, 5).map((s) => ({
+      rank: s.rank,
+      name: s.player?.name ?? "Unknown",
+      href: s.player?.slug ? `/player/${s.player.slug}` : "/competition/world-cup/scorers",
+      team: s.team?.name ?? "",
+      teamCrest: s.team?.crest,
+      portraitUrl: `https://media.api-sports.io/football/players/${s.playerId}.png`,
+      goals: s.goals,
+      assists: s.assists,
+    }));
   } catch {
-    return null;
+    return [];
   }
 }
 

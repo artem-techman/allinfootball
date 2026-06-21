@@ -190,6 +190,15 @@ export const PREVIEW_SPOTLIGHT = {
   portraitUrl: PLAYER(278),
 };
 
+/** World Cup top scorers (national-team crests as avatars — reliable without a key). */
+export const PREVIEW_SCORERS = [
+  { rank: 1, name: "Kylian Mbappé", href: "/competition/world-cup/scorers", team: "France", portraitUrl: TEAM(2), goals: 7, assists: 3 },
+  { rank: 2, name: "Lionel Messi", href: "/competition/world-cup/scorers", team: "Argentina", portraitUrl: TEAM(26), goals: 6, assists: 4 },
+  { rank: 3, name: "Vinícius Júnior", href: "/competition/world-cup/scorers", team: "Brazil", portraitUrl: TEAM(6), goals: 5, assists: 2 },
+  { rank: 4, name: "Harry Kane", href: "/competition/world-cup/scorers", team: "England", portraitUrl: TEAM(10), goals: 5, assists: 1 },
+  { rank: 5, name: "Pedri", href: "/competition/world-cup/scorers", team: "Spain", portraitUrl: TEAM(9), goals: 4, assists: 3 },
+];
+
 export const PREVIEW_HERO = {
   tag: "UCL Semi-Final",
   headline: "Madrid edge",

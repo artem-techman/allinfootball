@@ -97,8 +97,12 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function apiGet<T>(
   path: string,
   params: Record<string, string | number> = {},
-  maxRetries = 3,
+  opts: { revalidate?: number; maxRetries?: number } = {},
 ): Promise<RawEnvelope<T>> {
+  // maxRetries defaults to 1 (was 3): a 429 means we're at the per-minute rate
+  // limit, and retrying multiplies requests against the daily quota. One short
+  // retry is enough; the swr() layer serves last-good cache on a hard failure.
+  const { revalidate, maxRetries = 1 } = opts;
   const key = requireKey();
   const url = new URL(BASE_URL + path);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
@@ -108,8 +112,12 @@ async function apiGet<T>(
   while (true) {
     const res = await fetch(url, {
       headers: { "x-apisports-key": key },
-      // Next.js: we manage caching ourselves via swr(); don't double-cache.
-      cache: "no-store",
+      // Durable, cross-instance caching via Next's data cache. Unlike the
+      // in-memory swr() map (which is per-lambda and lost on cold start), this
+      // is shared across all serverless invocations, so concurrent requests and
+      // cold starts reuse one provider response per `revalidate` window instead
+      // of each re-hitting the API. Falls back to no-store when no TTL is given.
+      ...(revalidate != null ? { next: { revalidate } } : { cache: "no-store" as const }),
     });
 
     if (res.ok) {
@@ -146,12 +154,13 @@ async function apiGet<T>(
 export async function apiGetAll<T>(
   path: string,
   params: Record<string, string | number> = {},
+  revalidate?: number,
 ): Promise<T[]> {
-  const first = await apiGet<T>(path, { ...params, page: 1 });
+  const first = await apiGet<T>(path, { ...params, page: 1 }, { revalidate });
   const out = [...first.response];
   const total = first.paging?.total ?? 1;
   for (let page = 2; page <= total; page += 1) {
-    const next = await apiGet<T>(path, { ...params, page });
+    const next = await apiGet<T>(path, { ...params, page }, { revalidate });
     out.push(...next.response);
   }
   return out;
@@ -571,7 +580,7 @@ export const apiFootball: FootballProvider = {
 
   async getLeagues(): Promise<Competition[]> {
     return swr("leagues:all", TTL.competitions, async () => {
-      const env = await apiGet<RawLeague>("/leagues");
+      const env = await apiGet<RawLeague>("/leagues", {}, { revalidate: TTL.competitions });
       return env.response
         .filter((l) => getCompetitionByLeagueId(l.league.id))
         .map((l) => {
@@ -595,7 +604,7 @@ export const apiFootball: FootballProvider = {
       const comp = getCompetitionByLeagueId(competitionId);
       const fallbackYear = comp?.defaultSeason ?? new Date().getUTCFullYear();
       try {
-        const env = await apiGet<RawLeague>("/leagues", { id: competitionId });
+        const env = await apiGet<RawLeague>("/leagues", { id: competitionId }, { revalidate: TTL.competitions });
         const league = env.response[0];
         const current = league?.seasons.find((s) => s.current);
         const year = current?.year ?? fallbackYear;
@@ -620,21 +629,21 @@ export const apiFootball: FootballProvider = {
 
   async getFixturesByDate(dateIso: string): Promise<Match[]> {
     return swr(`fixtures:date:${dateIso}`, TTL.fixtures, async () => {
-      const env = await apiGet<RawFixture>("/fixtures", { date: dateIso });
+      const env = await apiGet<RawFixture>("/fixtures", { date: dateIso }, { revalidate: TTL.fixtures });
       return env.response.map(mapFixture);
     });
   },
 
   async getFixturesByLeague(leagueId: number, season: number): Promise<Match[]> {
     return swr(`fixtures:league:${leagueId}:${season}`, TTL.fixtures, async () => {
-      const env = await apiGet<RawFixture>("/fixtures", { league: leagueId, season });
+      const env = await apiGet<RawFixture>("/fixtures", { league: leagueId, season }, { revalidate: TTL.fixtures });
       return env.response.map(mapFixture);
     });
   },
 
   async getLiveFixtures(): Promise<Match[]> {
     return swr("fixtures:live", TTL.live, async () => {
-      const env = await apiGet<RawFixture>("/fixtures", { live: "all" });
+      const env = await apiGet<RawFixture>("/fixtures", { live: "all" }, { revalidate: TTL.live });
       // Scope to our nine competitions only.
       return env.response.map(mapFixture).filter((m) => getCompetitionByLeagueId(m.competitionId));
     });
@@ -642,7 +651,7 @@ export const apiFootball: FootballProvider = {
 
   async getMatch(fixtureId: number): Promise<Match | undefined> {
     return swr(`fixture:${fixtureId}`, TTL.live, async () => {
-      const env = await apiGet<RawFixture>("/fixtures", { id: fixtureId });
+      const env = await apiGet<RawFixture>("/fixtures", { id: fixtureId }, { revalidate: TTL.live });
       const raw = env.response[0];
       return raw ? mapFixture(raw) : undefined;
     });
@@ -650,21 +659,21 @@ export const apiFootball: FootballProvider = {
 
   async getEvents(fixtureId: number): Promise<MatchEvent[]> {
     return swr(`events:${fixtureId}`, TTL.live, async () => {
-      const env = await apiGet<RawEvent>("/fixtures/events", { fixture: fixtureId });
+      const env = await apiGet<RawEvent>("/fixtures/events", { fixture: fixtureId }, { revalidate: TTL.live });
       return env.response.map((e, i) => mapEvent(e, fixtureId, i));
     });
   },
 
   async getLineups(fixtureId: number): Promise<Lineup[]> {
     return swr(`lineups:${fixtureId}`, TTL.lineups, async () => {
-      const env = await apiGet<RawLineup>("/fixtures/lineups", { fixture: fixtureId });
+      const env = await apiGet<RawLineup>("/fixtures/lineups", { fixture: fixtureId }, { revalidate: TTL.lineups });
       return env.response.map((l) => mapLineup(l, fixtureId));
     });
   },
 
   async getStatistics(fixtureId: number): Promise<MatchStats[]> {
     return swr(`stats:${fixtureId}`, TTL.live, async () => {
-      const env = await apiGet<RawStatistics>("/fixtures/statistics", { fixture: fixtureId });
+      const env = await apiGet<RawStatistics>("/fixtures/statistics", { fixture: fixtureId }, { revalidate: TTL.live });
       return env.response.map((s) => mapStatistics(s, fixtureId));
     });
   },
@@ -674,7 +683,7 @@ export const apiFootball: FootballProvider = {
       const env = await apiGet<RawStandingsEnvelope>("/standings", {
         league: leagueId,
         season,
-      });
+      }, { revalidate: TTL.standings });
       const first = env.response[0];
       return first ? mapStandings(first) : [];
     });
@@ -683,7 +692,7 @@ export const apiFootball: FootballProvider = {
   async getTopScorers(leagueId: number, season: number): Promise<TopScorer[]> {
     return swr(`scorers:${leagueId}:${season}`, TTL.topScorers, async () => {
       // /players/topscorers is NOT paginated — it rejects a `page` param.
-      const env = await apiGet<RawScorer>("/players/topscorers", { league: leagueId, season });
+      const env = await apiGet<RawScorer>("/players/topscorers", { league: leagueId, season }, { revalidate: TTL.topScorers });
       return mapTopScorers(env.response, leagueId, season);
     });
   },
@@ -693,7 +702,7 @@ export const apiFootball: FootballProvider = {
       const env = await apiGet<RawFixture>("/fixtures/headtohead", {
         h2h: `${team1Id}-${team2Id}`,
         last: limit,
-      });
+      }, { revalidate: TTL.standings });
       return env.response.map(mapFixture);
     });
   },
@@ -704,14 +713,14 @@ export const apiFootball: FootballProvider = {
     if (opts.next) params.next = opts.next;
     const key = `teamfix:${teamId}:${opts.last ?? 0}:${opts.next ?? 0}`;
     return swr(key, TTL.fixtures, async () => {
-      const env = await apiGet<RawFixture>("/fixtures", params);
+      const env = await apiGet<RawFixture>("/fixtures", params, { revalidate: TTL.fixtures });
       return env.response.map(mapFixture);
     });
   },
 
   async getOdds(fixtureId: number): Promise<Odds | undefined> {
     return swr(`odds:${fixtureId}`, TTL.standings, async () => {
-      const env = await apiGet<RawOdds>("/odds", { fixture: fixtureId });
+      const env = await apiGet<RawOdds>("/odds", { fixture: fixtureId }, { revalidate: TTL.standings });
       return mapOdds(env.response[0], fixtureId);
     });
   },
@@ -719,42 +728,42 @@ export const apiFootball: FootballProvider = {
   async getTopAssists(leagueId: number, season: number): Promise<TopScorer[]> {
     return swr(`assists:${leagueId}:${season}`, TTL.topScorers, async () => {
       // /players/topassists is NOT paginated either.
-      const env = await apiGet<RawScorer>("/players/topassists", { league: leagueId, season });
+      const env = await apiGet<RawScorer>("/players/topassists", { league: leagueId, season }, { revalidate: TTL.topScorers });
       return mapTopScorers(env.response, leagueId, season).map((t, i) => ({ ...t, rank: i + 1 }));
     });
   },
 
   async getTeam(teamId: number): Promise<TeamProfile | undefined> {
     return swr(`team:${teamId}`, TTL.teams, async () => {
-      const env = await apiGet<RawTeamEnvelope>("/teams", { id: teamId });
+      const env = await apiGet<RawTeamEnvelope>("/teams", { id: teamId }, { revalidate: TTL.teams });
       return env.response[0] ? mapTeamProfile(env.response[0]) : undefined;
     });
   },
 
   async getSquad(teamId: number): Promise<Player[]> {
     return swr(`squad:${teamId}`, TTL.teams, async () => {
-      const env = await apiGet<RawSquad>("/players/squads", { team: teamId });
+      const env = await apiGet<RawSquad>("/players/squads", { team: teamId }, { revalidate: TTL.teams });
       return mapSquad(env.response[0], teamId);
     });
   },
 
   async getPlayer(playerId: number, season: number): Promise<PlayerProfile | undefined> {
     return swr(`player:${playerId}:${season}`, TTL.standings, async () => {
-      const env = await apiGet<RawPlayerEnvelope>("/players", { id: playerId, season });
+      const env = await apiGet<RawPlayerEnvelope>("/players", { id: playerId, season }, { revalidate: TTL.standings });
       return env.response[0] ? mapPlayerProfile(env.response[0]) : undefined;
     });
   },
 
   async getCoach(coachId: number): Promise<Coach | undefined> {
     return swr(`coach:${coachId}`, TTL.teams, async () => {
-      const env = await apiGet<RawCoach>("/coachs", { id: coachId });
+      const env = await apiGet<RawCoach>("/coachs", { id: coachId }, { revalidate: TTL.teams });
       return env.response[0] ? mapCoach(env.response[0]) : undefined;
     });
   },
 
   async getVenue(venueId: number): Promise<Venue | undefined> {
     return swr(`venue:${venueId}`, TTL.teams, async () => {
-      const env = await apiGet<RawVenue>("/venues", { id: venueId });
+      const env = await apiGet<RawVenue>("/venues", { id: venueId }, { revalidate: TTL.teams });
       return env.response[0] ? mapVenue(env.response[0]) : undefined;
     });
   },
@@ -763,7 +772,7 @@ export const apiFootball: FootballProvider = {
     const q = query.trim();
     if (q.length < 3) return []; // API-Football requires >= 3 chars for search
     return swr(`searchteams:${q.toLowerCase()}`, TTL.teams, async () => {
-      const env = await apiGet<RawTeamEnvelope>("/teams", { search: q });
+      const env = await apiGet<RawTeamEnvelope>("/teams", { search: q }, { revalidate: TTL.teams });
       return env.response.map((r) => ({
         ...mapTeam({ id: r.team.id, name: r.team.name, logo: r.team.logo }),
         country: r.team.country,

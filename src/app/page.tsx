@@ -37,7 +37,6 @@ export default async function HomePage() {
   const standingsToShow = standings && standings.length > 0 ? standings : PREVIEW_STANDINGS;
 
   const heroArticles = news.filter((a) => a.image).slice(0, 5);
-  const heroArticle = heroArticles[0];
   const storyPool = news.filter((a) => !heroArticles.includes(a));
   const stories =
     storyPool.length >= 3

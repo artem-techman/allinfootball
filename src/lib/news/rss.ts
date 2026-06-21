@@ -112,8 +112,10 @@ export function parseFeed(xml: string, sourceName: string): RawNewsItem[] {
 export async function fetchFeed(url: string, sourceName: string): Promise<RawNewsItem[]> {
   try {
     const res = await fetch(url, {
-      headers: { "user-agent": "allinfootball-news-bot/1.0", accept: "application/rss+xml, application/xml, text/xml" },
-      cache: "no-store",
+      headers: { "user-agent": "goodfootballcompany-news-bot/1.0", accept: "application/rss+xml, application/xml, text/xml" },
+      // Durable cross-instance cache (5 min) so each RSS feed is pulled once per
+      // window for all visitors, not on every render.
+      next: { revalidate: 300 },
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) return [];

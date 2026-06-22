@@ -91,8 +91,42 @@ function requireKey(): string {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
+ * Soft daily ceiling, kept below the real plan limit (7,500). It's the hard
+ * guarantee that we never exhaust the quota: once today's authoritative usage
+ * reaches this, the adapter stops calling the provider and serves cached/empty
+ * data instead — no matter what drives traffic (bots, bugs, spikes). Tune via
+ * FOOTBALL_DAILY_BUDGET.
+ */
+const DAILY_BUDGET = Number(process.env.FOOTBALL_DAILY_BUDGET) || 7000;
+let budgetWarned = false;
+
+/**
+ * Today's request count from API-Football's own `/status` — which is FREE (it
+ * does not count against the quota). Cached 60s in the shared data cache, so it
+ * costs ~1 free call/min across the whole fleet and gives a near-real-time,
+ * infra-free usage signal. Returns null if it can't be read (then we fail open).
+ */
+async function dailyRequestsUsed(): Promise<number | null> {
+  const key = process.env.FOOTBALL_API_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch(`${BASE_URL}/status`, {
+      headers: { "x-apisports-key": key },
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { response?: { requests?: { current?: number } } };
+    const current = data.response?.requests?.current;
+    return typeof current === "number" ? current : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * GET an endpoint with exponential backoff + jitter on 429/5xx (section 10).
  * Throws on exhausted retries; the swr() layer serves last-good cache on throw.
+ * Refuses to call the provider once the daily budget is reached (circuit breaker).
  */
 async function apiGet<T>(
   path: string,
@@ -104,6 +138,17 @@ async function apiGet<T>(
   // retry is enough; the swr() layer serves last-good cache on a hard failure.
   const { revalidate, maxRetries = 1 } = opts;
   const key = requireKey();
+
+  // Circuit breaker: stop before we burn the real quota.
+  const used = await dailyRequestsUsed();
+  if (used != null && used >= DAILY_BUDGET) {
+    if (!budgetWarned) {
+      console.warn(`[apiFootball] daily budget reached (${used}/${DAILY_BUDGET}) — serving cached/empty until reset`);
+      budgetWarned = true;
+    }
+    throw new Error(`API-Football daily budget reached (${used}/${DAILY_BUDGET})`);
+  }
+
   const url = new URL(BASE_URL + path);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
 

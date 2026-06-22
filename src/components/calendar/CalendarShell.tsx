@@ -4,8 +4,14 @@ import { TopTableRail } from "@/components/rail/TopTableRail";
 import { MatchCalendar } from "./MatchCalendar";
 import { provider } from "@/lib/providers";
 import { isInScope, DEFAULT_COMPETITION_SLUG, getCompetitionBySlug } from "@/lib/constants/competitions";
-import { formatLongDate } from "@/lib/utils/date";
+import { formatLongDate, todayKey, shiftDateKey } from "@/lib/utils/date";
 import type { Match, Standing } from "@/lib/providers/types";
+
+/** How far from today we server-fetch fixtures. Beyond this we skip the provider
+ *  call so the calendar's prev/next links can't be crawled into an unbounded
+ *  number of unique API requests. Real users navigating further still get data
+ *  via the client's /api/fixtures refresh. */
+const FETCH_WINDOW_DAYS = 10;
 
 /**
  * Server shell shared by /matches and /matches/[date]. Fetches the day's
@@ -15,8 +21,11 @@ import type { Match, Standing } from "@/lib/providers/types";
  */
 export async function CalendarShell({ dateKey }: { dateKey: string }) {
   const pl = getCompetitionBySlug(DEFAULT_COMPETITION_SLUG);
+  const today = todayKey();
+  const inWindow =
+    dateKey >= shiftDateKey(today, -FETCH_WINDOW_DAYS) && dateKey <= shiftDateKey(today, FETCH_WINDOW_DAYS);
   const [allMatches, standings] = await Promise.all([
-    provider.getFixturesByDate(dateKey).catch(() => [] as Match[]),
+    inWindow ? provider.getFixturesByDate(dateKey).catch(() => [] as Match[]) : Promise.resolve([] as Match[]),
     pl ? provider.getStandings(pl.leagueId, pl.defaultSeason).catch(() => [] as Standing[]) : Promise.resolve([]),
   ]);
   const initialMatches = allMatches.filter((m) => isInScope(m.competitionId));

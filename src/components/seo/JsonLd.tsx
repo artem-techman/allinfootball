@@ -1,6 +1,6 @@
 import type { Match, TeamProfile } from "@/lib/providers/types";
 
-const SITE = "https://goodfootballcompany.com";
+const SITE = "https://myfootballtracker.com";
 
 /** Inline JSON-LD <script> (CLAUDE.md section 13). */
 export function JsonLd({ data }: { data: Record<string, unknown> }) {

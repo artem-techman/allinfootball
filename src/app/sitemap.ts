@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { COMPETITIONS } from "@/lib/constants/competitions";
 
-const SITE = "https://goodfootballcompany.com";
+const SITE = "https://myfootballtracker.com";
 
 /**
  * Sitemap: only the low-cardinality, indexable pages — home, the calendar/news/

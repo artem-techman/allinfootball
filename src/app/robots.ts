@@ -24,7 +24,7 @@ export default function robots(): MetadataRoute.Robots {
         "/api/",
       ],
     },
-    sitemap: "https://goodfootballcompany.com/sitemap.xml",
-    host: "https://goodfootballcompany.com",
+    sitemap: "https://myfootballtracker.com/sitemap.xml",
+    host: "https://myfootballtracker.com",
   };
 }

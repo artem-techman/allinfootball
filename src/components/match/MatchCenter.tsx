@@ -14,7 +14,7 @@ import { MatchInfo } from "./MatchInfo";
 import { OddsView } from "./OddsView";
 import { StandingsTable } from "@/components/tables/StandingsTable";
 import { ErrorBanner } from "@/components/primitives/ErrorBanner";
-import { HighlightEmbed } from "@/components/highlights/HighlightEmbed";
+import { HighlightThumb } from "@/components/highlights/HighlightThumb";
 import type { Highlight } from "@/lib/highlights";
 
 export interface MatchBundle {
@@ -150,7 +150,7 @@ function HighlightsTab({ highlight, status }: { highlight?: Highlight; status: M
   if (highlight) {
     return (
       <div>
-        <HighlightEmbed title={highlight.title} thumbnailUrl={highlight.thumbnailUrl} embedUrl={highlight.embedUrl} />
+        <HighlightThumb title={highlight.title} thumbnailUrl={highlight.thumbnailUrl} watchUrl={highlight.watchUrl} />
         <p className="mt-3 text-meta text-text-secondary">
           {highlight.title} · <span className="text-text-muted">{highlight.channelTitle}</span>
         </p>

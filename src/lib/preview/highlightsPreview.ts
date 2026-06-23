@@ -22,7 +22,7 @@ function h(
     channelTitle,
     competitionSlug,
     thumbnailUrl: STOCK(thumb),
-    embedUrl: `https://www.youtube-nocookie.com/embed/${id}`,
+    watchUrl: `https://www.youtube.com/watch?v=${id}`,
     publishedAtUtc: new Date(Date.now() - hoursAgo * 3600_000).toISOString(),
   };
 }

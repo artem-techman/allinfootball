@@ -21,7 +21,7 @@ const TTL = {
   feed: 60 * 60, // recent uploads — refresh hourly
 } as const;
 
-const EMBED = (id: string) => `https://www.youtube-nocookie.com/embed/${id}`;
+const WATCH = (id: string) => `https://www.youtube.com/watch?v=${id}`;
 const THUMB = (id: string) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 
 function hasKey(): boolean {
@@ -142,7 +142,7 @@ async function uploadsFor(channel: ResolvedChannel): Promise<Highlight[]> {
         channelTitle: channel.channelTitle,
         publishedAtUtc: s?.publishedAt ?? new Date().toISOString(),
         thumbnailUrl: s?.thumbnails?.high?.url ?? s?.thumbnails?.medium?.url ?? THUMB(id),
-        embedUrl: EMBED(id),
+        watchUrl: WATCH(id),
         competitionSlug: channel.competitionSlug,
       });
     }

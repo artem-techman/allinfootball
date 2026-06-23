@@ -6,14 +6,15 @@
  */
 
 export interface Highlight {
-  /** YouTube video id (the embed key). */
+  /** YouTube video id. */
   id: string;
   title: string;
   channelTitle: string;
   publishedAtUtc: string;
   thumbnailUrl: string;
-  /** Privacy-friendly embed origin. */
-  embedUrl: string;
+  /** YouTube watch URL — opened in a new tab (FIFA/official channels block
+   *  off-site embedding, so we link out rather than show a blocked player). */
+  watchUrl: string;
   /** which of the nine competitions this clip belongs to (channel-derived). */
   competitionSlug?: string;
 }

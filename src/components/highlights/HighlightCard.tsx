@@ -1,4 +1,4 @@
-import { HighlightEmbed } from "./HighlightEmbed";
+import { HighlightThumb } from "./HighlightThumb";
 import { LocalTime } from "@/components/primitives/LocalTime";
 import { getCompetitionBySlug } from "@/lib/constants/competitions";
 import type { Highlight } from "@/lib/highlights";
@@ -8,7 +8,7 @@ export function HighlightCard({ highlight }: { highlight: Highlight }) {
   const comp = highlight.competitionSlug ? getCompetitionBySlug(highlight.competitionSlug) : undefined;
   return (
     <article className="flex flex-col overflow-hidden rounded-card border border-hairline bg-card">
-      <HighlightEmbed title={highlight.title} thumbnailUrl={highlight.thumbnailUrl} embedUrl={highlight.embedUrl} />
+      <HighlightThumb title={highlight.title} thumbnailUrl={highlight.thumbnailUrl} watchUrl={highlight.watchUrl} />
       <div className="flex flex-1 flex-col p-3">
         {comp && (
           <span className="mb-1.5 inline-flex w-fit items-center rounded-full bg-accent-lime-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-lime">

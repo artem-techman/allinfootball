@@ -63,7 +63,7 @@ export function CompetitionLayout({
               aria-current={isActive ? "page" : undefined}
               className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-meta font-semibold transition-colors ${
                 isActive
-                  ? "border-accent-lime bg-accent-lime text-text-on-accent"
+                  ? "border-accent-lime bg-accent-gradient text-text-on-accent"
                   : "border-hairline bg-card text-text-secondary hover:border-white/15 hover:text-text-primary"
               }`}
             >
@@ -97,7 +97,7 @@ export function CompetitionLayout({
               }`}
             >
               {t.label}
-              {isActive && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent-lime" />}
+              {isActive && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent-gradient" />}
             </Link>
           );
         })}

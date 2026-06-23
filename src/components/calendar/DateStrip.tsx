@@ -55,7 +55,7 @@ export function DateStrip({ selected }: { selected: string }) {
               aria-current={isSelected ? "date" : undefined}
               className={`flex min-w-[64px] flex-1 flex-col items-center justify-center rounded-tile border px-2 py-2 transition-colors ${
                 isSelected
-                  ? "border-accent-lime bg-accent-lime text-text-on-accent"
+                  ? "border-accent-lime bg-accent-gradient text-text-on-accent"
                   : "border-hairline bg-card text-text-secondary hover:border-white/15 hover:text-text-primary"
               }`}
             >

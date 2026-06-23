@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 type PillTone = "lime" | "dark" | "live" | "neutral" | "minute";
 
 const TONES: Record<PillTone, string> = {
-  lime: "bg-accent-lime text-text-on-accent",
+  lime: "bg-accent-gradient text-text-on-accent",
   dark: "bg-surface-dark-2 text-text-on-dark",
   live: "bg-live-red text-text-on-dark",
   minute: "bg-transparent text-live-minute",

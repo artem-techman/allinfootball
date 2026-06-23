@@ -20,7 +20,7 @@ export function NewsFilters({ active }: { active: string }) {
             aria-current={isActive ? "page" : undefined}
             className={`whitespace-nowrap rounded-full border px-3.5 py-1.5 text-meta font-semibold transition-colors ${
               isActive
-                ? "border-accent-lime bg-accent-lime text-text-on-accent"
+                ? "border-accent-lime bg-accent-gradient text-text-on-accent"
                 : "border-hairline bg-card text-text-secondary hover:text-text-primary"
             }`}
           >

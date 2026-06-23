@@ -37,7 +37,7 @@ export function StatComparisonBar({
         </span>
       </div>
       <div className="flex h-1.5 overflow-hidden rounded-full bg-white/10">
-        <div className="h-full bg-accent-lime" style={{ width: `${homePct}%` }} />
+        <div className="h-full bg-accent-gradient" style={{ width: `${homePct}%` }} />
         <div className="h-full flex-1 bg-white/25" />
       </div>
     </div>

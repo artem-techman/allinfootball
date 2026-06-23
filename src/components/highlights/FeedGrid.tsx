@@ -58,7 +58,7 @@ function Chip({
       onClick={onClick}
       className={`shrink-0 rounded-full border px-3 py-1.5 text-meta font-semibold transition-colors ${
         active
-          ? "border-accent-lime bg-accent-lime text-text-on-accent"
+          ? "border-accent-lime bg-accent-gradient text-text-on-accent"
           : "border-hairline bg-card text-text-secondary hover:border-white/15 hover:text-text-primary"
       }`}
     >

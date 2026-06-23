@@ -83,7 +83,7 @@ export function HeroCarousel({ slides }: { slides: SlideProps[] }) {
             aria-label={`Go to story ${i + 1}`}
             onClick={() => setActive(i)}
             className={`h-1.5 rounded-full transition-all ${
-              i === active ? "w-4 bg-accent-lime" : "w-1.5 bg-white/30 hover:bg-white/50"
+              i === active ? "w-4 bg-accent-gradient" : "w-1.5 bg-white/30 hover:bg-white/50"
             }`}
           />
         ))}

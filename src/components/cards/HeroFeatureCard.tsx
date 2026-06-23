@@ -135,7 +135,7 @@ export function HeroFeatureCard({
               key={i}
               aria-hidden
               className={`h-1.5 rounded-full transition-all ${
-                i === 0 ? "w-4 bg-accent-lime" : "w-1.5 bg-white/30"
+                i === 0 ? "w-4 bg-accent-gradient" : "w-1.5 bg-white/30"
               }`}
             />
           ))}

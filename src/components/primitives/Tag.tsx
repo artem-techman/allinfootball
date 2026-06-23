@@ -13,7 +13,7 @@ export function Tag({
       ? "bg-surface-dark-2 text-accent-lime"
       : tone === "soft"
         ? "bg-accent-lime-soft text-accent-lime"
-        : "bg-accent-lime text-text-on-accent";
+        : "bg-accent-gradient text-text-on-accent";
   return (
     <span
       className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.04em] ${cls}`}

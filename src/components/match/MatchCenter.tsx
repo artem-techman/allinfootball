@@ -121,7 +121,7 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
               }`}
             >
               {t.label}
-              {active && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent-lime" />}
+              {active && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent-gradient" />}
             </button>
           );
         })}

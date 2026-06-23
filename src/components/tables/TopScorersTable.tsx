@@ -81,7 +81,7 @@ export function TopScorersTable({
             aria-selected={metric === t.id}
             onClick={() => setMetric(t.id)}
             className={`rounded-full px-3.5 py-1.5 text-meta font-semibold transition-colors ${
-              metric === t.id ? "bg-accent-lime text-text-on-accent" : "text-text-secondary hover:text-text-primary"
+              metric === t.id ? "bg-accent-gradient text-text-on-accent" : "text-text-secondary hover:text-text-primary"
             }`}
           >
             {t.label}

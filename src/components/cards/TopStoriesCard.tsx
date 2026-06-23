@@ -47,7 +47,7 @@ export function TopStoriesCard({
           <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
           <div className="relative flex h-full flex-col justify-end p-4">
             {featured.tag && (
-              <span className="mb-2 inline-flex w-fit items-center rounded-full bg-accent-lime px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-text-on-accent">
+              <span className="mb-2 inline-flex w-fit items-center rounded-full bg-accent-gradient px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-text-on-accent">
                 {featured.tag}
               </span>
             )}

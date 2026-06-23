@@ -60,7 +60,7 @@ export function NotificationsBell() {
         {!seen && (
           <span
             aria-hidden
-            className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-accent-lime ring-2 ring-card"
+            className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-accent-gradient ring-2 ring-card"
           />
         )}
       </button>

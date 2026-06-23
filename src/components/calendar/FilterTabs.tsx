@@ -30,7 +30,7 @@ export function FilterTabs({
             aria-selected={active}
             onClick={() => onChange(t.value)}
             className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-meta font-semibold transition-colors ${
-              active ? "bg-accent-lime text-text-on-accent" : "text-text-secondary hover:text-text-primary"
+              active ? "bg-accent-gradient text-text-on-accent" : "text-text-secondary hover:text-text-primary"
             }`}
           >
             {t.label}

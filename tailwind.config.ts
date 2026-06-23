@@ -12,6 +12,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      backgroundImage: {
+        "accent-gradient": "var(--accent-gradient)",
+      },
       colors: {
         accent: {
           lime: "var(--accent-lime)",

@@ -44,7 +44,7 @@ export function HighlightEmbed({
             className="object-cover"
           />
           <span className="absolute inset-0 grid place-items-center bg-black/25 transition-colors group-hover:bg-black/35">
-            <span className="grid h-14 w-14 place-items-center rounded-full bg-accent-lime text-text-on-accent shadow-elevated transition-transform group-hover:scale-105">
+            <span className="grid h-14 w-14 place-items-center rounded-full bg-accent-gradient text-text-on-accent shadow-elevated transition-transform group-hover:scale-105">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                 <path d="M8 5v14l11-7z" />
               </svg>

@@ -91,7 +91,7 @@ export function Sidebar() {
                 collapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2.5"
               } ${
                 active
-                  ? "bg-accent-lime text-text-on-accent"
+                  ? "bg-accent-gradient text-text-on-accent"
                   : "text-text-secondary hover:bg-white/5 hover:text-text-primary"
               }`}
             >
@@ -129,7 +129,7 @@ export function Sidebar() {
               <button
                 type="button"
                 onClick={enableNotifications}
-                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-tile bg-accent-lime py-2 text-[12px] font-semibold text-text-on-accent transition-colors hover:bg-accent-lime-dim"
+                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-tile bg-accent-gradient py-2 text-[12px] font-semibold text-text-on-accent transition-opacity hover:opacity-90"
               >
                 Enable Notifications
                 <BellIcon size={14} />

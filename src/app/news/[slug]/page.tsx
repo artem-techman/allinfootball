@@ -59,7 +59,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           href={article.sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-tile bg-accent-lime px-5 py-2.5 text-meta font-semibold text-text-on-accent transition-transform hover:-translate-y-0.5"
+          className="inline-flex items-center gap-2 rounded-tile bg-accent-gradient px-5 py-2.5 text-meta font-semibold text-text-on-accent transition-transform hover:-translate-y-0.5"
         >
           Read full story at {article.sourceName}
           <ArrowRightIcon size={15} />

@@ -100,7 +100,7 @@ export function MobileNav() {
                     aria-current={active ? "page" : undefined}
                     className={`flex items-center gap-3 rounded-tile px-3 py-2.5 text-body font-medium ${
                       active
-                        ? "bg-accent-lime text-text-on-accent"
+                        ? "bg-accent-gradient text-text-on-accent"
                         : "text-text-secondary hover:bg-white/5 hover:text-text-primary"
                     }`}
                   >

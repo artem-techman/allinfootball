@@ -16,6 +16,9 @@
   --accent-lime: #23a455;
   --accent-lime-dim: #1c8a47; /* hover (darker green) */
   --accent-lime-soft: rgba(35, 164, 85, 0.14); /* soft fills, active glow */
+  /* signature brand gradient — new green merged with the original lime, for the
+     logo + primary surfaces (nav, CTAs). Dark text keeps AA across the whole ramp. */
+  --accent-gradient: linear-gradient(135deg, #23a455 0%, #5bc850 50%, #d9ff3f 100%);
   --accent-electric: #5a38ff;
   --accent-electric-soft: rgba(90, 56, 255, 0.18);
 

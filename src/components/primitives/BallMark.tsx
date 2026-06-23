@@ -1,35 +1,25 @@
 /**
- * My Football Tracker mark: a stylised hexagonal football — a central
- * pointy-top hexagon ringed by six trapezoidal panels (one per edge). Five
- * panels and the centre use `currentColor` so the mark inverts cleanly between
- * the dark (white) and light (dark) themes; the right-hand panel is the lime
- * accent in both. This is the ONLY brand mark in the app.
+ * My Football Tracker mark (brand guide 2026-06-23): a green location pin holding
+ * a football pitch's centre circle — an outer ring, the halfway line through it,
+ * and the centre spot. The pin uses the brand green (the --accent-lime token,
+ * which is green) with white pitch markings, so it reads on both themes. This is
+ * the ONLY brand mark in the app.
  */
 export function BallMark({ className }: { className?: string }) {
-  // Base outer panel, drawn on the right edge; rotated in 60° steps around the
-  // centre (50,50) to reach all six edges. Rotation 0 is the lime panel.
-  const panel = { x: 72, y: 39, width: 11, height: 22, rx: 5 } as const;
-
   return (
     <svg viewBox="0 0 100 100" className={className} aria-hidden role="img" xmlns="http://www.w3.org/2000/svg">
-      {/* central hexagon (stroke + round join give soft corners) */}
-      <polygon
-        points="50,33 64.72,41.5 64.72,58.5 50,67 35.28,58.5 35.28,41.5"
-        fill="currentColor"
-        stroke="currentColor"
-        strokeWidth={4.5}
-        strokeLinejoin="round"
+      {/* location pin (teardrop) */}
+      <path
+        d="M50 7C29.7 7 13 23.7 13 44C13 67 41 84 50 95C59 84 87 67 87 44C87 23.7 70.3 7 50 7Z"
+        fill="var(--accent-lime)"
       />
-
-      {/* five white outer panels */}
-      <g fill="currentColor">
-        {[60, 120, 180, 240, 300].map((deg) => (
-          <rect key={deg} {...panel} transform={`rotate(${deg} 50 50)`} />
-        ))}
+      {/* centre circle + halfway line + centre spot (white pitch markings) */}
+      <g fill="none" stroke="#fff" strokeWidth={5}>
+        <circle cx="50" cy="43" r="23" />
+        <line x1="50" y1="20" x2="50" y2="66" strokeLinecap="round" />
       </g>
-
-      {/* lime accent panel (right edge) */}
-      <rect {...panel} fill="var(--accent-lime)" />
+      {/* centre spot: white ring with the pin green showing through */}
+      <circle cx="50" cy="43" r="7.5" fill="var(--accent-lime)" stroke="#fff" strokeWidth={4.5} />
     </svg>
   );
 }

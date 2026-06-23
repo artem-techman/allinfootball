@@ -11,7 +11,7 @@ export function HighlightCard({ highlight }: { highlight: Highlight }) {
       <HighlightEmbed title={highlight.title} thumbnailUrl={highlight.thumbnailUrl} embedUrl={highlight.embedUrl} />
       <div className="flex flex-1 flex-col p-3">
         {comp && (
-          <span className="mb-1.5 inline-flex w-fit items-center rounded-full bg-accent-lime-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-lime-dim">
+          <span className="mb-1.5 inline-flex w-fit items-center rounded-full bg-accent-lime-soft px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-lime">
             {comp.name}
           </span>
         )}

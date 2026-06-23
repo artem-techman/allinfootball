@@ -12,10 +12,10 @@
  * swap, never a rewrite.
  */
 :root {
-  /* brand accents */
-  --accent-lime: #d9ff3f;
-  --accent-lime-dim: #c2e635; /* hover */
-  --accent-lime-soft: rgba(217, 255, 63, 0.12); /* soft fills, active glow */
+  /* brand accents — My Football Tracker green (#23A455) */
+  --accent-lime: #23a455;
+  --accent-lime-dim: #1c8a47; /* hover (darker green) */
+  --accent-lime-soft: rgba(35, 164, 85, 0.14); /* soft fills, active glow */
   --accent-electric: #5a38ff;
   --accent-electric-soft: rgba(90, 56, 255, 0.18);
 

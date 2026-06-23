@@ -30,7 +30,7 @@ export const cssVar = {
 
 /** Raw hex — only for environments that cannot resolve CSS variables. */
 export const hex = {
-  accentLime: "#d9ff3f",
+  accentLime: "#23a455",
   accentElectric: "#5a38ff",
   pageBg: "#08090c",
   cardBg: "#131419",

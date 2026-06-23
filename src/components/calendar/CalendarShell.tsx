@@ -3,7 +3,7 @@ import { LiveNowRail } from "@/components/rail/LiveNowRail";
 import { TopTableRail } from "@/components/rail/TopTableRail";
 import { MatchCalendar } from "./MatchCalendar";
 import { provider } from "@/lib/providers";
-import { isInScope, DEFAULT_COMPETITION_SLUG, getCompetitionBySlug } from "@/lib/constants/competitions";
+import { isInScope, getCompetitionBySlug } from "@/lib/constants/competitions";
 import { formatLongDate, todayKey, shiftDateKey } from "@/lib/utils/date";
 import type { Match, Standing } from "@/lib/providers/types";
 
@@ -13,6 +13,9 @@ import type { Match, Standing } from "@/lib/providers/types";
  *  via the client's /api/fixtures refresh. */
 const FETCH_WINDOW_DAYS = 10;
 
+/** The Top Table rail defaults to the World Cup (the marquee event), matching home. */
+const TOP_TABLE_SLUG = "world-cup";
+
 /**
  * Server shell shared by /matches and /matches/[date]. Fetches the day's
  * fixtures (scoped to the nine competitions) for SSR/indexability, then hands
@@ -20,13 +23,13 @@ const FETCH_WINDOW_DAYS = 10;
  * empty list on provider failure (CLAUDE.md section 10).
  */
 export async function CalendarShell({ dateKey }: { dateKey: string }) {
-  const pl = getCompetitionBySlug(DEFAULT_COMPETITION_SLUG);
+  const topComp = getCompetitionBySlug(TOP_TABLE_SLUG);
   const today = todayKey();
   const inWindow =
     dateKey >= shiftDateKey(today, -FETCH_WINDOW_DAYS) && dateKey <= shiftDateKey(today, FETCH_WINDOW_DAYS);
   const [allMatches, standings] = await Promise.all([
     inWindow ? provider.getFixturesByDate(dateKey).catch(() => [] as Match[]) : Promise.resolve([] as Match[]),
-    pl ? provider.getStandings(pl.leagueId, pl.defaultSeason).catch(() => [] as Standing[]) : Promise.resolve([]),
+    topComp ? provider.getStandings(topComp.leagueId, topComp.defaultSeason).catch(() => [] as Standing[]) : Promise.resolve([]),
   ]);
   const initialMatches = allMatches.filter((m) => isInScope(m.competitionId));
   // Soonest scheduled fixture on this date — the Live Now rail counts down to it
@@ -40,7 +43,7 @@ export async function CalendarShell({ dateKey }: { dateKey: string }) {
       rail={
         <>
           <LiveNowRail nextMatch={nextMatch} />
-          <TopTableRail initialSlug={DEFAULT_COMPETITION_SLUG} initialRows={standings} />
+          <TopTableRail initialSlug={TOP_TABLE_SLUG} initialRows={standings} />
         </>
       }
     >

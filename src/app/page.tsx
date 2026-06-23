@@ -17,7 +17,7 @@ import { getNews } from "@/lib/news";
 import type { Article, Match, Standing } from "@/lib/providers/types";
 import { todayKey, shiftDateKey } from "@/lib/utils/date";
 import { getCompetitionBySlug, isInScope } from "@/lib/constants/competitions";
-import { PREVIEW_UPCOMING, PREVIEW_LIVE, PREVIEW_STANDINGS, PREVIEW_STORIES, PREVIEW_SCORERS, PREVIEW_HERO } from "@/lib/preview/homePreview";
+import { PREVIEW_UPCOMING, PREVIEW_STANDINGS, PREVIEW_STORIES, PREVIEW_SCORERS, PREVIEW_HERO } from "@/lib/preview/homePreview";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +49,10 @@ export default async function HomePage() {
   const scorersToShow = scorers.length > 0 ? scorers : PREVIEW_SCORERS;
   const worldCupScorers = <WorldCupScorersCard scorers={scorersToShow} />;
 
+  // Soonest upcoming fixture — shown with a countdown in the Live Now rail when
+  // nothing is live.
+  const nextUpcoming = upcomingToShow[0];
+
   return (
     <AppShell
       rail={
@@ -56,7 +60,7 @@ export default async function HomePage() {
           {/* On the right rail for desktop only — on mobile Live Now is surfaced
               above Upcoming Matches in the main column (see below). */}
           <div className="hidden min-[1201px]:block">
-            <LiveNowRail previewMatches={PREVIEW_LIVE} />
+            <LiveNowRail nextMatch={nextUpcoming} />
           </div>
           <TopTableRail initialSlug={TOP_TABLE_SLUG} initialRows={standingsToShow} />
           <TransferRumoursRail articles={transferNews} />
@@ -95,7 +99,7 @@ export default async function HomePage() {
       {/* Live Now — surfaced above Upcoming on mobile so live games come first
           while scrolling; hidden on desktop where it lives in the right rail. */}
       <div className="mt-7 min-[1201px]:hidden">
-        <LiveNowRail previewMatches={PREVIEW_LIVE} />
+        <LiveNowRail nextMatch={nextUpcoming} />
       </div>
 
       {/* Upcoming Matches */}

@@ -29,12 +29,17 @@ export async function CalendarShell({ dateKey }: { dateKey: string }) {
     pl ? provider.getStandings(pl.leagueId, pl.defaultSeason).catch(() => [] as Standing[]) : Promise.resolve([]),
   ]);
   const initialMatches = allMatches.filter((m) => isInScope(m.competitionId));
+  // Soonest scheduled fixture on this date — the Live Now rail counts down to it
+  // when nothing is live.
+  const nextMatch = initialMatches
+    .filter((m) => m.status === "scheduled")
+    .sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc))[0];
 
   return (
     <AppShell
       rail={
         <>
-          <LiveNowRail />
+          <LiveNowRail nextMatch={nextMatch} />
           <TopTableRail initialSlug={DEFAULT_COMPETITION_SLUG} initialRows={standings} />
         </>
       }

@@ -89,10 +89,26 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        "goal-pop": {
+          "0%, 100%": { transform: "scale(1)", color: "var(--text-primary)" },
+          "35%": { transform: "scale(1.5)", color: "var(--live-minute)" },
+        },
+        "goal-flash": {
+          "0%": { backgroundColor: "var(--accent-lime-soft)" },
+          "100%": { backgroundColor: "transparent" },
+        },
+        "goal-badge": {
+          "0%": { opacity: "0", transform: "translateY(4px) scale(0.9)" },
+          "12%, 65%": { opacity: "1", transform: "translateY(0) scale(1)" },
+          "100%": { opacity: "0", transform: "translateY(-3px)" },
+        },
       },
       animation: {
         "live-pulse": "live-pulse 1.4s ease-in-out infinite",
         "page-in": "page-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "goal-pop": "goal-pop 0.65s cubic-bezier(0.16, 1, 0.3, 1)",
+        "goal-flash": "goal-flash 1.8s ease-out",
+        "goal-badge": "goal-badge 2.6s ease-out forwards",
       },
     },
   },

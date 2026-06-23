@@ -99,14 +99,16 @@ interface RawPlaylistItems {
 }
 
 /**
- * Heuristic: is this upload a match-highlights reel? Official channels post lots
- * of other things with a scoreline in the title — press conferences, interviews,
- * single-goal clips, cartoon recaps — so we require the word "highlights" and
- * exclude the common non-match formats.
+ * Heuristic: is this upload a match-highlights reel for a finished game? Official
+ * channels title highlights either with the word "highlights" OR just the
+ * scoreline (e.g. "France 3-1 Brazil | FIFA World Cup"), so we accept both — then
+ * exclude the common non-match formats they also post (press conferences,
+ * interviews, cartoon recaps, etc.).
  */
 const NON_HIGHLIGHT = [
   "interview",
   "conference",
+  "press",
   "reaction",
   "podcast",
   "preview",
@@ -114,19 +116,23 @@ const NON_HIGHLIGHT = [
   "442oons",
   "trailer",
   "behind the scenes",
+  "training",
+  "documentary",
+  "ceremony",
 ];
 
 function looksLikeHighlights(title: string): boolean {
   const t = title.toLowerCase();
   if (NON_HIGHLIGHT.some((w) => t.includes(w))) return false;
-  return t.includes("highlight");
+  // a scoreline (e.g. "3-1") or the word "highlights" marks a match reel
+  return t.includes("highlight") || /\d\s*[-–]\s*\d/.test(t);
 }
 
 async function uploadsFor(channel: ResolvedChannel): Promise<Highlight[]> {
   return swr(`yt:uploads:${channel.uploadsPlaylistId}`, TTL.feed, async () => {
     const data = await ytGet<RawPlaylistItems>(
       "playlistItems",
-      { part: "snippet", playlistId: channel.uploadsPlaylistId, maxResults: "25" },
+      { part: "snippet", playlistId: channel.uploadsPlaylistId, maxResults: "50" },
       TTL.feed,
     );
     const items = data.items ?? [];

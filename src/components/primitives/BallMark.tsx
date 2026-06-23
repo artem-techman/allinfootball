@@ -1,5 +1,5 @@
 /**
- * Good Football Company mark: a stylised hexagonal football — a central
+ * My Football Tracker mark: a stylised hexagonal football — a central
  * pointy-top hexagon ringed by six trapezoidal panels (one per edge). Five
  * panels and the centre use `currentColor` so the mark inverts cleanly between
  * the dark (white) and light (dark) themes; the right-hand panel is the lime

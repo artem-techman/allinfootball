@@ -25,7 +25,7 @@ export async function generateMetadata({
   const label = key ? formatLongDate(key) : "Matches";
   return {
     title: `Matches — ${label}`,
-    description: `Football fixtures and results for ${label} across the nine competitions on Good Football Company.`,
+    description: `Football fixtures and results for ${label} across the nine competitions on My Football Tracker.`,
     alternates: { canonical: `/matches/${date}` },
   };
 }

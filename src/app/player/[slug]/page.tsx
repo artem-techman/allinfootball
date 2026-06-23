@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!profile) return { title: "Player" };
   return {
     title: profile.player.name,
-    description: `${profile.player.name} — season stats and profile on Good Football Company.`,
+    description: `${profile.player.name} — season stats and profile on My Football Tracker.`,
     alternates: { canonical: `/player/${slug}` },
   };
 }

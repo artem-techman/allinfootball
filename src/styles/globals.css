@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /*
- * Design tokens — dark theme is the DEFAULT for Good Football Company (matches the approved
+ * Design tokens — dark theme is the DEFAULT for My Football Tracker (matches the approved
  * dark reference + the 42 Soccer Visual Style Guide). Brand accents: 42 Lime
  * (#D9FF3F) used sparingly for actions/live/active states, and 42 Electric
  * (#5A38FF) for rare premium/hero highlights. These CSS variables are the single

@@ -2,7 +2,7 @@ import { BallMark } from "./BallMark";
 
 /**
  * Minimal, on-brand image fallback (used when a news/feed item has no image).
- * A flat dark surface with the faint Good Football Company mark centred —
+ * A flat dark surface with the faint My Football Tracker mark centred —
  * intentionally simple, no gradients or stock photos. Render it as a positioned
  * fill, or with its own size via className.
  */

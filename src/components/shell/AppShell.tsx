@@ -29,9 +29,9 @@ export function AppShell({
     <div className="min-h-screen bg-page">
       {/* mobile top bar (sidebar collapses below 820px) */}
       <div className="sticky top-0 z-40 flex items-center justify-between border-b border-hairline bg-card px-4 py-3 min-[821px]:hidden">
-        <Link href="/" aria-label="Good Football Company home" className="inline-flex items-center gap-2 text-text-primary">
+        <Link href="/" aria-label="My Football Tracker home" className="inline-flex items-center gap-2 text-text-primary">
           <BallMark className="h-8 w-8 shrink-0" />
-          <span className="text-cardtitle font-bold">Good Football Company</span>
+          <span className="text-cardtitle font-bold">My Football Tracker</span>
         </Link>
         <MobileNav />
       </div>

@@ -34,7 +34,7 @@ export function OddsView({ odds, match }: { odds?: Odds; match: Match }) {
         ))}
       </div>
       <p className="mt-3 text-[11px] text-text-muted">
-        Odds shown for information only. Good Football Company does not offer betting.
+        Odds shown for information only. My Football Tracker does not offer betting.
       </p>
     </section>
   );

@@ -103,6 +103,27 @@ export const PREVIEW_UPCOMING: Match[] = [
   }),
 ];
 
+export const PREVIEW_RESULTS: Match[] = [
+  match(92001, PL, team(42, "Arsenal", "ARS"), team(40, "Liverpool", "LIV"), {
+    kickoffUtc: hoursFromNow(-3),
+    status: "finished",
+    homeScore: 2,
+    awayScore: 1,
+  }),
+  match(92002, LL, team(541, "Real Madrid", "RMA"), team(529, "Barcelona", "BAR"), {
+    kickoffUtc: hoursFromNow(-26),
+    status: "finished",
+    homeScore: 3,
+    awayScore: 0,
+  }),
+  match(92003, SA, team(489, "AC Milan", "MIL"), team(505, "Inter", "INT"), {
+    kickoffUtc: hoursFromNow(-49),
+    status: "finished",
+    homeScore: 1,
+    awayScore: 1,
+  }),
+];
+
 export const PREVIEW_LIVE: Match[] = [
   match(91001, PL, team(66, "Aston Villa", "AVL"), team(47, "Tottenham", "TOT"), {
     kickoffUtc: hoursFromNow(-1),

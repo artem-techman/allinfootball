@@ -10,6 +10,7 @@ import { WorldCupScorersCard } from "@/components/cards/WorldCupScorersCard";
 import type { ScorerItem } from "@/components/cards/WorldCupScorersCard";
 import { LiveNowRail } from "@/components/rail/LiveNowRail";
 import { TopTableRail } from "@/components/rail/TopTableRail";
+import { LatestResultsRail } from "@/components/rail/LatestResultsRail";
 import { TransferRumoursRail } from "@/components/rail/TransferRumoursRail";
 import { ChevronRightIcon } from "@/components/primitives/icons";
 import { provider } from "@/lib/providers";
@@ -17,7 +18,7 @@ import { getNews } from "@/lib/news";
 import type { Article, Match, Standing } from "@/lib/providers/types";
 import { todayKey, shiftDateKey } from "@/lib/utils/date";
 import { getCompetitionBySlug, isInScope } from "@/lib/constants/competitions";
-import { PREVIEW_UPCOMING, PREVIEW_STANDINGS, PREVIEW_STORIES, PREVIEW_SCORERS, PREVIEW_HERO } from "@/lib/preview/homePreview";
+import { PREVIEW_UPCOMING, PREVIEW_RESULTS, PREVIEW_STANDINGS, PREVIEW_STORIES, PREVIEW_SCORERS, PREVIEW_HERO } from "@/lib/preview/homePreview";
 
 export const dynamic = "force-dynamic";
 
@@ -31,9 +32,10 @@ export const dynamic = "force-dynamic";
 const TOP_TABLE_SLUG = "world-cup";
 
 export default async function HomePage() {
-  const { upcoming, standings, scorers, news, transferNews } = await loadHomeData();
+  const { upcoming, results, standings, scorers, news, transferNews } = await loadHomeData();
 
   const upcomingToShow = upcoming.length > 0 ? upcoming : PREVIEW_UPCOMING;
+  const resultsToShow = results.length > 0 ? results : PREVIEW_RESULTS;
   const standingsToShow = standings && standings.length > 0 ? standings : PREVIEW_STANDINGS;
 
   const heroArticles = news.filter((a) => a.image).slice(0, 5);
@@ -63,6 +65,7 @@ export default async function HomePage() {
             <LiveNowRail nextMatch={nextUpcoming} />
           </div>
           <TopTableRail initialSlug={TOP_TABLE_SLUG} initialRows={standingsToShow} />
+          <LatestResultsRail matches={resultsToShow} />
           <TransferRumoursRail articles={transferNews} />
           {/* On mobile the rail stacks below main, so the World Cup scorers card
               here makes it the last section. On desktop (≥1024px) it shows beside
@@ -144,6 +147,7 @@ function toStory(a: Article): StoryItem {
 
 async function loadHomeData(): Promise<{
   upcoming: Match[];
+  results: Match[];
   standings: Standing[] | null;
   scorers: ScorerItem[];
   news: Article[];
@@ -158,18 +162,27 @@ async function loadHomeData(): Promise<{
   ]);
 
   if (keyMissing) {
-    return { upcoming: [], standings: null, scorers: [], news, transferNews };
+    return { upcoming: [], results: [], standings: null, scorers: [], news, transferNews };
   }
 
   // Top Table and the scorers leaderboard both default to the World Cup (the
   // current marquee event).
   const tableComp = getCompetitionBySlug(TOP_TABLE_SLUG);
-  const [upcoming, standings, scorers] = await Promise.all([
-    loadUpcoming(),
+  const [windowMatches, standings, scorers] = await Promise.all([
+    loadFixturesWindow(),
     tableComp ? provider.getStandings(tableComp.leagueId, tableComp.defaultSeason).catch(() => []) : Promise.resolve([]),
     loadWorldCupScorers(),
   ]);
-  return { upcoming, standings, scorers, news, transferNews };
+  // One date window feeds both: soonest scheduled = upcoming, latest finished = results.
+  const upcoming = windowMatches
+    .filter((m) => m.status === "scheduled")
+    .sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc))
+    .slice(0, 12);
+  const results = windowMatches
+    .filter((m) => m.status === "finished")
+    .sort((a, b) => b.kickoffUtc.localeCompare(a.kickoffUtc))
+    .slice(0, 3);
+  return { upcoming, results, standings, scorers, news, transferNews };
 }
 
 /** Biggest goal scorers of the World Cup, as a compact leaderboard (top 5). */
@@ -193,16 +206,14 @@ async function loadWorldCupScorers(): Promise<ScorerItem[]> {
   }
 }
 
-async function loadUpcoming(): Promise<Match[]> {
+/** In-scope fixtures across a ±3 day window — the source for both Upcoming and
+ *  Latest Results. Each date is cached upstream, so this stays quota-light. */
+async function loadFixturesWindow(): Promise<Match[]> {
   try {
     const today = todayKey();
-    const days = [0, 1, 2, 3].map((d) => shiftDateKey(today, d));
+    const days = [-3, -2, -1, 0, 1, 2, 3].map((d) => shiftDateKey(today, d));
     const batches = await Promise.all(days.map((d) => provider.getFixturesByDate(d).catch(() => [] as Match[])));
-    return batches
-      .flat()
-      .filter((m) => m.status === "scheduled" && isInScope(m.competitionId))
-      .sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc))
-      .slice(0, 12);
+    return batches.flat().filter((m) => isInScope(m.competitionId));
   } catch {
     return [];
   }

@@ -44,6 +44,19 @@ export default function RootLayout({
             __html: `(function(){try{if(localStorage.getItem('allinfootball.theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();`,
           }}
         />
+        {/* Shared brand-gradient def for the BallMark logo. Defined ONCE here (and
+            always rendered, never display:none) so every mark references a single
+            valid id — Chrome won't paint a gradient defined inside a hidden subtree,
+            which is what duplicate per-instance defs caused. */}
+        <svg width="0" height="0" aria-hidden focusable="false" style={{ position: "absolute" }}>
+          <defs>
+            <linearGradient id="mftBrandGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#23a455" />
+              <stop offset="50%" stopColor="#5bc850" />
+              <stop offset="100%" stopColor="#d9ff3f" />
+            </linearGradient>
+          </defs>
+        </svg>
         {children}
       </body>
     </html>

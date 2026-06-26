@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
 import type { Standing } from "@/lib/providers/types";
 import { Crest } from "@/components/primitives/Crest";
@@ -33,33 +33,41 @@ export function StandingsTable({
     groups.set(r.groupLabel, arr);
   }
   const grouped = groups.size > 1;
+  // All groups share ONE table so every column lines up across groups; each
+  // group label becomes a full-width banner row spanning all columns.
+  const colCount = 10 + (showForm ? 1 : 0);
 
   return (
     <div className="overflow-hidden rounded-card border border-hairline bg-card">
-      {[...groups.entries()].map(([label, groupRows]) => (
-        <div key={label ?? "all"}>
-          {grouped && (
-            <div className="border-b border-hairline bg-card-2 px-4 py-2 text-meta font-semibold text-text-primary">
-              {label}
-            </div>
-          )}
-          <table className="w-full text-meta">
-            <thead>
-              <tr className="border-b border-hairline text-[11px] uppercase text-text-muted">
-                <th className="py-2 pl-4 text-left font-medium">#</th>
-                <th className="py-2 text-left font-medium">Club</th>
-                <Th>Pld</Th>
-                <Th>W</Th>
-                <Th>D</Th>
-                <Th>L</Th>
-                <Th>GF</Th>
-                <Th>GA</Th>
-                <Th>GD</Th>
-                <Th>Pts</Th>
-                {showForm && <th className="py-2 pr-4 text-right font-medium">Form</th>}
-              </tr>
-            </thead>
-            <tbody>
+      <table className="w-full text-meta">
+        <thead>
+          <tr className="border-b border-hairline text-[11px] uppercase text-text-muted">
+            <th className="py-2 pl-4 text-left font-medium">#</th>
+            <th className="py-2 text-left font-medium">Club</th>
+            <Th>Pld</Th>
+            <Th>W</Th>
+            <Th>D</Th>
+            <Th>L</Th>
+            <Th>GF</Th>
+            <Th>GA</Th>
+            <Th>GD</Th>
+            <Th>Pts</Th>
+            {showForm && <th className="py-2 pr-4 text-right font-medium">Form</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {[...groups.entries()].map(([label, groupRows]) => (
+            <Fragment key={label ?? "all"}>
+              {grouped && (
+                <tr>
+                  <td
+                    colSpan={colCount}
+                    className="border-b border-hairline bg-card-2 px-4 py-2 text-meta font-semibold text-text-primary"
+                  >
+                    {label}
+                  </td>
+                </tr>
+              )}
               {[...groupRows]
                 .sort((a, b) => a.position - b.position)
                 .map((r) => {
@@ -96,10 +104,10 @@ export function StandingsTable({
                     </tr>
                   );
                 })}
-            </tbody>
-          </table>
-        </div>
-      ))}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

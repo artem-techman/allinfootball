@@ -33,53 +33,36 @@ export function LiveNowRail({
   const [matches, setMatches] = useState<Match[] | null>(null);
   const [isPreview, setIsPreview] = useState(false);
   const [degraded, setDegraded] = useState(false);
-  // matchId -> which side just scored (+ a key to replay the animation each goal)
-  const [goals, setGoals] = useState<Record<number, { side: "home" | "away"; key: number }>>({});
+  // a goal-event key (timestamp) that triggers the widget-wide celebration; null when idle
+  const [celebrate, setCelebrate] = useState<number | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevScores = useRef<Map<number, { home: number; away: number }>>(new Map());
-  const goalTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  const celebrateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     /**
-     * Compare each live match's score to the previous poll and flag a goal when a
-     * side's score increases (the very first poll just records a baseline so we
-     * don't animate scores that were already on the board). The flag clears after
-     * the animation so the next goal can replay it.
+     * Compare each live match's score to the previous poll; if ANY side scored,
+     * trigger the widget-wide goal celebration (the first poll just records a
+     * baseline so existing scores don't celebrate on load).
      */
     function detectGoals(incoming: Match[]) {
       const liveNow = incoming.filter((m) => m.status === "live" || m.status === "ht");
       const next = new Map<number, { home: number; away: number }>();
-      const scored: Record<number, { side: "home" | "away"; key: number }> = {};
+      let scored = false;
       for (const m of liveNow) {
         const h = m.homeScore ?? 0;
         const a = m.awayScore ?? 0;
         const prev = prevScores.current.get(m.id);
-        if (prev) {
-          if (h > prev.home) scored[m.id] = { side: "home", key: Date.now() };
-          else if (a > prev.away) scored[m.id] = { side: "away", key: Date.now() };
-        }
+        if (prev && (h > prev.home || a > prev.away)) scored = true;
         next.set(m.id, { home: h, away: a });
       }
       prevScores.current = next; // also prunes matches that are no longer live
-      const ids = Object.keys(scored);
-      if (ids.length === 0) return;
-      setGoals((prev) => ({ ...prev, ...scored }));
-      for (const id of ids) {
-        const mid = Number(id);
-        const existing = goalTimers.current.get(mid);
-        if (existing) clearTimeout(existing);
-        const t = setTimeout(() => {
-          goalTimers.current.delete(mid);
-          setGoals((prev) => {
-            const n = { ...prev };
-            delete n[mid];
-            return n;
-          });
-        }, 2800);
-        goalTimers.current.set(mid, t);
-      }
+      if (!scored) return;
+      setCelebrate(Date.now());
+      if (celebrateTimer.current) clearTimeout(celebrateTimer.current);
+      celebrateTimer.current = setTimeout(() => setCelebrate(null), 1800);
     }
 
     function scheduleNext(anyLive: boolean) {
@@ -120,12 +103,10 @@ export function LiveNowRail({
     }
 
     tick();
-    const timers = goalTimers.current;
     return () => {
       cancelled = true;
       if (timer.current) clearTimeout(timer.current);
-      timers.forEach((t) => clearTimeout(t));
-      timers.clear();
+      if (celebrateTimer.current) clearTimeout(celebrateTimer.current);
     };
   }, [previewMatches, nextMatch]);
 
@@ -133,7 +114,12 @@ export function LiveNowRail({
   const hasLive = live.length > 0;
 
   return (
-    <section className="rounded-card border border-hairline bg-card p-card">
+    <section
+      className={`relative overflow-hidden rounded-card border border-hairline bg-card p-card ${
+        celebrate != null ? "animate-goal-react" : ""
+      }`}
+    >
+      {celebrate != null && <GoalCelebration key={celebrate} />}
       <header className="mb-1 flex items-center justify-between">
         <h3 className="text-cardtitle text-text-primary">Live Now</h3>
         {hasLive ? (
@@ -164,45 +150,21 @@ export function LiveNowRail({
           </div>
         ) : hasLive ? (
           <ul className="divide-y divide-hairline">
-            {live.map((m) => {
-              const goal = goals[m.id];
-              return (
-                <li key={m.id} className="relative">
-                  {goal && (
-                    <span
-                      key={goal.key}
-                      className="pointer-events-none absolute right-0 top-1.5 z-10 animate-goal-badge rounded-full bg-accent-gradient px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-text-on-accent shadow-elevated"
-                    >
-                      ⚽ Goal!
-                    </span>
-                  )}
-                  <Link
-                    href={`/match/${m.slug}`}
-                    className={`flex items-center gap-3 rounded-tile px-1 py-3 ${goal ? "animate-goal-flash" : ""}`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="mb-1.5 flex items-center gap-1.5">
-                        <Crest src={m.competition?.logo} name={m.competition?.name ?? "Competition"} size={13} />
-                        <span className="truncate text-[11px] text-text-muted">{m.competition?.name}</span>
-                      </div>
-                      <Row
-                        name={m.homeTeam?.name ?? "Home"}
-                        crest={m.homeTeam?.crest}
-                        score={m.homeScore}
-                        scored={goal?.side === "home" ? goal.key : undefined}
-                      />
-                      <Row
-                        name={m.awayTeam?.name ?? "Away"}
-                        crest={m.awayTeam?.crest}
-                        score={m.awayScore}
-                        scored={goal?.side === "away" ? goal.key : undefined}
-                      />
+            {live.map((m) => (
+              <li key={m.id}>
+                <Link href={`/match/${m.slug}`} className="flex items-center gap-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                      <Crest src={m.competition?.logo} name={m.competition?.name ?? "Competition"} size={13} />
+                      <span className="truncate text-[11px] text-text-muted">{m.competition?.name}</span>
                     </div>
-                    <LiveStatus minute={m.minute} status={m.status} />
-                  </Link>
-                </li>
-              );
-            })}
+                    <Row name={m.homeTeam?.name ?? "Home"} crest={m.homeTeam?.crest} score={m.homeScore} />
+                    <Row name={m.awayTeam?.name ?? "Away"} crest={m.awayTeam?.crest} score={m.awayScore} />
+                  </div>
+                  <LiveStatus minute={m.minute} status={m.status} />
+                </Link>
+              </li>
+            ))}
           </ul>
         ) : nextMatch ? (
           <Link href={`/match/${nextMatch.slug}`} className="block pt-1">
@@ -235,29 +197,44 @@ function Row({
   crest,
   score,
   hideScore,
-  scored,
 }: {
   name: string;
   crest?: string;
   score?: number;
   hideScore?: boolean;
-  /** the goal-event key when THIS side just scored — replays the pop each goal */
-  scored?: number;
 }) {
   return (
     <div className="flex items-center gap-2 py-0.5">
       <Crest src={crest} name={name} size={18} />
       <span className="min-w-0 flex-1 truncate text-meta text-text-primary">{name}</span>
       {!hideScore && (
-        <span
-          key={scored ?? "static"}
-          className={`tabular inline-block w-4 origin-center text-right text-meta font-bold text-text-primary ${
-            scored ? "animate-goal-pop" : ""
-          }`}
-        >
-          {score ?? "-"}
-        </span>
+        <span className="tabular w-4 text-right text-meta font-bold text-text-primary">{score ?? "-"}</span>
       )}
+    </div>
+  );
+}
+
+/** Goal celebration: a burst of footballs raining down the whole widget. Keyed by
+ *  the goal event in the parent so it remounts (and replays) on every goal. */
+const FALL_BALLS = [6, 17, 28, 39, 50, 61, 72, 83, 94, 22, 56, 78];
+
+function GoalCelebration() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
+      {FALL_BALLS.map((left, i) => (
+        <span
+          key={i}
+          className="absolute animate-football-fall select-none leading-none"
+          style={{
+            left: `${left}%`,
+            fontSize: `${13 + ((i * 7) % 10)}px`,
+            animationDelay: `${(i % 6) * 80}ms`,
+            animationDuration: `${1050 + ((i * 13) % 5) * 160}ms`,
+          }}
+        >
+          ⚽
+        </span>
+      ))}
     </div>
   );
 }

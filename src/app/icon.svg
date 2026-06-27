@@ -6,10 +6,10 @@
       <stop offset="100%" stop-color="#D9FF3F"/>
     </linearGradient>
   </defs>
-  <rect width="100" height="100" rx="22" fill="url(#g)"/>
-  <g fill="none" stroke="#fff" stroke-width="6">
-    <circle cx="50" cy="50" r="26"/>
-    <line x1="50" y1="24" x2="50" y2="76" stroke-linecap="round"/>
+  <path d="M50 7C29.7 7 13 23.7 13 44C13 67 41 84 50 95C59 84 87 67 87 44C87 23.7 70.3 7 50 7Z" fill="url(#g)"/>
+  <g fill="none" stroke="#fff" stroke-width="5">
+    <circle cx="50" cy="43" r="23"/>
+    <line x1="50" y1="20" x2="50" y2="66" stroke-linecap="round"/>
   </g>
-  <circle cx="50" cy="50" r="9" fill="url(#g)" stroke="#fff" stroke-width="5.5"/>
+  <circle cx="50" cy="43" r="7.5" fill="url(#g)" stroke="#fff" stroke-width="4.5"/>
 </svg>

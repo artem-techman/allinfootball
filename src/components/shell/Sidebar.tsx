@@ -2,15 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Logo } from "@/components/primitives/Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { NAV, isNavActive } from "./navItems";
 import { PanelLeftIcon } from "@/components/primitives/icons";
 
-// Where ad enquiries go. Change this to your real ad-sales inbox / media-kit URL.
+// Where ad enquiries go. Change this to your real ad-sales inbox.
 const AD_CONTACT = "mailto:ads@myfootballtracker.com?subject=Advertising%20on%20My%20Football%20Tracker";
-const AD_MEDIA_KIT = "mailto:ads@myfootballtracker.com?subject=Media%20kit%20request%20%E2%80%94%20My%20Football%20Tracker";
 
 /**
  * Left sidebar (dark reference) — COLLAPSIBLE. The collapsed state persists in
@@ -120,36 +120,20 @@ export function Sidebar() {
             <MegaphoneIcon size={18} />
           </a>
         ) : (
-          // Expanded: the self-promoting ad-sales widget.
-          <div className="relative overflow-hidden rounded-lg2 border border-hairline bg-card shadow-soft">
-            {/* gradient top accent + corner glow to draw the eye */}
-            <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-accent-gradient" />
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-accent-gradient opacity-25 blur-2xl"
+          // Expanded: the downloaded ad banner, clickable to start an enquiry.
+          <a
+            href={AD_CONTACT}
+            aria-label="Advertise with us — contact us"
+            className="block overflow-hidden rounded-lg2 shadow-soft transition-opacity hover:opacity-90"
+          >
+            <Image
+              src="/ad-banner.png"
+              alt="Place your ad here — advertise on My Football Tracker"
+              width={1254}
+              height={1254}
+              className="h-auto w-full"
             />
-            <div className="relative p-4">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-lime-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-accent-lime">
-                <MegaphoneIcon size={12} /> Advertise
-              </span>
-              <p className="mt-2.5 text-cardtitle font-bold leading-tight text-text-primary">Place your ad here</p>
-              <p className="mt-1 text-[11px] leading-snug text-text-secondary">
-                Reach thousands of football fans every day — put your brand front and centre.
-              </p>
-              <a
-                href={AD_CONTACT}
-                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-tile bg-accent-gradient py-2 text-[12px] font-semibold text-text-on-accent transition-opacity hover:opacity-90"
-              >
-                Contact us
-              </a>
-              <a
-                href={AD_MEDIA_KIT}
-                className="mt-2 flex w-full items-center justify-center gap-1 text-[11px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-              >
-                View media kit <span aria-hidden>→</span>
-              </a>
-            </div>
-          </div>
+          </a>
         )}
       </div>
     </aside>

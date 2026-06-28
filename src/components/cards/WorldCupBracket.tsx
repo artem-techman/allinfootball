@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import type { Match } from "@/lib/providers/types";
 import { Crest } from "@/components/primitives/Crest";
@@ -24,9 +25,10 @@ const SKELETON = [
   { name: "Semi-finals", label: "1/2", total: 2 },
 ] as const;
 
-/** Fixed height of the matches area; every column shares it so justify-around
- *  lines each match up with the centre of its two feeders. */
-const BRACKET_H = 432;
+/** Height of the matches area when docked in the card; every column shares it so
+ *  justify-around lines each match up with the centre of its two feeders. In
+ *  full screen this grows to fill the viewport. */
+const DOCKED_H = 432;
 
 type Cell = { key: string; match: Match | null };
 type Column = { label: string; side: "L" | "R"; round: number; cells: Cell[] };
@@ -36,7 +38,12 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const cellRefs = useRef<Record<string, HTMLElement | null>>({});
   const [paths, setPaths] = useState<string[]>([]);
-  const centeredOnce = useRef(false);
+  const [fits, setFits] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  // left edge of the full-screen overlay = right edge of the sidebar (0 on
+  // mobile, where the sidebar is collapsed), so the sidebar stays visible.
+  const [sidebarRight, setSidebarRight] = useState(0);
+  const [areaH, setAreaH] = useState(DOCKED_H);
 
   const register = useCallback((key: string, el: HTMLElement | null) => {
     cellRefs.current[key] = el;
@@ -116,8 +123,12 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
     out.push(elbow("R-3-0", "F", "R"));
 
     setPaths(out.filter((p): p is string => p !== null));
+    const sc = scrollRef.current;
+    if (sc) setFits(sc.scrollWidth <= sc.clientWidth + 1);
   }, [rounds]);
 
+  // re-measure connectors after layout, and whenever the size/mode changes
+  // (entering full screen remounts the content into a portal).
   useLayoutEffect(() => {
     recompute();
     const content = contentRef.current;
@@ -125,20 +136,96 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
     const ro = new ResizeObserver(recompute);
     ro.observe(content);
     return () => ro.disconnect();
-  }, [recompute]);
+  }, [recompute, expanded, areaH]);
 
-  // centre the horizontal scroll on the Final once, so the tree reads as
-  // symmetric and both halves are an equal scroll away.
+  // centre the horizontal scroll on the Final (when the tree overflows) so it
+  // reads as symmetric; re-runs on mode/size change.
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || centeredOnce.current) return;
-    if (el.scrollWidth > el.clientWidth + 1) {
+    if (el && !fits && el.scrollWidth > el.clientWidth + 1) {
       el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
-      centeredOnce.current = true;
     }
-  });
+  }, [fits, expanded, areaH]);
+
+  // full-screen lifecycle: lock body scroll, grow the bracket to the viewport,
+  // measure the sidebar so the overlay starts at its right edge, close on Esc.
+  useEffect(() => {
+    if (!expanded) {
+      setAreaH(DOCKED_H);
+      return;
+    }
+    const measure = () => {
+      const sb = document.querySelector("[data-app-sidebar]");
+      const r = sb?.getBoundingClientRect();
+      setSidebarRight(r && r.width > 0 ? r.right : 0);
+      setAreaH(Math.max(DOCKED_H, window.innerHeight - 180));
+    };
+    measure();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setExpanded(false);
+    };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("resize", measure);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [expanded]);
 
   if (rounds.length === 0) return null;
+
+  const board = (
+    <div ref={scrollRef} className={`overflow-x-auto pb-1 ${fits ? "flex justify-center" : ""}`}>
+      <div ref={contentRef} className="relative flex w-max items-stretch gap-[18px]">
+        {/* connector overlay — sits behind the cards, in the same coordinate
+            space as the content so it scrolls with it */}
+        <svg className="pointer-events-none absolute inset-0 h-full w-full text-text-muted" aria-hidden>
+          {paths.map((d, i) => (
+            <path key={i} d={d} fill="none" stroke="currentColor" strokeWidth={1.5} strokeOpacity={0.6} />
+          ))}
+        </svg>
+
+        {leftColumns.map((c) => (
+          <BracketColumn key={`${c.side}-${c.round}`} column={c} areaH={areaH} register={register} />
+        ))}
+        <FinalColumn match={finalMatch} areaH={areaH} register={register} />
+        {rightColumns.map((c) => (
+          <BracketColumn key={`${c.side}-${c.round}`} column={c} areaH={areaH} register={register} />
+        ))}
+      </div>
+    </div>
+  );
+
+  if (expanded && typeof document !== "undefined") {
+    return createPortal(
+      <div
+        className="fixed inset-0 z-[60] flex flex-col bg-page"
+        style={{ left: sidebarRight }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="World Cup knockout bracket"
+      >
+        <header className="flex items-center justify-between border-b border-hairline px-5 py-4">
+          <div>
+            <h2 className="text-section text-text-primary">World Cup Knockouts</h2>
+            <p className="mt-0.5 text-meta text-text-secondary">The full draw — scroll to explore both halves.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setExpanded(false)}
+            className="flex items-center gap-1.5 rounded-full border border-hairline px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+          >
+            <CloseIcon size={14} /> Close
+          </button>
+        </header>
+        <div className="flex min-h-0 flex-1 items-center px-5 py-4">{board}</div>
+      </div>,
+      document.body,
+    );
+  }
 
   return (
     <section className="rounded-card border border-hairline bg-card p-card">
@@ -147,45 +234,52 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
           <h2 className="text-section text-text-primary">World Cup Knockouts</h2>
           <p className="mt-0.5 text-meta text-text-secondary">The road to the final — scroll to follow the bracket.</p>
         </div>
-        <Link
-          href="/competition/world-cup/fixtures"
-          className="flex shrink-0 items-center gap-1 text-[12px] font-semibold text-text-secondary hover:text-text-primary"
-        >
-          Full schedule <ChevronRightIcon size={14} />
-        </Link>
+        <div className="flex shrink-0 items-center gap-3">
+          <Link
+            href="/competition/world-cup/fixtures"
+            className="hidden items-center gap-1 text-[12px] font-semibold text-text-secondary hover:text-text-primary sm:flex"
+          >
+            Full schedule <ChevronRightIcon size={14} />
+          </Link>
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            aria-label="Open bracket full screen"
+            className="flex items-center gap-1.5 rounded-full border border-hairline px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+          >
+            <ExpandIcon size={14} /> Full screen
+          </button>
+        </div>
       </header>
 
-      <div ref={scrollRef} className="overflow-x-auto pb-1">
-        <div ref={contentRef} className="relative flex w-max items-stretch gap-[18px]">
-          {/* connector overlay — sits behind the cards, in the same coordinate
-              space as the content so it scrolls with it */}
-          <svg
-            className="pointer-events-none absolute inset-0 h-full w-full text-text-muted"
-            aria-hidden
-          >
-            {paths.map((d, i) => (
-              <path key={i} d={d} fill="none" stroke="currentColor" strokeWidth={1.5} strokeOpacity={0.6} />
-            ))}
-          </svg>
-
-          {leftColumns.map((c) => (
-            <BracketColumn key={`${c.side}-${c.round}`} column={c} register={register} />
-          ))}
-          <FinalColumn match={finalMatch} register={register} />
-          {rightColumns.map((c) => (
-            <BracketColumn key={`${c.side}-${c.round}`} column={c} register={register} />
-          ))}
-        </div>
-      </div>
+      {board}
     </section>
+  );
+}
+
+function ExpandIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+    </svg>
+  );
+}
+
+function CloseIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
   );
 }
 
 function BracketColumn({
   column,
+  areaH,
   register,
 }: {
   column: Column;
+  areaH: number;
   register: (key: string, el: HTMLElement | null) => void;
 }) {
   return (
@@ -197,7 +291,7 @@ function BracketColumn({
       >
         {column.label}
       </div>
-      <div className="flex flex-col justify-around" style={{ height: BRACKET_H }}>
+      <div className="flex flex-col justify-around" style={{ height: areaH }}>
         {column.cells.map((cell) => (
           <MatchCard key={cell.key} match={cell.match} cellRef={(el) => register(cell.key, el)} />
         ))}
@@ -208,9 +302,11 @@ function BracketColumn({
 
 function FinalColumn({
   match,
+  areaH,
   register,
 }: {
   match: Match | null;
+  areaH: number;
   register: (key: string, el: HTMLElement | null) => void;
 }) {
   return (
@@ -218,7 +314,7 @@ function FinalColumn({
       <div className="mb-2 flex items-center justify-center gap-1 text-[11px] font-extrabold uppercase tracking-wide text-text-primary">
         <TrophyIcon size={13} /> Final
       </div>
-      <div className="flex flex-col justify-around" style={{ height: BRACKET_H }}>
+      <div className="flex flex-col justify-around" style={{ height: areaH }}>
         <div ref={(el) => register("F", el)} className="rounded-tile bg-accent-gradient p-[2px] shadow-elevated">
           <div className="rounded-[10px] bg-card-2 p-2">
             {match ? (

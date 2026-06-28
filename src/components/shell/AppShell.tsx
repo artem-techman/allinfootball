@@ -38,7 +38,7 @@ export function AppShell({
 
       <div className="mx-auto flex max-w-[1440px] gap-6 px-0 min-[821px]:px-6">
         {/* fixed sidebar, hidden on mobile */}
-        <div className="sticky top-0 hidden h-screen shrink-0 min-[821px]:block">
+        <div data-app-sidebar className="sticky top-0 hidden h-screen shrink-0 min-[821px]:block">
           <Sidebar />
         </div>
 

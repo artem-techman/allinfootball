@@ -47,11 +47,13 @@ function comp(id: number, slug: string, name: string) {
   return { id, slug, name, logo: LEAGUE(id) };
 }
 
+type PreviewTeam = { id: number; slug: string; name: string; shortName: string; crest?: string };
+
 function match(
   id: number,
   competition: { id: number; slug: string; name: string; logo: string },
-  home: ReturnType<typeof team>,
-  away: ReturnType<typeof team>,
+  home: PreviewTeam,
+  away: PreviewTeam,
   opts: Partial<Match> & { kickoffUtc: string },
 ): Match {
   return {
@@ -74,6 +76,76 @@ const LL = comp(140, "la-liga", "La Liga");
 const SA = comp(135, "serie-a", "Serie A");
 const BL = comp(78, "bundesliga", "Bundesliga");
 const L1 = comp(61, "ligue-1", "Ligue 1");
+const WC = comp(1, "world-cup", "FIFA World Cup");
+
+/** National team for the demo bracket. No crest URL, so Crest renders clean
+ *  initials rather than risking a broken flag image. */
+function nation(id: number, name: string): PreviewTeam {
+  return { id, slug: name.toLowerCase().replace(/\s+/g, "-"), name, shortName: name };
+}
+
+/** A single knockout fixture. Pass scores to mark it finished; omit them for a
+ *  still-to-be-played tie. */
+function ko(
+  id: number,
+  round: string,
+  home: PreviewTeam,
+  away: PreviewTeam,
+  hs?: number,
+  as?: number,
+): Match {
+  const played = hs != null && as != null;
+  return match(id, WC, home, away, {
+    kickoffUtc: hoursFromNow(played ? -((id % 30) + 4) : (id % 30) + 6),
+    round,
+    status: played ? "finished" : "scheduled",
+    ...(played ? { homeScore: hs, awayScore: as } : {}),
+  });
+}
+
+/**
+ * Demo World Cup knockout bracket — a full Round of 16 → Final, shown until the
+ * real tournament reaches its knockout stage. Each round's matches are ordered
+ * so the first half forms the left side of the bracket and the second half the
+ * right, converging on the Final.
+ */
+export const PREVIEW_BRACKET: { name: string; matches: Match[] }[] = [
+  {
+    name: "Round of 16",
+    matches: [
+      // left half
+      ko(93101, "Round of 16", nation(2, "France"), nation(10, "England"), 2, 1),
+      ko(93102, "Round of 16", nation(6, "Brazil"), nation(27, "Portugal"), 1, 3),
+      ko(93103, "Round of 16", nation(9, "Spain"), nation(25, "Germany"), 2, 0),
+      ko(93104, "Round of 16", nation(26, "Argentina"), nation(1118, "Netherlands"), 3, 2),
+      // right half
+      ko(93105, "Round of 16", nation(1, "Belgium"), nation(3, "Croatia"), 0, 1),
+      ko(93106, "Round of 16", nation(7, "Uruguay"), nation(31, "Morocco"), 1, 2),
+      ko(93107, "Round of 16", nation(768, "Italy"), nation(13, "Senegal"), 2, 0),
+      ko(93108, "Round of 16", nation(22, "USA"), nation(16, "Mexico"), 1, 2),
+    ],
+  },
+  {
+    name: "Quarter-finals",
+    matches: [
+      ko(93201, "Quarter-finals", nation(2, "France"), nation(27, "Portugal"), 2, 1),
+      ko(93202, "Quarter-finals", nation(9, "Spain"), nation(26, "Argentina"), 1, 2),
+      ko(93203, "Quarter-finals", nation(3, "Croatia"), nation(31, "Morocco")),
+      ko(93204, "Quarter-finals", nation(768, "Italy"), nation(16, "Mexico")),
+    ],
+  },
+  {
+    name: "Semi-finals",
+    matches: [
+      ko(93301, "Semi-finals", nation(2, "France"), nation(26, "Argentina")),
+      ko(93302, "Semi-finals", nation(3, "Croatia"), nation(768, "Italy")),
+    ],
+  },
+  {
+    name: "Final",
+    matches: [ko(93401, "Final", nation(2, "France"), nation(3, "Croatia"))],
+  },
+];
 
 export const PREVIEW_UPCOMING: Match[] = [
   match(90001, PL, team(33, "Man United", "MUN"), team(49, "Chelsea", "CHE"), {

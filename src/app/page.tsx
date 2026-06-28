@@ -8,6 +8,8 @@ import { TopStoriesCard } from "@/components/cards/TopStoriesCard";
 import type { StoryItem } from "@/components/cards/TopStoriesCard";
 import { WorldCupScorersCard } from "@/components/cards/WorldCupScorersCard";
 import type { ScorerItem } from "@/components/cards/WorldCupScorersCard";
+import { WorldCupBracket } from "@/components/cards/WorldCupBracket";
+import type { BracketRound } from "@/components/cards/WorldCupBracket";
 import { LiveNowRail } from "@/components/rail/LiveNowRail";
 import { TopTableRail } from "@/components/rail/TopTableRail";
 import { LatestResultsRail } from "@/components/rail/LatestResultsRail";
@@ -18,7 +20,7 @@ import { getNews } from "@/lib/news";
 import type { Article, Match, Standing } from "@/lib/providers/types";
 import { todayKey, shiftDateKey } from "@/lib/utils/date";
 import { getCompetitionBySlug, isInScope } from "@/lib/constants/competitions";
-import { PREVIEW_UPCOMING, PREVIEW_RESULTS, PREVIEW_STANDINGS, PREVIEW_STORIES, PREVIEW_SCORERS, PREVIEW_HERO } from "@/lib/preview/homePreview";
+import { PREVIEW_UPCOMING, PREVIEW_RESULTS, PREVIEW_STANDINGS, PREVIEW_STORIES, PREVIEW_SCORERS, PREVIEW_HERO, PREVIEW_BRACKET } from "@/lib/preview/homePreview";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +34,7 @@ export const dynamic = "force-dynamic";
 const TOP_TABLE_SLUG = "world-cup";
 
 export default async function HomePage() {
-  const { upcoming, results, standings, scorers, news, transferNews } = await loadHomeData();
+  const { upcoming, results, standings, scorers, bracket, news, transferNews } = await loadHomeData();
 
   const upcomingToShow = upcoming.length > 0 ? upcoming : PREVIEW_UPCOMING;
   const resultsToShow = results.length > 0 ? results : PREVIEW_RESULTS;
@@ -50,6 +52,10 @@ export default async function HomePage() {
   // section the user scrolls to.
   const scorersToShow = scorers.length > 0 ? scorers : PREVIEW_SCORERS;
   const worldCupScorers = <WorldCupScorersCard scorers={scorersToShow} />;
+
+  // World Cup knockout bracket — falls back to a demo bracket until the real
+  // tournament reaches its knockout rounds.
+  const bracketToShow = bracket.length > 0 ? bracket : PREVIEW_BRACKET;
 
   // Soonest upcoming fixture — shown with a countdown in the Live Now rail when
   // nothing is live.
@@ -122,6 +128,12 @@ export default async function HomePage() {
         <TopStoriesCard featured={stories.featured} items={stories.items} />
         <div className="hidden lg:block">{worldCupScorers}</div>
       </section>
+
+      {/* World Cup knockout bracket — the dedicated widget at the bottom of the
+          home page, with both halves converging on the Final in the centre. */}
+      <section className="mt-7">
+        <WorldCupBracket rounds={bracketToShow} />
+      </section>
     </AppShell>
   );
 }
@@ -150,6 +162,7 @@ async function loadHomeData(): Promise<{
   results: Match[];
   standings: Standing[] | null;
   scorers: ScorerItem[];
+  bracket: BracketRound[];
   news: Article[];
   transferNews: Article[];
 }> {
@@ -162,16 +175,17 @@ async function loadHomeData(): Promise<{
   ]);
 
   if (keyMissing) {
-    return { upcoming: [], results: [], standings: null, scorers: [], news, transferNews };
+    return { upcoming: [], results: [], standings: null, scorers: [], bracket: [], news, transferNews };
   }
 
   // Top Table and the scorers leaderboard both default to the World Cup (the
   // current marquee event).
   const tableComp = getCompetitionBySlug(TOP_TABLE_SLUG);
-  const [windowMatches, standings, scorers] = await Promise.all([
+  const [windowMatches, standings, scorers, bracket] = await Promise.all([
     loadFixturesWindow(),
     tableComp ? provider.getStandings(tableComp.leagueId, tableComp.defaultSeason).catch(() => []) : Promise.resolve([]),
     loadWorldCupScorers(),
+    loadWorldCupBracket(),
   ]);
   // One date window feeds both: soonest scheduled = upcoming, latest finished = results.
   const upcoming = windowMatches
@@ -182,7 +196,47 @@ async function loadHomeData(): Promise<{
     .filter((m) => m.status === "finished")
     .sort((a, b) => b.kickoffUtc.localeCompare(a.kickoffUtc))
     .slice(0, 3);
-  return { upcoming, results, standings, scorers, news, transferNews };
+  return { upcoming, results, standings, scorers, bracket, news, transferNews };
+}
+
+/** Knockout-round ordering, outermost → Final. */
+const KO_ORDER = ["Round of 32", "Round of 16", "Quarter-finals", "Semi-finals", "Final"];
+
+/** Map a raw API round string onto one of our bracket rounds, or null if it's a
+ *  group-stage match (or the third-place play-off, which sits outside the tree). */
+function knockoutRound(round?: string): string | null {
+  if (!round) return null;
+  const r = round.toLowerCase();
+  if (r.includes("3rd place") || r.includes("third place")) return null;
+  if (r.includes("round of 32")) return "Round of 32";
+  if (r.includes("round of 16") || r.includes("8th finals")) return "Round of 16";
+  if (r.includes("quarter")) return "Quarter-finals";
+  if (r.includes("semi")) return "Semi-finals";
+  if (r.includes("final")) return "Final";
+  return null;
+}
+
+/** The World Cup knockout bracket, grouped by round (outermost → Final). One
+ *  cached fixtures-by-league call; returns [] (→ demo bracket) before the
+ *  knockout stage exists or on any failure. */
+async function loadWorldCupBracket(): Promise<BracketRound[]> {
+  const wc = getCompetitionBySlug(TOP_TABLE_SLUG);
+  if (!wc) return [];
+  try {
+    const fixtures = await provider.getFixturesByLeague(wc.leagueId, wc.defaultSeason);
+    const byRound = new Map<string, Match[]>();
+    for (const m of fixtures) {
+      const name = knockoutRound(m.round);
+      if (!name) continue;
+      (byRound.get(name) ?? byRound.set(name, []).get(name)!).push(m);
+    }
+    return KO_ORDER.filter((name) => byRound.has(name)).map((name) => ({
+      name,
+      matches: byRound.get(name)!.sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc)),
+    }));
+  } catch {
+    return [];
+  }
 }
 
 /** Biggest goal scorers of the World Cup, as a compact leaderboard (top 5). */

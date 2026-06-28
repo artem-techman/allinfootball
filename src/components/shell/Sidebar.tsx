@@ -109,18 +109,8 @@ export function Sidebar() {
         <div className={`mb-2 ${collapsed ? "flex justify-center" : ""}`}>
           <ThemeToggle collapsed={collapsed} />
         </div>
-        {collapsed ? (
-          // Collapsed: keep the ad slot present as a single branded button.
-          <a
-            href={AD_CONTACT}
-            title="Advertise with us"
-            aria-label="Advertise with us"
-            className="mx-auto grid h-10 w-10 place-items-center rounded-tile bg-accent-gradient text-text-on-accent shadow-soft transition-opacity hover:opacity-90"
-          >
-            <MegaphoneIcon size={18} />
-          </a>
-        ) : (
-          // Expanded: the downloaded ad banner, clickable to start an enquiry.
+        {/* The ad banner shows only when the sidebar is expanded. */}
+        {!collapsed && (
           <a
             href={AD_CONTACT}
             aria-label="Advertise with us — contact us"
@@ -137,24 +127,5 @@ export function Sidebar() {
         )}
       </div>
     </aside>
-  );
-}
-
-function MegaphoneIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="m3 11 18-5v12L3 14v-3z" />
-      <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
-    </svg>
   );
 }

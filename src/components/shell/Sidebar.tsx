@@ -6,8 +6,11 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Logo } from "@/components/primitives/Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { NAV, isNavActive } from "./navItems";
-import { STOCK_IMAGES } from "@/lib/preview/homePreview";
-import { BellIcon, PanelLeftIcon } from "@/components/primitives/icons";
+import { PanelLeftIcon } from "@/components/primitives/icons";
+
+// Where ad enquiries go. Change this to your real ad-sales inbox / media-kit URL.
+const AD_CONTACT = "mailto:ads@myfootballtracker.com?subject=Advertising%20on%20My%20Football%20Tracker";
+const AD_MEDIA_KIT = "mailto:ads@myfootballtracker.com?subject=Media%20kit%20request%20%E2%80%94%20My%20Football%20Tracker";
 
 /**
  * Left sidebar (dark reference) — COLLAPSIBLE. The collapsed state persists in
@@ -55,12 +58,6 @@ export function Sidebar() {
       }
       return next;
     });
-  }
-
-  function enableNotifications() {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      void Notification.requestPermission().catch(() => {});
-    }
   }
 
   return (
@@ -112,38 +109,68 @@ export function Sidebar() {
         <div className={`mb-2 ${collapsed ? "flex justify-center" : ""}`}>
           <ThemeToggle collapsed={collapsed} />
         </div>
-        {!collapsed && (
-          <div className="relative overflow-hidden rounded-lg2 border border-hairline bg-card">
+        {collapsed ? (
+          // Collapsed: keep the ad slot present as a single branded button.
+          <a
+            href={AD_CONTACT}
+            title="Advertise with us"
+            aria-label="Advertise with us"
+            className="mx-auto grid h-10 w-10 place-items-center rounded-tile bg-accent-gradient text-text-on-accent shadow-soft transition-opacity hover:opacity-90"
+          >
+            <MegaphoneIcon size={18} />
+          </a>
+        ) : (
+          // Expanded: the self-promoting ad-sales widget.
+          <div className="relative overflow-hidden rounded-lg2 border border-hairline bg-card shadow-soft">
+            {/* gradient top accent + corner glow to draw the eye */}
+            <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-accent-gradient" />
             <div
               aria-hidden
-              className="absolute inset-x-0 bottom-0 h-20 opacity-25"
-              style={{
-                background: `bottom/cover no-repeat url(${STOCK_IMAGES.promo})`,
-                maskImage: "linear-gradient(to top, black, transparent)",
-                WebkitMaskImage: "linear-gradient(to top, black, transparent)",
-              }}
-            />
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -bottom-8 -right-6 h-28 w-28 rounded-full bg-accent-lime-soft blur-2xl"
+              className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-accent-gradient opacity-25 blur-2xl"
             />
             <div className="relative p-4">
-              <p className="text-meta font-semibold text-text-primary">Never miss a moment.</p>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-lime-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-accent-lime">
+                <MegaphoneIcon size={12} /> Advertise
+              </span>
+              <p className="mt-2.5 text-cardtitle font-bold leading-tight text-text-primary">Place your ad here</p>
               <p className="mt-1 text-[11px] leading-snug text-text-secondary">
-                Turn on notifications and get the biggest football updates instantly.
+                Reach thousands of football fans every day — put your brand front and centre.
               </p>
-              <button
-                type="button"
-                onClick={enableNotifications}
+              <a
+                href={AD_CONTACT}
                 className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-tile bg-accent-gradient py-2 text-[12px] font-semibold text-text-on-accent transition-opacity hover:opacity-90"
               >
-                Enable Notifications
-                <BellIcon size={14} />
-              </button>
+                Contact us
+              </a>
+              <a
+                href={AD_MEDIA_KIT}
+                className="mt-2 flex w-full items-center justify-center gap-1 text-[11px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+              >
+                View media kit <span aria-hidden>→</span>
+              </a>
             </div>
           </div>
         )}
       </div>
     </aside>
+  );
+}
+
+function MegaphoneIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="m3 11 18-5v12L3 14v-3z" />
+      <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+    </svg>
   );
 }

@@ -111,6 +111,29 @@ function ko(
  */
 export const PREVIEW_BRACKET: { name: string; matches: Match[] }[] = [
   {
+    name: "Round of 32",
+    matches: [
+      // left half — winners advance to the left Round of 16
+      ko(93001, "Round of 32", nation(2, "France"), nation(201, "Ghana"), 3, 0),
+      ko(93002, "Round of 32", nation(10, "England"), nation(202, "Japan"), 2, 1),
+      ko(93003, "Round of 32", nation(6, "Brazil"), nation(203, "Switzerland"), 4, 1),
+      ko(93004, "Round of 32", nation(27, "Portugal"), nation(204, "Poland"), 2, 0),
+      ko(93005, "Round of 32", nation(9, "Spain"), nation(205, "Denmark"), 3, 1),
+      ko(93006, "Round of 32", nation(25, "Germany"), nation(206, "Ecuador"), 2, 1),
+      ko(93007, "Round of 32", nation(26, "Argentina"), nation(207, "Cameroon"), 2, 0),
+      ko(93008, "Round of 32", nation(1118, "Netherlands"), nation(208, "Serbia"), 3, 2),
+      // right half — winners advance to the right Round of 16
+      ko(93009, "Round of 32", nation(1, "Belgium"), nation(209, "Wales"), 1, 0),
+      ko(93010, "Round of 32", nation(3, "Croatia"), nation(210, "Tunisia"), 2, 1),
+      ko(93011, "Round of 32", nation(7, "Uruguay"), nation(211, "South Korea"), 3, 1),
+      ko(93012, "Round of 32", nation(31, "Morocco"), nation(212, "Australia"), 2, 0),
+      ko(93013, "Round of 32", nation(768, "Italy"), nation(213, "Nigeria"), 2, 1),
+      ko(93014, "Round of 32", nation(13, "Senegal"), nation(214, "Colombia"), 1, 0),
+      ko(93015, "Round of 32", nation(22, "USA"), nation(215, "Costa Rica"), 3, 2),
+      ko(93016, "Round of 32", nation(16, "Mexico"), nation(216, "Egypt"), 2, 1),
+    ],
+  },
+  {
     name: "Round of 16",
     matches: [
       // left half

@@ -123,8 +123,10 @@ export default async function HomePage() {
       </section>
 
       {/* Top Stories (enlarged) · World Cup top scorers (desktop only here; on
-          mobile it's rendered at the end of the rail instead). */}
-      <section className="mt-7 grid gap-4 lg:grid-cols-[1.85fr_1fr]">
+          mobile it's rendered at the end of the rail instead). Two columns only
+          when the sidebar is collapsed — when it's expanded the main column is
+          too narrow, so they stack to one column to avoid clipping. */}
+      <section className="mt-7 grid grid-cols-1 gap-4 sidebar-collapsed:lg:grid-cols-[1.85fr_1fr]">
         <TopStoriesCard featured={stories.featured} items={stories.items} />
         <div className="hidden lg:block">{worldCupScorers}</div>
       </section>

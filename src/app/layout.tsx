@@ -36,12 +36,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body>
-        {/* Apply the saved theme before paint to avoid a flash (dark is default). */}
+        {/* Apply the saved theme + sidebar state before paint to avoid a flash
+            (dark + expanded are the defaults). */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{if(localStorage.getItem('allinfootball.theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();`,
+            __html: `(function(){try{if(localStorage.getItem('allinfootball.theme')==='light')document.documentElement.setAttribute('data-theme','light');document.documentElement.setAttribute('data-sidebar',localStorage.getItem('allinfootball.sidebar.collapsed')==='1'?'collapsed':'expanded');}catch(e){}})();`,
           }}
         />
         {/* Shared brand-gradient def for the BallMark logo. Defined ONCE here (and

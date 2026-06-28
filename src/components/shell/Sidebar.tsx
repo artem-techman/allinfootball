@@ -38,6 +38,12 @@ export function Sidebar() {
     setCollapsed(cachedCollapsed);
   }, []);
 
+  // Mirror the collapsed state onto <html> so layout elsewhere (e.g. the home
+  // Top Stories grid) can respond to it via the `sidebar-collapsed` variant.
+  useEffect(() => {
+    document.documentElement.setAttribute("data-sidebar", collapsed ? "collapsed" : "expanded");
+  }, [collapsed]);
+
   function toggle() {
     setCollapsed((c) => {
       const next = !c;

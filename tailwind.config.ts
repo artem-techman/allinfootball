@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
 
 /**
  * Tailwind is driven ENTIRELY by the design tokens in globals.css (the 42 Soccer
@@ -108,7 +109,14 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    plugin(function ({ addVariant }) {
+      // Style based on the sidebar's collapsed/expanded state, mirrored onto
+      // <html data-sidebar> by the Sidebar component.
+      addVariant("sidebar-collapsed", 'html[data-sidebar="collapsed"] &');
+      addVariant("sidebar-expanded", 'html[data-sidebar="expanded"] &');
+    }),
+  ],
 };
 
 export default config;

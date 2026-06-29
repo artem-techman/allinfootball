@@ -15,8 +15,8 @@ export interface BracketRound {
 /**
  * The full knockout skeleton, outermost → Final. We always render every slot of
  * every round (16 → 8 → 4 → 2 → 1) even when the teams aren't known yet, so the
- * shape of the draw is visible from the group stage onward. `label` uses the
- * European fraction notation the way the rounds are commonly named.
+ * shape of the draw is visible from the group stage onward. `name` is the round
+ * title shown in the column header; `label` is the European fraction sublabel.
  */
 const SKELETON = [
   { name: "Round of 32", label: "1/16", total: 16 },
@@ -25,13 +25,13 @@ const SKELETON = [
   { name: "Semi-finals", label: "1/2", total: 2 },
 ] as const;
 
-/** Height of the matches area when docked in the card; every column shares it so
+/** Height of the matches area when docked; every column shares it so
  *  justify-around lines each match up with the centre of its two feeders. In
  *  full screen this grows to fill the viewport. */
 const DOCKED_H = 432;
 
 type Cell = { key: string; match: Match | null };
-type Column = { label: string; side: "L" | "R"; round: number; cells: Cell[] };
+type Column = { name: string; label: string; side: "L" | "R"; round: number; cells: Cell[] };
 
 export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -58,6 +58,7 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
   const leftColumns: Column[] = SKELETON.map((s, round) => {
     const half = s.total / 2;
     return {
+      name: s.name,
       label: s.label,
       side: "L" as const,
       round,
@@ -70,6 +71,7 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
   const rightColumns: Column[] = SKELETON.map((s, round) => {
     const half = s.total / 2;
     return {
+      name: s.name,
       label: s.label,
       side: "R" as const,
       round,
@@ -158,7 +160,7 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
       const sb = document.querySelector("[data-app-sidebar]");
       const r = sb?.getBoundingClientRect();
       setSidebarRight(r && r.width > 0 ? r.right : 0);
-      setAreaH(Math.max(DOCKED_H, window.innerHeight - 180));
+      setAreaH(Math.max(DOCKED_H, window.innerHeight - 200));
     };
     measure();
     const onKey = (e: KeyboardEvent) => {
@@ -179,12 +181,12 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
 
   const board = (
     <div ref={scrollRef} className={`overflow-x-auto pb-1 ${fits ? "flex justify-center" : ""}`}>
-      <div ref={contentRef} className="relative flex w-max items-stretch gap-[18px]">
-        {/* connector overlay — sits behind the cards, in the same coordinate
+      <div ref={contentRef} className="relative flex w-max items-stretch gap-[20px]">
+        {/* connector overlay — lime lines behind the cards, in the same coordinate
             space as the content so it scrolls with it */}
-        <svg className="pointer-events-none absolute inset-0 h-full w-full text-text-muted" aria-hidden>
+        <svg className="pointer-events-none absolute inset-0 h-full w-full text-accent-lime" aria-hidden>
           {paths.map((d, i) => (
-            <path key={i} d={d} fill="none" stroke="currentColor" strokeWidth={1.5} strokeOpacity={0.6} />
+            <path key={i} d={d} fill="none" stroke="currentColor" strokeWidth={1.5} strokeOpacity={0.55} />
           ))}
         </svg>
 
@@ -202,40 +204,40 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
   if (expanded && typeof document !== "undefined") {
     return createPortal(
       <div
-        className="fixed inset-0 z-[60] flex flex-col bg-page"
+        className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-page"
         style={{ left: sidebarRight }}
         role="dialog"
         aria-modal="true"
         aria-label="World Cup knockout bracket"
       >
-        <header className="flex items-center justify-between border-b border-hairline px-5 py-4">
-          <div>
-            <h2 className="text-section text-text-primary">World Cup Knockouts</h2>
-            <p className="mt-0.5 text-meta text-text-secondary">The full draw — scroll to explore both halves.</p>
-          </div>
+        <StadiumBackdrop />
+        <header className="relative flex items-center justify-between border-b border-white/10 px-5 py-4">
+          <BrandHeader />
           <button
             type="button"
             onClick={() => setExpanded(false)}
-            className="flex items-center gap-1.5 rounded-full border border-hairline px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+            className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-[12px] font-semibold text-text-secondary backdrop-blur-sm transition-colors hover:text-text-primary"
           >
             <CloseIcon size={14} /> Close
           </button>
         </header>
-        <div className="flex min-h-0 flex-1 items-center px-5 py-4">{board}</div>
+        <div className="relative flex min-h-0 flex-1 items-center px-5 py-4">{board}</div>
+        <div className="relative pb-4">
+          <Legend />
+        </div>
       </div>,
       document.body,
     );
   }
 
   return (
-    /* Clean brand-gradient frame (2px) around the card — no glow. */
-    <div className="mft-gradient-border rounded-card p-[2px] shadow-soft">
-      <section className="rounded-[14px] bg-card p-card">
-          <header className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-section text-text-primary">World Cup Knockouts</h2>
-              <p className="mt-0.5 text-meta text-text-secondary">The road to the final — scroll to follow the bracket.</p>
-            </div>
+    /* Thin brand-gradient frame; the section itself carries the stadium scene. */
+    <div className="mft-gradient-border rounded-card p-[1.5px] shadow-soft">
+      <section className="relative overflow-hidden rounded-[15px] bg-page">
+        <StadiumBackdrop />
+        <div className="relative p-card">
+          <header className="mb-5 flex items-start justify-between gap-3">
+            <BrandHeader />
             <div className="flex shrink-0 items-center gap-3">
               <Link
                 href="/competition/world-cup/fixtures"
@@ -247,7 +249,7 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
                 type="button"
                 onClick={() => setExpanded(true)}
                 aria-label="Open bracket full screen"
-                className="flex items-center gap-1.5 rounded-full border border-hairline px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+                className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-[12px] font-semibold text-text-secondary backdrop-blur-sm transition-colors hover:text-text-primary"
               >
                 <ExpandIcon size={14} /> Full screen
               </button>
@@ -255,24 +257,53 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
           </header>
 
           {board}
-        </section>
+          <Legend />
+        </div>
+      </section>
     </div>
   );
 }
 
-function ExpandIcon({ size = 16 }: { size?: number }) {
+/** The dark green stadium scene behind the bracket: image + contrast overlays +
+ *  a soft green pitch glow rising from the bottom centre. */
+function StadiumBackdrop() {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-    </svg>
+    <div aria-hidden className="pointer-events-none absolute inset-0">
+      <div className="absolute inset-0 bg-[url('/wc-bracket-bg.png')] bg-cover bg-center" />
+      <div className="absolute inset-0 bg-black/35" />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/55" />
+      <div className="absolute inset-x-0 bottom-0 top-1/3 bg-[radial-gradient(ellipse_55%_70%_at_50%_100%,rgba(91,200,80,0.20),transparent_70%)]" />
+    </div>
   );
 }
 
-function CloseIcon({ size = 16 }: { size?: number }) {
+/** Title block: a glowing green trophy badge + heading. */
+function BrandHeader() {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M18 6 6 18M6 6l12 12" />
-    </svg>
+    <div className="flex items-center gap-3">
+      <span className="grid h-11 w-11 place-items-center rounded-full border border-[rgba(91,200,80,0.5)] bg-accent-lime-soft shadow-[0_0_16px_rgba(91,200,80,0.35)]">
+        <TrophyIcon size={20} className="text-accent-lime" />
+      </span>
+      <div>
+        <h2 className="text-section text-text-primary">World Cup Knockouts</h2>
+        <p className="mt-0.5 text-meta text-text-secondary">The road to the final — scroll to follow the bracket.</p>
+      </div>
+    </div>
+  );
+}
+
+/** Bottom legend explaining the card states. */
+function Legend() {
+  return (
+    <div className="relative mt-4 flex items-center justify-center gap-5 text-[11px] text-text-secondary">
+      <span className="flex items-center gap-1.5">
+        <ShieldIcon className="text-accent-lime" /> Qualified
+      </span>
+      <span className="flex items-center gap-1.5">
+        <ShieldIcon className="text-text-muted" />
+        <span className="font-semibold text-text-primary">TBD</span> · To be determined
+      </span>
+    </div>
   );
 }
 
@@ -286,13 +317,10 @@ function BracketColumn({
   register: (key: string, el: HTMLElement | null) => void;
 }) {
   return (
-    <div className="relative z-10 flex w-[100px] shrink-0 flex-col">
-      <div
-        className={`mb-2 text-[10px] font-bold uppercase tracking-wide text-text-muted ${
-          column.side === "L" ? "text-left" : "text-right"
-        }`}
-      >
-        {column.label}
+    <div className="relative z-10 flex w-[136px] shrink-0 flex-col">
+      <div className="mb-3 text-center leading-tight">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-text-primary">{column.name}</div>
+        <div className="text-[11px] font-bold text-accent-lime">{column.label}</div>
       </div>
       <div className="flex flex-col justify-around" style={{ height: areaH }}>
         {column.cells.map((cell) => (
@@ -313,17 +341,26 @@ function FinalColumn({
   register: (key: string, el: HTMLElement | null) => void;
 }) {
   return (
-    <div className="relative z-10 flex w-[132px] shrink-0 flex-col">
-      <div className="mb-2 flex items-center justify-center gap-1 text-[11px] font-extrabold uppercase tracking-wide text-text-primary">
-        <TrophyIcon size={13} /> Final
+    <div className="relative z-10 flex w-[164px] shrink-0 flex-col">
+      {/* green light beam rising behind the Final */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-0 -z-10 h-full w-[240px] -translate-x-1/2 bg-[radial-gradient(ellipse_42%_55%_at_50%_52%,rgba(91,200,80,0.45),transparent_70%)] blur-md"
+      />
+      <div className="relative mb-3 flex flex-col items-center gap-1">
+        <TrophyIcon size={24} className="text-accent-lime drop-shadow-[0_0_10px_rgba(91,200,80,0.9)]" />
+        <span className="text-[11px] font-extrabold uppercase tracking-[0.15em] text-text-primary">Final</span>
       </div>
-      <div className="flex flex-col justify-around" style={{ height: areaH }}>
-        <div ref={(el) => register("F", el)} className="rounded-tile bg-accent-gradient p-[2px] shadow-elevated">
-          <div className="rounded-[10px] bg-card-2 p-2">
+      <div className="relative flex flex-col justify-around" style={{ height: areaH }}>
+        <div
+          ref={(el) => register("F", el)}
+          className="rounded-[12px] bg-accent-gradient p-[2px] shadow-[0_0_28px_rgba(91,200,80,0.5)]"
+        >
+          <div className="rounded-[10px] bg-black/75 p-2 backdrop-blur-sm">
             {match ? (
               <Link href={`/match/${match.slug}`} className="block">
                 <TeamLine match={match} side="home" />
-                <div className="my-1 h-px bg-hairline" />
+                <div className="my-1 h-px bg-white/10" />
                 <TeamLine match={match} side="away" />
               </Link>
             ) : (
@@ -339,7 +376,7 @@ function FinalColumn({
 function MatchCard({ match, cellRef }: { match: Match | null; cellRef: (el: HTMLElement | null) => void }) {
   if (!match) {
     return (
-      <div ref={cellRef} className="rounded-tile border border-dashed border-hairline bg-card-2 p-1.5">
+      <div ref={cellRef} className="rounded-[10px] border border-dashed border-white/10 bg-black/30 p-2 backdrop-blur-sm">
         <Placeholder />
       </div>
     );
@@ -348,10 +385,10 @@ function MatchCard({ match, cellRef }: { match: Match | null; cellRef: (el: HTML
     <Link
       ref={cellRef}
       href={`/match/${match.slug}`}
-      className="block rounded-tile border border-hairline bg-card-2 p-1.5 transition-colors hover:border-white/15"
+      className="block rounded-[10px] border border-white/10 bg-black/40 p-2 backdrop-blur-sm transition-colors hover:border-[rgba(91,200,80,0.5)]"
     >
       <TeamLine match={match} side="home" />
-      <div className="my-1 h-px bg-hairline" />
+      <div className="my-1 h-px bg-white/10" />
       <TeamLine match={match} side="away" />
     </Link>
   );
@@ -360,14 +397,14 @@ function MatchCard({ match, cellRef }: { match: Match | null; cellRef: (el: HTML
 /** Two empty rows for a tie whose teams aren't decided yet. */
 function Placeholder() {
   return (
-    <div className="text-[11px] text-text-muted">
-      <div className="flex items-center gap-1.5 py-0.5">
-        <span className="h-[14px] w-[14px] shrink-0 rounded-full bg-white/5" />
+    <div className="text-[12px] text-text-muted">
+      <div className="flex items-center gap-2 py-0.5">
+        <ShieldIcon className="shrink-0 text-text-muted" />
         <span className="flex-1 truncate">TBD</span>
       </div>
-      <div className="my-1 h-px bg-hairline" />
-      <div className="flex items-center gap-1.5 py-0.5">
-        <span className="h-[14px] w-[14px] shrink-0 rounded-full bg-white/5" />
+      <div className="my-1 h-px bg-white/10" />
+      <div className="flex items-center gap-2 py-0.5">
+        <ShieldIcon className="shrink-0 text-text-muted" />
         <span className="flex-1 truncate">TBD</span>
       </div>
     </div>
@@ -381,14 +418,44 @@ function TeamLine({ match, side }: { match: Match; side: "home" | "away" }) {
   const played = score != null && other != null;
   const win = played && score > other;
   return (
-    <div className="flex items-center gap-1.5">
-      <Crest src={team?.crest} name={team?.name ?? "TBD"} size={14} />
-      <span className={`min-w-0 flex-1 truncate text-[11px] ${win ? "font-bold text-text-primary" : "text-text-secondary"}`}>
+    <div className="flex items-center gap-2 py-0.5">
+      <Crest src={team?.crest} name={team?.name ?? "TBD"} size={16} />
+      <span className={`min-w-0 flex-1 truncate text-[12px] ${win ? "font-bold text-text-primary" : "text-text-secondary"}`}>
         {team?.name ?? "TBD"}
       </span>
-      <span className={`tabular w-3 shrink-0 text-right text-[11px] ${win ? "font-bold text-text-primary" : "text-text-secondary"}`}>
-        {score ?? ""}
-      </span>
+      {played && (
+        <span
+          className={`tabular min-w-[18px] rounded bg-white/5 px-1 text-center text-[11px] ${
+            win ? "font-bold text-text-primary" : "text-text-secondary"
+          }`}
+        >
+          {score}
+        </span>
+      )}
     </div>
+  );
+}
+
+function ExpandIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+    </svg>
+  );
+}
+
+function CloseIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+function ShieldIcon({ size = 14, className }: { size?: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden>
+      <path d="M12 2 4 5v6c0 5 3.4 8.5 8 11 4.6-2.5 8-6 8-11V5l-8-3z" opacity={0.9} />
+    </svg>
   );
 }

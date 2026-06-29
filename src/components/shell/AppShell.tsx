@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { Sidebar } from "./Sidebar";
 import { MobileNav } from "./MobileNav";
 import { PageTransition } from "./PageTransition";
-import { BallMark } from "@/components/primitives/BallMark";
+import { Logo } from "@/components/primitives/Logo";
 
 /**
  * 3-column responsive shell (CLAUDE.md section 12). Sidebar 240px fixed, main
@@ -32,10 +31,7 @@ export function AppShell({
     <div className="min-h-screen bg-page">
       {/* mobile top bar (sidebar collapses below 820px) */}
       <div className="sticky top-0 z-40 flex items-center justify-between border-b border-hairline bg-card px-4 py-3 min-[821px]:hidden">
-        <Link href="/" aria-label="My Football Tracker home" className="inline-flex items-center gap-2 text-text-primary">
-          <BallMark className="h-8 w-8 shrink-0" />
-          <span className="text-cardtitle font-bold">My Football Tracker</span>
-        </Link>
+        <Logo />
         <MobileNav />
       </div>
 

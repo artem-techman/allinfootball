@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Logo } from "@/components/primitives/Logo";
-import { ThemeToggle } from "./ThemeToggle";
 import { NAV, isNavActive } from "./navItems";
 import { PanelLeftIcon } from "@/components/primitives/icons";
 
@@ -106,9 +105,6 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto pt-4">
-        <div className={`mb-2 ${collapsed ? "flex justify-center" : ""}`}>
-          <ThemeToggle collapsed={collapsed} />
-        </div>
         {/* The ad banner shows only when the sidebar is expanded. */}
         {!collapsed && (
           <a

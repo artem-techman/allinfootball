@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Logo } from "@/components/primitives/Logo";
-import { ThemeToggle } from "./ThemeToggle";
 import { NAV, isNavActive } from "./navItems";
 import { MenuIcon, CloseIcon } from "@/components/primitives/icons";
 
@@ -110,10 +109,6 @@ export function MobileNav() {
                 );
               })}
             </nav>
-
-            <div className="mt-auto">
-              <ThemeToggle />
-            </div>
           </div>
         </div>
       )}

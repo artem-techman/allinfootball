@@ -8,8 +8,7 @@
  * (#D9FF3F) used sparingly for actions/live/active states, and 42 Electric
  * (#5A38FF) for rare premium/hero highlights. These CSS variables are the single
  * source of truth for color; tailwind.config.ts and design/tokens.ts mirror
- * them. A light variant lives under [data-theme="light"] — theme is a token
- * swap, never a rewrite.
+ * them. The platform is night-mode only — there is no light variant.
  */
 :root {
   /* brand accents — My Football Tracker green (#23A455) */
@@ -42,19 +41,6 @@
   --live-red: #ff4d4d;
   --live-minute: #d9ff3f;
   --star-gold: #ffb627;
-}
-
-/* Light variant — token swap only (accent + live colors stay). */
-[data-theme="light"] {
-  --page-bg: #f6f7f9;
-  --card-bg: #ffffff;
-  --card-bg-2: #f8f9fb;
-  --surface-dark: #101114;
-  --surface-dark-2: #1a1c20;
-  --border-hairline: #eceef1;
-  --text-primary: #111111;
-  --text-secondary: #5b606b;
-  --text-muted: #70757e; /* AA contrast on light surfaces */
 }
 
 * {

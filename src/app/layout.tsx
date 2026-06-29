@@ -43,11 +43,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body>
-        {/* Apply the saved theme + sidebar state before paint to avoid a flash
-            (dark + expanded are the defaults). */}
+        {/* Apply the saved sidebar state before paint to avoid a flash
+            (expanded is the default). The platform is night-mode only. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{if(localStorage.getItem('allinfootball.theme')==='light')document.documentElement.setAttribute('data-theme','light');document.documentElement.setAttribute('data-sidebar',localStorage.getItem('allinfootball.sidebar.collapsed')==='1'?'collapsed':'expanded');}catch(e){}})();`,
+            __html: `(function(){try{document.documentElement.setAttribute('data-sidebar',localStorage.getItem('allinfootball.sidebar.collapsed')==='1'?'collapsed':'expanded');}catch(e){}})();`,
           }}
         />
         {/* Shared brand-gradient def for the BallMark logo. Defined ONCE here (and

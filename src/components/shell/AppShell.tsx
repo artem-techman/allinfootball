@@ -18,10 +18,13 @@ import { BallMark } from "@/components/primitives/BallMark";
 export function AppShell({
   children,
   rail,
+  below,
   wide = false,
 }: {
   children: ReactNode;
   rail?: ReactNode;
+  /** Full-width content rendered below the main+rail row (spans both columns). */
+  below?: ReactNode;
   /** Drop the ~880px main cap (for wide tables: standings, squads). */
   wide?: boolean;
 }) {
@@ -42,16 +45,19 @@ export function AppShell({
           <Sidebar />
         </div>
 
-        {/* main + rail */}
-        <div className="flex min-w-0 flex-1 flex-col gap-6 py-6 min-[1201px]:flex-row min-[1201px]:items-start">
-          <main className={`min-w-0 flex-1 px-4 min-[821px]:px-7 ${wide ? "" : "min-[1201px]:max-w-main"}`}>
-            <PageTransition>{children}</PageTransition>
-          </main>
-          {rail && (
-            <div className="w-full shrink-0 space-y-5 px-4 min-[821px]:px-7 min-[1201px]:w-rail min-[1201px]:px-0">
-              {rail}
-            </div>
-          )}
+        {/* content column: the main+rail row, then any full-width `below` */}
+        <div className="flex min-w-0 flex-1 flex-col gap-6 py-6">
+          <div className="flex flex-col gap-6 min-[1201px]:flex-row min-[1201px]:items-start">
+            <main className={`min-w-0 flex-1 px-4 min-[821px]:px-7 ${wide ? "" : "min-[1201px]:max-w-main"}`}>
+              <PageTransition>{children}</PageTransition>
+            </main>
+            {rail && (
+              <div className="w-full shrink-0 space-y-5 px-4 min-[821px]:px-7 min-[1201px]:w-rail min-[1201px]:px-0">
+                {rail}
+              </div>
+            )}
+          </div>
+          {below && <div className="px-4 min-[821px]:px-7">{below}</div>}
         </div>
       </div>
     </div>

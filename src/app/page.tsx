@@ -79,6 +79,11 @@ export default async function HomePage() {
           <div className="lg:hidden">{worldCupScorers}</div>
         </>
       }
+      below={
+        /* Standalone, full-width section spanning both columns at the very
+           bottom of the page. */
+        <WorldCupBracket rounds={bracketToShow} />
+      }
     >
       <GreetingHeader />
 
@@ -129,12 +134,6 @@ export default async function HomePage() {
       <section className="mt-7 grid grid-cols-1 gap-4 sidebar-collapsed:lg:grid-cols-[1.85fr_1fr]">
         <TopStoriesCard featured={stories.featured} items={stories.items} />
         <div className="hidden lg:block">{worldCupScorers}</div>
-      </section>
-
-      {/* World Cup knockout bracket — the dedicated widget at the bottom of the
-          home page, with both halves converging on the Final in the centre. */}
-      <section className="mt-7">
-        <WorldCupBracket rounds={bracketToShow} />
       </section>
     </AppShell>
   );

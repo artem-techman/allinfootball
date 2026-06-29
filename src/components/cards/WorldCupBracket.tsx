@@ -228,15 +228,9 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
   }
 
   return (
-    <div className="relative">
-      {/* Soft glow halo that bleeds outward to make the section pop. */}
-      <div
-        aria-hidden
-        className="mft-gradient-border pointer-events-none absolute -inset-1.5 rounded-[22px] opacity-50 blur-lg"
-      />
-      {/* Rotating brand-gradient border ring (2px) around the dark card. */}
-      <div className="mft-gradient-border relative rounded-card p-[2px] shadow-elevated">
-        <section className="rounded-[14px] bg-card p-card">
+    /* Clean brand-gradient frame (2px) around the card — no glow. */
+    <div className="mft-gradient-border rounded-card p-[2px] shadow-soft">
+      <section className="rounded-[14px] bg-card p-card">
           <header className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-section text-text-primary">World Cup Knockouts</h2>
@@ -262,7 +256,6 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
 
           {board}
         </section>
-      </div>
     </div>
   );
 }

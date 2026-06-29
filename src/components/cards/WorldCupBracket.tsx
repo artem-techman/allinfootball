@@ -181,7 +181,7 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
 
   const board = (
     <div ref={scrollRef} className={`overflow-x-auto pb-1 ${fits ? "flex justify-center" : ""}`}>
-      <div ref={contentRef} className="relative flex w-max items-stretch gap-[20px]">
+      <div ref={contentRef} className="relative flex w-max items-stretch gap-[16px]">
         {/* connector overlay — lime lines behind the cards, in the same coordinate
             space as the content so it scrolls with it */}
         <svg className="pointer-events-none absolute inset-0 h-full w-full text-accent-lime" aria-hidden>
@@ -316,8 +316,11 @@ function BracketColumn({
   areaH: number;
   register: (key: string, el: HTMLElement | null) => void;
 }) {
+  // A column whose ties are all undecided only needs room for "TBD", so it's
+  // narrowed to keep the whole diagram compact.
+  const allTbd = column.cells.every((c) => c.match === null);
   return (
-    <div className="relative z-10 flex w-[136px] shrink-0 flex-col">
+    <div className={`relative z-10 flex shrink-0 flex-col ${allTbd ? "w-[88px]" : "w-[126px]"}`}>
       <div className="mb-3 text-center leading-tight">
         <div className="text-[10px] font-bold uppercase tracking-wider text-text-primary">{column.name}</div>
         <div className="text-[11px] font-bold text-accent-lime">{column.label}</div>
@@ -341,7 +344,7 @@ function FinalColumn({
   register: (key: string, el: HTMLElement | null) => void;
 }) {
   return (
-    <div className="relative z-10 flex w-[164px] shrink-0 flex-col">
+    <div className={`relative z-10 flex shrink-0 flex-col ${match ? "w-[150px]" : "w-[120px]"}`}>
       {/* green light beam rising behind the Final */}
       <div
         aria-hidden

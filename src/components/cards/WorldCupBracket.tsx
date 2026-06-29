@@ -129,12 +129,16 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
     if (sc) {
       const fitsNow = sc.scrollWidth <= sc.clientWidth + 1;
       setFits(fitsNow);
-      // When the tree is wider than the viewport we can't flex-centre it, so keep
-      // it scroll-centred on the Final (equal clip on both sides). This runs on
-      // every resize — including a sidebar toggle — so it re-centres instead of
-      // drifting left. ResizeObserver never fires on plain scrolling, so a user's
-      // manual horizontal scroll is preserved.
-      if (!fitsNow) sc.scrollLeft = (sc.scrollWidth - sc.clientWidth) / 2;
+      // When the tree is wider than the viewport we can't flex-centre it. On
+      // desktop we scroll-centre on the Final (equal clip on both sides); on
+      // mobile we anchor hard left so the first games are visible instead of the
+      // empty middle. Runs on every resize — including a sidebar toggle — so it
+      // re-positions correctly. ResizeObserver never fires on plain scrolling, so
+      // a user's manual horizontal scroll is preserved.
+      if (!fitsNow) {
+        const mobile = window.matchMedia("(max-width: 820px)").matches;
+        sc.scrollLeft = mobile ? 0 : (sc.scrollWidth - sc.clientWidth) / 2;
+      }
     }
   }, [rounds]);
 
@@ -291,7 +295,10 @@ function BrandHeader() {
       </span>
       <div>
         <h2 className="text-section text-text-primary">World Cup Knockouts</h2>
-        <p className="mt-0.5 text-meta text-text-secondary">The road to the final — scroll to follow the bracket.</p>
+        {/* Hidden on mobile, where horizontal space is tight. */}
+        <p className="mt-0.5 hidden text-meta text-text-secondary min-[821px]:block">
+          The road to the final — scroll to follow the bracket.
+        </p>
       </div>
     </div>
   );

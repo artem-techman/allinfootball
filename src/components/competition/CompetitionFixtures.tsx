@@ -20,13 +20,27 @@ export function CompetitionFixtures({ matches }: { matches: Match[] }) {
     byRound.set(round, arr);
   }
 
+  // A round is "upcoming" while any of its ties is still to be played. We lead
+  // with upcoming rounds (soonest first) so the current stage — e.g. the World
+  // Cup knockouts — is at the top, then list completed rounds most-recent first.
+  const isPending = (m: Match) => m.status !== "finished" && m.status !== "cancelled" && m.status !== "abandoned";
+
   const groups = [...byRound.entries()]
-    .map(([round, ms]) => ({
-      round,
-      matches: ms.sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc)),
-      first: ms.reduce((min, m) => (m.kickoffUtc < min ? m.kickoffUtc : min), ms[0].kickoffUtc),
-    }))
-    .sort((a, b) => a.first.localeCompare(b.first));
+    .map(([round, ms]) => {
+      const sorted = ms.sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc));
+      return {
+        round,
+        matches: sorted,
+        upcoming: sorted.some(isPending),
+        first: sorted[0].kickoffUtc,
+        last: sorted[sorted.length - 1].kickoffUtc,
+      };
+    })
+    .sort((a, b) => {
+      if (a.upcoming !== b.upcoming) return a.upcoming ? -1 : 1; // future rounds first
+      if (a.upcoming) return a.first.localeCompare(b.first); // soonest upcoming first
+      return b.last.localeCompare(a.last); // most-recent results first
+    });
 
   return (
     <div className="space-y-4">

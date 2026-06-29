@@ -20,6 +20,7 @@ import { getNews } from "@/lib/news";
 import type { Article, Match, Standing } from "@/lib/providers/types";
 import { todayKey, shiftDateKey } from "@/lib/utils/date";
 import { getCompetitionBySlug, isInScope } from "@/lib/constants/competitions";
+import { loadWorldCupBracket } from "@/lib/worldcup/bracket";
 import { PREVIEW_UPCOMING, PREVIEW_RESULTS, PREVIEW_STANDINGS, PREVIEW_STORIES, PREVIEW_SCORERS, PREVIEW_HERO, PREVIEW_BRACKET } from "@/lib/preview/homePreview";
 
 export const dynamic = "force-dynamic";
@@ -198,46 +199,6 @@ async function loadHomeData(): Promise<{
     .sort((a, b) => b.kickoffUtc.localeCompare(a.kickoffUtc))
     .slice(0, 3);
   return { upcoming, results, standings, scorers, bracket, news, transferNews };
-}
-
-/** Knockout-round ordering, outermost → Final. */
-const KO_ORDER = ["Round of 32", "Round of 16", "Quarter-finals", "Semi-finals", "Final"];
-
-/** Map a raw API round string onto one of our bracket rounds, or null if it's a
- *  group-stage match (or the third-place play-off, which sits outside the tree). */
-function knockoutRound(round?: string): string | null {
-  if (!round) return null;
-  const r = round.toLowerCase();
-  if (r.includes("3rd place") || r.includes("third place")) return null;
-  if (r.includes("round of 32")) return "Round of 32";
-  if (r.includes("round of 16") || r.includes("8th finals")) return "Round of 16";
-  if (r.includes("quarter")) return "Quarter-finals";
-  if (r.includes("semi")) return "Semi-finals";
-  if (r.includes("final")) return "Final";
-  return null;
-}
-
-/** The World Cup knockout bracket, grouped by round (outermost → Final). One
- *  cached fixtures-by-league call; returns [] (→ demo bracket) before the
- *  knockout stage exists or on any failure. */
-async function loadWorldCupBracket(): Promise<BracketRound[]> {
-  const wc = getCompetitionBySlug(TOP_TABLE_SLUG);
-  if (!wc) return [];
-  try {
-    const fixtures = await provider.getFixturesByLeague(wc.leagueId, wc.defaultSeason);
-    const byRound = new Map<string, Match[]>();
-    for (const m of fixtures) {
-      const name = knockoutRound(m.round);
-      if (!name) continue;
-      (byRound.get(name) ?? byRound.set(name, []).get(name)!).push(m);
-    }
-    return KO_ORDER.filter((name) => byRound.has(name)).map((name) => ({
-      name,
-      matches: byRound.get(name)!.sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc)),
-    }));
-  } catch {
-    return [];
-  }
 }
 
 /** Biggest goal scorers of the World Cup, as a compact leaderboard (top 5). */

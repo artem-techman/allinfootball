@@ -113,11 +113,11 @@ export function LiveNowRail({
   const live = (matches ?? []).filter((m) => m.status === "live" || m.status === "ht");
   const hasLive = live.length > 0;
 
-  return (
+  const card = (
     <section
-      className={`relative overflow-hidden rounded-card border border-hairline bg-card p-card ${
-        celebrate != null ? "animate-goal-react" : ""
-      }`}
+      className={`relative overflow-hidden bg-card p-card ${
+        hasLive ? "rounded-[15px]" : "rounded-card border border-hairline"
+      } ${celebrate != null ? "animate-goal-react" : ""}`}
     >
       {celebrate != null && <GoalCelebration key={celebrate} />}
       <header className="mb-1 flex items-center justify-between">
@@ -190,6 +190,13 @@ export function LiveNowRail({
       {isPreview && <span className="sr-only">Showing sample data</span>}
     </section>
   );
+
+  // While a match is live, frame the widget in the same brand gradient border as
+  // the World Cup Knockouts widget.
+  if (hasLive) {
+    return <div className="mft-gradient-border rounded-card p-[1.5px] shadow-soft">{card}</div>;
+  }
+  return card;
 }
 
 function Row({

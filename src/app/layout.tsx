@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "@/styles/globals.css";
+
+// GA4 Measurement ID (G-XXXXXXXXXX). Set NEXT_PUBLIC_GA_ID in the environment
+// to enable analytics; left unset, no tracking script is loaded.
+const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
 const inter = Inter({
   subsets: ["latin"],
@@ -60,6 +65,7 @@ export default function RootLayout({
         </svg>
         {children}
       </body>
+      {GA_ID && <GoogleAnalytics gaId={GA_ID} />}
     </html>
   );
 }

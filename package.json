@@ -16,6 +16,7 @@
     "smoke": "tsx src/test/smoke.ts"
   },
   "dependencies": {
+    "@next/third-parties": "^15.5.19",
     "next": "^15.5.19",
     "react": "19.0.0",
     "react-dom": "19.0.0",

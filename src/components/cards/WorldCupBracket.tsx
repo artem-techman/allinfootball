@@ -126,7 +126,16 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
 
     setPaths(out.filter((p): p is string => p !== null));
     const sc = scrollRef.current;
-    if (sc) setFits(sc.scrollWidth <= sc.clientWidth + 1);
+    if (sc) {
+      const fitsNow = sc.scrollWidth <= sc.clientWidth + 1;
+      setFits(fitsNow);
+      // When the tree is wider than the viewport we can't flex-centre it, so keep
+      // it scroll-centred on the Final (equal clip on both sides). This runs on
+      // every resize — including a sidebar toggle — so it re-centres instead of
+      // drifting left. ResizeObserver never fires on plain scrolling, so a user's
+      // manual horizontal scroll is preserved.
+      if (!fitsNow) sc.scrollLeft = (sc.scrollWidth - sc.clientWidth) / 2;
+    }
   }, [rounds]);
 
   // re-measure connectors after layout, and whenever the size/mode changes
@@ -134,20 +143,16 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
   useLayoutEffect(() => {
     recompute();
     const content = contentRef.current;
+    const scroll = scrollRef.current;
     if (!content) return;
     const ro = new ResizeObserver(recompute);
     ro.observe(content);
+    // Also watch the scroll container: when the sidebar toggles, the available
+    // width changes (but the w-max content width doesn't), so this is what tells
+    // us the bracket now fits and can re-centre.
+    if (scroll) ro.observe(scroll);
     return () => ro.disconnect();
   }, [recompute, expanded, areaH]);
-
-  // centre the horizontal scroll on the Final (when the tree overflows) so it
-  // reads as symmetric; re-runs on mode/size change.
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (el && !fits && el.scrollWidth > el.clientWidth + 1) {
-      el.scrollLeft = (el.scrollWidth - el.clientWidth) / 2;
-    }
-  }, [fits, expanded, areaH]);
 
   // full-screen lifecycle: lock body scroll, grow the bracket to the viewport,
   // measure the sidebar so the overlay starts at its right edge, close on Esc.

@@ -228,32 +228,42 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
   }
 
   return (
-    <section className="rounded-card border border-hairline bg-card p-card">
-      <header className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-section text-text-primary">World Cup Knockouts</h2>
-          <p className="mt-0.5 text-meta text-text-secondary">The road to the final — scroll to follow the bracket.</p>
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <Link
-            href="/competition/world-cup/fixtures"
-            className="hidden items-center gap-1 text-[12px] font-semibold text-text-secondary hover:text-text-primary sm:flex"
-          >
-            Full schedule <ChevronRightIcon size={14} />
-          </Link>
-          <button
-            type="button"
-            onClick={() => setExpanded(true)}
-            aria-label="Open bracket full screen"
-            className="flex items-center gap-1.5 rounded-full border border-hairline px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
-          >
-            <ExpandIcon size={14} /> Full screen
-          </button>
-        </div>
-      </header>
+    <div className="relative">
+      {/* Soft glow halo that bleeds outward to make the section pop. */}
+      <div
+        aria-hidden
+        className="mft-gradient-border pointer-events-none absolute -inset-1.5 rounded-[22px] opacity-50 blur-lg"
+      />
+      {/* Rotating brand-gradient border ring (2px) around the dark card. */}
+      <div className="mft-gradient-border relative rounded-card p-[2px] shadow-elevated">
+        <section className="rounded-[14px] bg-card p-card">
+          <header className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-section text-text-primary">World Cup Knockouts</h2>
+              <p className="mt-0.5 text-meta text-text-secondary">The road to the final — scroll to follow the bracket.</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <Link
+                href="/competition/world-cup/fixtures"
+                className="hidden items-center gap-1 text-[12px] font-semibold text-text-secondary hover:text-text-primary sm:flex"
+              >
+                Full schedule <ChevronRightIcon size={14} />
+              </Link>
+              <button
+                type="button"
+                onClick={() => setExpanded(true)}
+                aria-label="Open bracket full screen"
+                className="flex items-center gap-1.5 rounded-full border border-hairline px-3 py-1.5 text-[12px] font-semibold text-text-secondary transition-colors hover:text-text-primary"
+              >
+                <ExpandIcon size={14} /> Full screen
+              </button>
+            </div>
+          </header>
 
-      {board}
-    </section>
+          {board}
+        </section>
+      </div>
+    </div>
   );
 }
 

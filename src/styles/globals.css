@@ -97,3 +97,32 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Animated brand-gradient border for standout sections (World Cup Knockouts).
+   The conic gradient sweeps through our green→lime palette and slowly rotates
+   via an animated @property angle, so it works at any element size without
+   physically rotating the box. Reduced-motion users get the static gradient
+   (the global rule above neutralises the spin). */
+@property --mft-border-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes mft-border-spin {
+  to {
+    --mft-border-angle: 360deg;
+  }
+}
+.mft-gradient-border {
+  background: conic-gradient(
+    from var(--mft-border-angle),
+    #1c8a47,
+    #23a455,
+    #5bc850,
+    #d9ff3f,
+    #5bc850,
+    #23a455,
+    #1c8a47
+  );
+  animation: mft-border-spin 8s linear infinite;
+}

@@ -123,8 +123,8 @@ export function LiveNowRail({
       <header className="mb-1 flex items-center justify-between">
         <h3 className="text-cardtitle text-text-primary">Live Now</h3>
         {hasLive ? (
-          <Pill tone="live">
-            <span className="mr-1 inline-block h-1.5 w-1.5 animate-live-pulse rounded-full bg-text-on-dark" />
+          <Pill tone="lime">
+            <span className="mr-1 inline-block h-1.5 w-1.5 animate-live-pulse rounded-full bg-current" />
             Live
           </Pill>
         ) : (

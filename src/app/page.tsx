@@ -71,8 +71,8 @@ export default async function HomePage() {
           <div className="hidden min-[1201px]:block">
             <LiveNowRail nextMatch={nextUpcoming} />
           </div>
-          <TopTableRail initialSlug={TOP_TABLE_SLUG} initialRows={standingsToShow} />
           <LatestResultsRail matches={resultsToShow} />
+          <TopTableRail initialSlug={TOP_TABLE_SLUG} initialRows={standingsToShow} />
           <TransferRumoursRail articles={transferNews} />
           {/* On mobile the rail stacks below main, so the World Cup scorers card
               here makes it the last section. On desktop (≥1024px) it shows beside

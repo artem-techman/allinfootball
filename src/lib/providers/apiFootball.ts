@@ -74,6 +74,7 @@ interface RawFixture {
   league: { id: number; season: number; round?: string };
   teams: { home: RawTeam; away: RawTeam };
   goals: { home: number | null; away: number | null };
+  score?: { penalty?: { home: number | null; away: number | null } };
 }
 
 /* ------------------------------- fetch plumbing ------------------------------- */
@@ -242,6 +243,12 @@ export function mapFixture(raw: RawFixture): Match {
     awayTeamId: away.id,
     homeScore: raw.goals.home ?? undefined,
     awayScore: raw.goals.away ?? undefined,
+    homePenalty: raw.score?.penalty?.home ?? undefined,
+    awayPenalty: raw.score?.penalty?.away ?? undefined,
+    // The provider flags the overall winner (after extra time / penalties), which
+    // is more reliable than comparing the level regulation score of a shootout.
+    winnerTeamId:
+      raw.teams.home.winner === true ? home.id : raw.teams.away.winner === true ? away.id : undefined,
     venueId: raw.fixture.venue?.id ?? undefined,
     venueName: raw.fixture.venue?.name ?? undefined,
     city: raw.fixture.venue?.city ?? undefined,

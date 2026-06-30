@@ -69,6 +69,11 @@ export interface Match {
   awayTeamId: number;
   homeScore?: number;
   awayScore?: number;
+  /** Penalty-shootout score, set only when a knockout tie went to penalties. */
+  homePenalty?: number;
+  awayPenalty?: number;
+  /** Winning team id per the provider (covers extra time and penalties); undefined for a draw/undecided. */
+  winnerTeamId?: number;
   venueId?: number;
   refereeId?: number;
   attendance?: number;

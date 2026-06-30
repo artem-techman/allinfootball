@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Match } from "@/lib/providers/types";
 import { Crest } from "@/components/primitives/Crest";
 import { LocalTime } from "@/components/primitives/LocalTime";
+import { matchWinner, hasShootout } from "@/lib/utils/match";
 
 /**
  * Compact match row used in lists/rails. Status drives the right-hand cell:
@@ -16,6 +17,10 @@ export function MatchCard({ match }: { match: Match }) {
   const home = match.homeTeam;
   const away = match.awayTeam;
   const hasScore = match.homeScore != null && match.awayScore != null;
+  // Emphasise the winner once finished (covers extra time / penalties); show the
+  // shootout digits when a knockout tie went to penalties.
+  const winner = match.status === "finished" ? matchWinner(match) : null;
+  const pens = hasShootout(match);
 
   return (
     <Link
@@ -23,8 +28,8 @@ export function MatchCard({ match }: { match: Match }) {
       className="flex items-center gap-3 rounded-tile px-2 py-2 transition-colors hover:bg-[var(--page-bg)]"
     >
       <div className="min-w-0 flex-1 space-y-1">
-        <TeamRow name={home?.name ?? "Home"} crest={home?.crest} score={match.homeScore} showScore={hasScore} />
-        <TeamRow name={away?.name ?? "Away"} crest={away?.crest} score={match.awayScore} showScore={hasScore} />
+        <TeamRow name={home?.name ?? "Home"} crest={home?.crest} score={match.homeScore} pen={pens ? match.homePenalty : undefined} showScore={hasScore} win={winner === "home"} dim={winner === "away"} />
+        <TeamRow name={away?.name ?? "Away"} crest={away?.crest} score={match.awayScore} pen={pens ? match.awayPenalty : undefined} showScore={hasScore} win={winner === "away"} dim={winner === "home"} />
       </div>
       <div className="shrink-0 text-right">
         <StatusCell match={match} />
@@ -37,19 +42,27 @@ function TeamRow({
   name,
   crest,
   score,
+  pen,
   showScore,
+  win,
+  dim,
 }: {
   name: string;
   crest?: string;
   score?: number;
+  pen?: number;
   showScore: boolean;
+  win?: boolean;
+  dim?: boolean;
 }) {
+  const tone = dim ? "text-text-secondary" : "text-text-primary";
   return (
     <div className="flex items-center gap-2">
       <Crest src={crest} name={name} size={18} />
-      <span className="min-w-0 flex-1 truncate text-body text-text-primary">{name}</span>
+      <span className={`min-w-0 flex-1 truncate text-body ${win ? "font-semibold" : ""} ${tone}`}>{name}</span>
+      {pen != null && <span className="tabular shrink-0 text-[11px] text-text-muted">({pen})</span>}
       {showScore && (
-        <span className="tabular w-5 text-right text-body font-semibold text-text-primary">
+        <span className={`tabular w-5 text-right text-body font-semibold ${tone}`}>
           {score ?? "-"}
         </span>
       )}

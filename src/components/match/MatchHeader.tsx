@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Match, MatchEvent } from "@/lib/providers/types";
 import { Crest } from "@/components/primitives/Crest";
 import { LocalTime } from "@/components/primitives/LocalTime";
+import { hasShootout } from "@/lib/utils/match";
 
 /**
  * Match center header (CLAUDE.md section 8): competition/round breadcrumb, both
@@ -69,11 +70,17 @@ function ScoreCol({ match }: { match: Match }) {
     );
   }
   const hasScore = match.homeScore != null && match.awayScore != null;
+  const pens = hasShootout(match);
   return (
     <div className="px-4 text-center">
       <div className="tabular text-[40px] font-bold leading-none">
         {hasScore ? `${match.homeScore} - ${match.awayScore}` : "-"}
       </div>
+      {pens && (
+        <div className="mt-1 tabular text-[13px] font-semibold text-text-on-dark-dim">
+          Penalties {match.homePenalty} - {match.awayPenalty}
+        </div>
+      )}
       <div className="mt-2 flex justify-center">{statusBadge(match)}</div>
     </div>
   );
@@ -90,7 +97,11 @@ function statusBadge(match: Match) {
     case "ht":
       return <span className="text-meta font-bold text-live-red">HALF TIME</span>;
     case "finished":
-      return <span className="text-meta font-medium text-text-on-dark-dim">FULL TIME</span>;
+      return (
+        <span className="text-meta font-medium text-text-on-dark-dim">
+          {hasShootout(match) ? "AFTER PENALTIES" : "FULL TIME"}
+        </span>
+      );
     case "postponed":
       return <span className="text-meta font-medium text-text-on-dark-dim">POSTPONED</span>;
     case "cancelled":

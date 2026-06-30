@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { Match } from "@/lib/providers/types";
 import { Crest } from "@/components/primitives/Crest";
 import { TrophyIcon, ChevronRightIcon } from "@/components/primitives/icons";
+import { matchWinner, hasShootout } from "@/lib/utils/match";
 
 export interface BracketRound {
   name: string;
@@ -431,13 +432,17 @@ function TeamLine({ match, side }: { match: Match; side: "home" | "away" }) {
   const score = side === "home" ? match.homeScore : match.awayScore;
   const other = side === "home" ? match.awayScore : match.homeScore;
   const played = score != null && other != null;
-  const win = played && score > other;
+  // Use the provider's winner so penalty/extra-time wins are highlighted even
+  // when regulation finished level (e.g. a 1-1 settled on penalties).
+  const win = matchWinner(match) === side;
+  const pen = hasShootout(match) ? (side === "home" ? match.homePenalty : match.awayPenalty) : undefined;
   return (
     <div className="flex items-center gap-2 py-0.5">
       <Crest src={team?.crest} name={team?.name ?? "TBD"} size={16} />
       <span className={`min-w-0 flex-1 truncate text-[12px] ${win ? "font-bold text-text-primary" : "text-text-secondary"}`}>
         {team?.name ?? "TBD"}
       </span>
+      {pen != null && <span className="tabular shrink-0 text-[10px] text-text-muted">({pen})</span>}
       {played && (
         <span
           className={`tabular min-w-[18px] rounded bg-white/5 px-1 text-center text-[11px] ${

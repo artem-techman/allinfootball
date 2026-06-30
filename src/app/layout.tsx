@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { JsonLd, organization, website } from "@/components/seo/JsonLd";
 import "@/styles/globals.css";
 
 // GA4 Measurement ID (G-XXXXXXXXXX). Set NEXT_PUBLIC_GA_ID in the environment
@@ -27,12 +28,27 @@ export const metadata: Metadata = {
   description:
     "My Football Tracker tracks the Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Europa League, MLS and the FIFA World Cup — live scores, tables, lineups and stats.",
   applicationName: "My Football Tracker",
+  keywords: [
+    "football", "soccer", "live scores", "football scores", "league tables",
+    "fixtures", "results", "Premier League", "La Liga", "Serie A", "Bundesliga",
+    "Ligue 1", "Champions League", "Europa League", "MLS", "FIFA World Cup",
+  ],
+  category: "sports",
   openGraph: {
     siteName: "My Football Tracker",
     type: "website",
     url: "https://myfootballtracker.com",
+    title: "My Football Tracker — Live scores, tables & match stats",
+    description:
+      "Live football scores, tables, fixtures, lineups and stats across the world's biggest competitions.",
   },
-  twitter: { card: "summary_large_image" },
+  twitter: {
+    card: "summary_large_image",
+    title: "My Football Tracker — Live scores, tables & match stats",
+    description:
+      "Live football scores, tables, fixtures, lineups and stats across the world's biggest competitions.",
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({
@@ -43,6 +59,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body>
+        {/* Site-wide publisher + website identity for search engines. */}
+        <JsonLd data={organization()} />
+        <JsonLd data={website()} />
         {/* Apply the saved sidebar state before paint to avoid a flash
             (expanded is the default). The platform is night-mode only. */}
         <script

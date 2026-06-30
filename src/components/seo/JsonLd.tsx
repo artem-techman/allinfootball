@@ -53,6 +53,30 @@ export function sportsTeam(profile: TeamProfile, slug: string): Record<string, u
   };
 }
 
+/** Site-wide publisher identity — helps Google associate the name, logo and
+ *  favicon, and is a building block for rich/knowledge results. */
+export function organization(): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "My Football Tracker",
+    url: SITE,
+    logo: `${SITE}/icon-512.png`,
+  };
+}
+
+/** WebSite identity. (No SearchAction — there is no on-site search results page
+ *  to point it at; advertising one Google can't use would be misleading.) */
+export function website(): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "My Football Tracker",
+    url: SITE,
+    publisher: { "@type": "Organization", name: "My Football Tracker", logo: `${SITE}/icon-512.png` },
+  };
+}
+
 export function breadcrumb(items: { name: string; path: string }[]): Record<string, unknown> {
   return {
     "@context": "https://schema.org",

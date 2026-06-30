@@ -25,6 +25,8 @@ import { PREVIEW_UPCOMING, PREVIEW_RESULTS, PREVIEW_STANDINGS, PREVIEW_STORIES, 
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { alternates: { canonical: "/" } };
+
 /**
  * Home dashboard (CLAUDE.md section 8). Three-column shell. News (hero, Top
  * Stories, Transfer Talk) comes from RSS and works regardless of the football

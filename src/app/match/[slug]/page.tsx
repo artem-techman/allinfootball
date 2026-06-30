@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/shell/AppShell";
 import { MatchCenter, type MatchBundle } from "@/components/match/MatchCenter";
 import { JsonLd, sportsEvent, breadcrumb } from "@/components/seo/JsonLd";
 import { provider } from "@/lib/providers";
 import { highlights } from "@/lib/highlights";
-import { idFromSlug } from "@/lib/utils/slug";
+import { entitySlug, idFromSlug } from "@/lib/utils/slug";
 import type { Lineup, Match, MatchEvent, MatchStats, Odds, Standing } from "@/lib/providers/types";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +38,12 @@ export default async function MatchPage({
 
   const match = await provider.getMatch(id).catch(() => undefined);
   if (!match) notFound();
+  // Redirect decorative/stale slugs to the canonical one. Guard on both team
+  // names so a partial fixture never builds a malformed slug (redirect loop).
+  if (match.homeTeam?.name && match.awayTeam?.name) {
+    const canonical = entitySlug(`${match.homeTeam.name}-${match.awayTeam.name}`, id);
+    if (canonical !== slug) redirect(`/match/${canonical}`);
+  }
 
   const [events, lineups, stats, h2h, standings, odds, highlight] = await Promise.all([
     provider.getEvents(id).catch(() => [] as MatchEvent[]),

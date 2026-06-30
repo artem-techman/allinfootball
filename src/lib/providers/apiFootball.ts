@@ -824,6 +824,16 @@ export const apiFootball: FootballProvider = {
       }));
     });
   },
+
+  async getTeamsByLeague(leagueId: number, season: number): Promise<Team[]> {
+    return swr(`teams:league:${leagueId}:${season}`, TTL.teams, async () => {
+      const env = await apiGet<RawTeamEnvelope>("/teams", { league: leagueId, season }, { revalidate: TTL.teams });
+      return env.response.map((r) => ({
+        ...mapTeam({ id: r.team.id, name: r.team.name, logo: r.team.logo }),
+        country: r.team.country,
+      }));
+    });
+  },
 };
 
 /**

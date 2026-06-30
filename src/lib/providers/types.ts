@@ -285,4 +285,6 @@ export interface FootballProvider {
   getCoach(coachId: number): Promise<Coach | undefined>;
   getVenue(venueId: number): Promise<Venue | undefined>;
   searchTeams(query: string): Promise<Team[]>;
+  /** All teams competing in a league/season — used to scope search to the nine competitions. */
+  getTeamsByLeague(leagueId: number, season: number): Promise<Team[]>;
 }

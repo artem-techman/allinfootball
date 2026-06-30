@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/shell/AppShell";
 import { TeamProfileView } from "@/components/team/TeamProfileView";
 import { JsonLd, sportsTeam, breadcrumb } from "@/components/seo/JsonLd";
 import { provider } from "@/lib/providers";
-import { idFromSlug } from "@/lib/utils/slug";
+import { entitySlug, idFromSlug } from "@/lib/utils/slug";
 import { getCompetitionByLeagueId, isInScope } from "@/lib/constants/competitions";
 import type { Match, Player, Standing } from "@/lib/providers/types";
 
@@ -46,6 +46,11 @@ export default async function TeamPage({ params }: { params: Promise<{ slug: str
 
   const profile = await provider.getTeam(id).catch(() => undefined);
   if (!profile) notFound();
+  // The slug name is decorative — the id resolves the team. If the name doesn't
+  // match the real team, send the user to the canonical URL (no stale/mismatched
+  // slugs, no duplicate-content indexing).
+  const canonical = entitySlug(profile.team.name, id);
+  if (canonical !== slug) redirect(`/team/${canonical}`);
 
   const [squad, recent, upcoming] = await Promise.all([
     provider.getSquad(id).catch(() => [] as Player[]),

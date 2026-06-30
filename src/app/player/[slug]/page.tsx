@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/shell/AppShell";
 import { PlayerProfileView } from "@/components/player/PlayerProfileView";
 import { provider } from "@/lib/providers";
-import { idFromSlug } from "@/lib/utils/slug";
+import { entitySlug, idFromSlug } from "@/lib/utils/slug";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +29,8 @@ export default async function PlayerPage({ params }: { params: Promise<{ slug: s
 
   const profile = await provider.getPlayer(id, PROFILE_SEASON).catch(() => undefined);
   if (!profile) notFound();
+  const canonical = entitySlug(profile.player.name, id);
+  if (canonical !== slug) redirect(`/player/${canonical}`);
 
   return (
     <AppShell>

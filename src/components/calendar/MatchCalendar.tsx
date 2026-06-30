@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Match } from "@/lib/providers/types";
 import { COMPETITIONS, isInScope } from "@/lib/constants/competitions";
-import { loadProfile } from "@/lib/profile";
 import { MatchCard } from "@/components/cards/MatchCard";
 import { Crest } from "@/components/primitives/Crest";
 import { EmptyState } from "@/components/primitives/EmptyState";
@@ -30,13 +29,7 @@ export function MatchCalendar({
   const [matches, setMatches] = useState<Match[]>(initialMatches);
   const [delayed, setDelayed] = useState(false);
   const [filter, setFilter] = useState<CalendarFilter>("all");
-  const [favTeamIds, setFavTeamIds] = useState<number[]>([]);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    const p = loadProfile();
-    setFavTeamIds([...p.followingTeamIds, ...p.favoriteTeamIds]);
-  }, []);
 
   // Re-sync when the date changes (SSR passes fresh initialMatches per route).
   useEffect(() => {
@@ -81,14 +74,10 @@ export function MatchCalendar({
         return inScope.filter((m) => m.status === "live" || m.status === "ht");
       case "finished":
         return inScope.filter((m) => m.status === "finished");
-      case "favorites":
-        return inScope.filter(
-          (m) => favTeamIds.includes(m.homeTeamId) || favTeamIds.includes(m.awayTeamId),
-        );
       default:
         return inScope;
     }
-  }, [inScope, filter, favTeamIds]);
+  }, [inScope, filter]);
 
   const groups = useMemo(() => {
     const byComp = new Map<number, Match[]>();
@@ -116,10 +105,7 @@ export function MatchCalendar({
       </div>
 
       {groups.length === 0 ? (
-        <EmptyState
-          title={emptyTitle(filter)}
-          hint={filter === "favorites" ? "Follow teams to see their matches here." : undefined}
-        />
+        <EmptyState title={emptyTitle(filter)} />
       ) : (
         <div className="space-y-5">
           {groups.map((g) => (
@@ -150,8 +136,6 @@ function emptyTitle(filter: CalendarFilter): string {
       return "No live matches in your competitions right now";
     case "finished":
       return "No finished matches on this day";
-    case "favorites":
-      return "No matches for your teams on this day";
     default:
       return "No matches in your competitions on this day";
   }

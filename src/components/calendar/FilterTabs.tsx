@@ -1,12 +1,11 @@
 "use client";
 
-export type CalendarFilter = "all" | "live" | "finished" | "favorites";
+export type CalendarFilter = "all" | "live" | "finished";
 
 const TABS: { value: CalendarFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "live", label: "Live" },
   { value: "finished", label: "Finished" },
-  { value: "favorites", label: "Favorites" },
 ];
 
 /** Filter tabs for the calendar (CLAUDE.md section 8). */

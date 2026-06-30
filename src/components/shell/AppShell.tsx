@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
 import { MobileNav } from "./MobileNav";
 import { PageTransition } from "./PageTransition";
+import { Footer } from "./Footer";
 import { Logo } from "@/components/primitives/Logo";
 
 /**
@@ -54,6 +55,9 @@ export function AppShell({
             )}
           </div>
           {below && <div className="px-4 min-[821px]:px-7">{below}</div>}
+          <div className="px-4 min-[821px]:px-7">
+            <Footer />
+          </div>
         </div>
       </div>
     </div>

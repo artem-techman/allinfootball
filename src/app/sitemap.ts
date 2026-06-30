@@ -17,6 +17,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE}/matches`, lastModified: now, changeFrequency: "hourly", priority: 0.9 },
     { url: `${SITE}/feed`, lastModified: now, changeFrequency: "hourly", priority: 0.8 },
     { url: `${SITE}/news`, lastModified: now, changeFrequency: "hourly", priority: 0.8 },
+    { url: `${SITE}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.3 },
+    { url: `${SITE}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
+    { url: `${SITE}/terms`, lastModified: now, changeFrequency: "yearly", priority: 0.2 },
   ];
 
   for (const c of COMPETITIONS) {

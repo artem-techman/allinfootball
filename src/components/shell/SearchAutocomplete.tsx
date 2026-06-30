@@ -93,12 +93,6 @@ export function SearchAutocomplete() {
           aria-autocomplete="list"
           className="w-full bg-transparent text-body text-text-primary outline-none placeholder:text-text-muted"
         />
-        <kbd
-          aria-hidden
-          className="hidden shrink-0 items-center gap-0.5 rounded-md border border-hairline bg-card-2 px-1.5 py-0.5 text-[11px] font-medium text-text-muted sm:flex"
-        >
-          ⌘ K
-        </kbd>
       </div>
 
       {open && (

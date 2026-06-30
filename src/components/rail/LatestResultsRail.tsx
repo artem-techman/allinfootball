@@ -70,7 +70,11 @@ function ResultRow({
     <div className="flex items-center gap-2 py-0.5">
       <Crest src={crest} name={name} size={16} />
       <span className={`min-w-0 flex-1 truncate text-meta ${win ? "font-semibold" : ""} ${tone}`}>{name}</span>
-      {pen != null && <span className="tabular shrink-0 text-[10px] text-text-muted">({pen})</span>}
+      {pen != null && (
+        <span className={`tabular shrink-0 text-[11px] font-bold ${win ? "text-accent-lime" : "text-text-muted"}`}>
+          ({pen})
+        </span>
+      )}
       <span className={`tabular w-4 text-right text-meta font-bold ${tone}`}>{score ?? "-"}</span>
     </div>
   );

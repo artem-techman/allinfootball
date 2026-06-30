@@ -442,7 +442,11 @@ function TeamLine({ match, side }: { match: Match; side: "home" | "away" }) {
       <span className={`min-w-0 flex-1 truncate text-[12px] ${win ? "font-bold text-text-primary" : "text-text-secondary"}`}>
         {team?.name ?? "TBD"}
       </span>
-      {pen != null && <span className="tabular shrink-0 text-[10px] text-text-muted">({pen})</span>}
+      {pen != null && (
+        <span className={`tabular shrink-0 text-[11px] font-bold ${win ? "text-accent-lime" : "text-text-muted"}`}>
+          ({pen})
+        </span>
+      )}
       {played && (
         <span
           className={`tabular min-w-[18px] rounded bg-white/5 px-1 text-center text-[11px] ${

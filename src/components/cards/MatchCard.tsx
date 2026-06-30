@@ -60,7 +60,11 @@ function TeamRow({
     <div className="flex items-center gap-2">
       <Crest src={crest} name={name} size={18} />
       <span className={`min-w-0 flex-1 truncate text-body ${win ? "font-semibold" : ""} ${tone}`}>{name}</span>
-      {pen != null && <span className="tabular shrink-0 text-[11px] text-text-muted">({pen})</span>}
+      {pen != null && (
+        <span className={`tabular shrink-0 text-[11px] font-bold ${win ? "text-accent-lime" : "text-text-muted"}`}>
+          ({pen})
+        </span>
+      )}
       {showScore && (
         <span className={`tabular w-5 text-right text-body font-semibold ${tone}`}>
           {score ?? "-"}

@@ -83,7 +83,10 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
         if (!cancelled) timer.current = setTimeout(tick, 15_000);
       }
     }
-    timer.current = setTimeout(tick, 15_000);
+    // Fetch straight away so a stale initial render (Next may serve a
+    // prefetched/cached RSC that's minutes old) is corrected within one round
+    // trip instead of after the first 15s interval; tick() then re-schedules itself.
+    tick();
     return () => {
       cancelled = true;
       if (timer.current) clearTimeout(timer.current);

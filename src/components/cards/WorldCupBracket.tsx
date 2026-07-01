@@ -37,6 +37,76 @@ const DOCKED_H = 640;
 type Cell = { key: string; match: Match | null };
 type Column = { name: string; label: string; side: "L" | "R"; round: number; cells: Cell[] };
 
+/** Round sizes and inner→outer build order, used to wire the bracket by lineage. */
+const ROUND_SIZE: Record<string, number> = {
+  Final: 1,
+  "Semi-finals": 2,
+  "Quarter-finals": 4,
+  "Round of 16": 8,
+  "Round of 32": 16,
+};
+const BUILD_ORDER = ["Final", "Semi-finals", "Quarter-finals", "Round of 16", "Round of 32"];
+
+/** The id of the team that won a tie (via the provider winner flag / penalties),
+ *  or null if it's a draw / undecided. */
+function winnerId(m: Match | null): number | null {
+  if (!m) return null;
+  const w = matchWinner(m);
+  return w === "home" ? m.homeTeamId : w === "away" ? m.awayTeamId : null;
+}
+
+/**
+ * Order every round so a match's two feeders sit directly outside it, matched by
+ * team LINEAGE — a feeder is the earlier-round tie that team actually won — not by
+ * the provider's arbitrary fixture order. So "Canada vs Morocco" links to the two
+ * ties Canada and Morocco won, never to whichever fixtures happen to share its
+ * index. Undecided links fall back to a positional fill so every tie is still
+ * shown. Each round is returned padded to its skeleton size.
+ */
+function buildBracketSlots(rounds: BracketRound[]): Record<string, (Match | null)[]> {
+  const byName = new Map(rounds.map((r) => [r.name, r.matches]));
+  const out: Record<string, (Match | null)[]> = { Final: [byName.get("Final")?.[0] ?? null] };
+
+  for (let i = 1; i < BUILD_ORDER.length; i++) {
+    const name = BUILD_ORDER[i];
+    const size = ROUND_SIZE[name];
+    const parents = out[BUILD_ORDER[i - 1]];
+    const provided = byName.get(name) ?? [];
+
+    // index this round's decided ties by the id of the team that won them
+    const byWinner = new Map<number, Match>();
+    for (const m of provided) {
+      const w = winnerId(m);
+      if (w != null && !byWinner.has(w)) byWinner.set(w, m);
+    }
+
+    const slots: (Match | null)[] = new Array(size).fill(null);
+    const used = new Set<Match>();
+    parents.forEach((parent, pi) => {
+      if (!parent) return;
+      const top = byWinner.get(parent.homeTeamId); // feeder of the parent's top team
+      const bot = byWinner.get(parent.awayTeamId); // feeder of the parent's bottom team
+      if (top && !used.has(top)) {
+        slots[2 * pi] = top;
+        used.add(top);
+      }
+      if (bot && !used.has(bot)) {
+        slots[2 * pi + 1] = bot;
+        used.add(bot);
+      }
+    });
+
+    // place any ties we couldn't wire by lineage into the remaining slots in order
+    const leftovers = provided.filter((m) => !used.has(m));
+    let li = 0;
+    for (let s = 0; s < size && li < leftovers.length; s++) {
+      if (slots[s] == null) slots[s] = leftovers[li++];
+    }
+    out[name] = slots;
+  }
+  return out;
+}
+
 export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -53,10 +123,11 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
     cellRefs.current[key] = el;
   }, []);
 
-  // ---- assemble the fixed skeleton, dropping real matches into their slots ----
+  // ---- assemble the skeleton, wiring real matches into their slots by lineage ----
+  const slotsByRound = buildBracketSlots(rounds);
   const slotsFor = (name: string, total: number): (Match | null)[] => {
-    const provided = rounds.find((r) => r.name === name)?.matches ?? [];
-    return Array.from({ length: total }, (_, i) => provided[i] ?? null);
+    const ordered = slotsByRound[name] ?? [];
+    return Array.from({ length: total }, (_, i) => ordered[i] ?? null);
   };
 
   const leftColumns: Column[] = SKELETON.map((s, round) => {

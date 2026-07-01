@@ -27,9 +27,12 @@ const SKELETON = [
 ] as const;
 
 /** Height of the matches area when docked; every column shares it so
- *  justify-around lines each match up with the centre of its two feeders. In
- *  full screen this grows to fill the viewport. */
-const DOCKED_H = 432;
+ *  justify-around lines each match up with the centre of its two feeders. This
+ *  MUST be tall enough for the outermost round's 8 stacked cards (~71px each) to
+ *  fit without overflowing — otherwise that column compresses while the inner
+ *  rounds spread out, and the pairs stop lining up with their next-round match.
+ *  In full screen this grows to fill the viewport. */
+const DOCKED_H = 640;
 
 type Cell = { key: string; match: Match | null };
 type Column = { name: string; label: string; side: "L" | "R"; round: number; cells: Cell[] };

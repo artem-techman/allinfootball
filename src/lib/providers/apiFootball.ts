@@ -6,6 +6,7 @@ import {
   getCompetitionByLeagueId,
 } from "@/lib/constants/competitions";
 import { entitySlug } from "@/lib/utils/slug";
+import { todayKey } from "@/lib/utils/date";
 import { mapStatus } from "./statusMap";
 import type {
   Competition,
@@ -697,7 +698,20 @@ export const apiFootball: FootballProvider = {
     return swr("fixtures:live", TTL.live, async () => {
       const env = await apiGet<RawFixture>("/fixtures", { live: "all" }, { revalidate: TTL.live });
       // Scope to our nine competitions only.
-      return env.response.map(mapFixture).filter((m) => getCompetitionByLeagueId(m.competitionId));
+      const live = env.response.map(mapFixture).filter((m) => getCompetitionByLeagueId(m.competitionId));
+      // Some fixtures report a live status on their own record but never surface in
+      // the global live=all feed (seen with the World Cup data). Back-fill from
+      // today's in-scope fixtures so a live match is never missing from Live Now.
+      try {
+        const todays = (await apiFootball.getFixturesByDate(todayKey())).filter(
+          (m) => getCompetitionByLeagueId(m.competitionId) && (m.status === "live" || m.status === "ht"),
+        );
+        const seen = new Set(live.map((m) => m.id));
+        for (const m of todays) if (!seen.has(m.id)) live.push(m);
+      } catch {
+        /* best-effort back-fill; the live=all result is still returned */
+      }
+      return live;
     });
   },
 

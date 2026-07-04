@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Logo } from "@/components/primitives/Logo";
-import { FanPulseCard } from "./FanPulseCard";
+import { RaffleCard } from "./RaffleCard";
 import { NAV, isNavActive } from "./navItems";
 import { PanelLeftIcon } from "@/components/primitives/icons";
 
@@ -102,8 +102,8 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto pt-4">
-        {/* Fan Pulse micro-poll — shown only when the sidebar is expanded. */}
-        {!collapsed && <FanPulseCard />}
+        {/* Messi-shirt raffle — shown only when the sidebar is expanded. */}
+        {!collapsed && <RaffleCard />}
       </div>
     </aside>
   );

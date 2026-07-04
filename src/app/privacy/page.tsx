@@ -27,7 +27,7 @@ export default function PrivacyPage() {
         <p>
           The Service does not require registration or a login. We do not ask for your name, email
           or password to browse the site, and we do not collect that information unless you choose to
-          email us.
+          email us or enter one of our giveaways.
         </p>
       </LegalSection>
 
@@ -39,12 +39,17 @@ export default function PrivacyPage() {
           site that referred you. This data is aggregated and is not used to personally identify you.
         </p>
         <p>
-          <strong>Voluntary polls.</strong> The site features short, optional polls (&quot;Fan
-          Pulse&quot;). Answers are anonymous: they are stored against a random identifier generated
-          in your browser, never against your name, email or any account, and we use them only in
-          aggregate (for example, &quot;x% of visitors watch more than five matches a week&quot;) to
-          understand our audience and to describe it — in aggregate form only — to potential
-          advertising partners. Answering is entirely optional.
+          <strong>Giveaways and polls.</strong> The site occasionally runs optional giveaways
+          (raffles) and short polls. If you enter a giveaway, we collect the name and email address
+          you provide, together with your answers to a few profile questions (such as an age
+          bracket or your favourite team). We use this information to run the giveaway (including
+          contacting the winner), to understand our audience, and — in aggregate form only, never
+          your individual details — to describe our audience to potential advertising partners. By
+          entering a giveaway you also agree to receive occasional emails from My Football Tracker;
+          every such email includes a way to opt out, and you can request removal of your entry at
+          any time via <a href="mailto:privacy@myfootballtracker.com">privacy@myfootballtracker.com</a>.
+          Poll answers without a giveaway entry remain anonymous. Participation is entirely
+          optional, and giveaways are open to entrants aged 18 or over.
         </p>
         <p>
           <strong>Local preferences.</strong> We store small preferences in your browser&apos;s

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { POLL_QUESTIONS } from "@/lib/poll/questions";
 
 /**
@@ -45,10 +45,24 @@ function saveState(s: PulseState) {
   }
 }
 
+/** How long the community result stays on screen before the next question slides in. */
+const ADVANCE_MS = 2000;
+
 export function FanPulseCard() {
   const [state, setState] = useState<PulseState | null>(null); // null until mounted (localStorage)
   const [results, setResults] = useState<Results>({});
   const [idx, setIdx] = useState(0);
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // never leave a pending auto-advance behind on unmount
+  useEffect(() => () => clearTimer(), []);
+
+  function clearTimer() {
+    if (advanceTimer.current) {
+      clearTimeout(advanceTimer.current);
+      advanceTimer.current = null;
+    }
+  }
 
   // Mount: load local state, jump to the first unanswered question, fetch results.
   useEffect(() => {
@@ -89,6 +103,14 @@ export function FanPulseCard() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ questionId: question.id, optionId, sessionId: state.sid }),
     }).catch(() => {}); // local answer stands even if the network call fails
+
+    // Let the community split land for a beat, then flow straight into the next
+    // unanswered question — no tap needed.
+    const upcoming = POLL_QUESTIONS.findIndex((q) => !next.answers[q.id]);
+    if (upcoming !== -1) {
+      clearTimer();
+      advanceTimer.current = setTimeout(() => setIdx(upcoming), ADVANCE_MS);
+    }
   }
 
   const counts = results[question.id] ?? {};
@@ -139,16 +161,32 @@ export function FanPulseCard() {
           })}
           <div className="flex items-center justify-between pt-1">
             <span className="text-[10px] text-text-muted">
-              {allDone && idx === POLL_QUESTIONS.length - 1 ? "That's the lot — thanks!" : "Anonymous · one tap"}
+              {allDone
+                ? idx === POLL_QUESTIONS.length - 1
+                  ? "Full time — thanks for playing!"
+                  : "How the crowd voted"
+                : "Nice one — next up…"}
             </span>
             <div className="flex gap-1">
               {idx > 0 && (
-                <NavBtn label="Previous question" onClick={() => setIdx((i) => i - 1)}>
+                <NavBtn
+                  label="Previous question"
+                  onClick={() => {
+                    clearTimer();
+                    setIdx((i) => i - 1);
+                  }}
+                >
                   ‹
                 </NavBtn>
               )}
               {idx < POLL_QUESTIONS.length - 1 && (
-                <NavBtn label="Next question" onClick={() => setIdx((i) => i + 1)}>
+                <NavBtn
+                  label="Next question"
+                  onClick={() => {
+                    clearTimer();
+                    setIdx((i) => i + 1);
+                  }}
+                >
                   ›
                 </NavBtn>
               )}
@@ -167,7 +205,7 @@ export function FanPulseCard() {
               {o.label}
             </button>
           ))}
-          <p className="pt-1 text-[10px] text-text-muted">Anonymous · shapes what we build</p>
+          <p className="pt-1 text-[10px] text-text-muted">Anonymous · no VAR checks</p>
         </div>
       )}
     </section>

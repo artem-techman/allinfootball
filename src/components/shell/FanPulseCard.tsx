@@ -16,6 +16,8 @@ const STORAGE_KEY = "allinfootball.pulse.v1";
 interface PulseState {
   sid: string;
   answers: Record<string, string>;
+  /** User folded the card away — persists so it stays out of the way. */
+  folded?: boolean;
 }
 
 type Results = Record<string, Record<string, number>>;
@@ -25,7 +27,9 @@ function loadState(): PulseState {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<PulseState>;
-      if (parsed.sid && parsed.answers) return { sid: parsed.sid, answers: parsed.answers };
+      if (parsed.sid && parsed.answers) {
+        return { sid: parsed.sid, answers: parsed.answers, folded: Boolean(parsed.folded) };
+      }
     }
   } catch {
     /* fall through to a fresh state */
@@ -113,6 +117,38 @@ export function FanPulseCard() {
     }
   }
 
+  function toggleFold() {
+    if (!state) return;
+    clearTimer(); // never auto-advance behind a folded card
+    const next = { ...state, folded: !state.folded };
+    setState(next);
+    saveState(next);
+    // On unfold, land on the first unanswered question (same as a fresh mount).
+    if (!next.folded) {
+      const firstOpen = POLL_QUESTIONS.findIndex((q) => !next.answers[q.id]);
+      setIdx(firstOpen === -1 ? 0 : firstOpen);
+    }
+  }
+
+  if (state.folded) {
+    return (
+      <button
+        type="button"
+        onClick={toggleFold}
+        aria-expanded={false}
+        aria-label="Show Fan Pulse poll"
+        className="flex w-full items-center justify-between rounded-lg2 border border-hairline bg-card px-3.5 py-2 transition-colors hover:border-[rgba(91,200,80,0.5)]"
+      >
+        <span className="rounded-full bg-accent-gradient px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-text-on-accent">
+          Fan Pulse
+        </span>
+        <span aria-hidden className="text-[13px] leading-none text-text-muted">
+          ⌃
+        </span>
+      </button>
+    );
+  }
+
   const counts = results[question.id] ?? {};
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
 
@@ -125,9 +161,21 @@ export function FanPulseCard() {
         <span className="rounded-full bg-accent-gradient px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-text-on-accent">
           Fan Pulse
         </span>
-        <span className="tabular text-[10px] font-semibold text-text-muted">
-          {Math.min(Object.keys(state.answers).length + (allDone ? 0 : 1), POLL_QUESTIONS.length)}/
-          {POLL_QUESTIONS.length}
+        <span className="flex items-center gap-1.5">
+          <span className="tabular text-[10px] font-semibold text-text-muted">
+            {Math.min(Object.keys(state.answers).length + (allDone ? 0 : 1), POLL_QUESTIONS.length)}/
+            {POLL_QUESTIONS.length}
+          </span>
+          <button
+            type="button"
+            onClick={toggleFold}
+            aria-expanded
+            aria-label="Hide Fan Pulse poll"
+            title="Fold away"
+            className="grid h-5 w-5 place-items-center rounded-full text-[13px] leading-none text-text-muted transition-colors hover:bg-white/5 hover:text-text-primary"
+          >
+            ⌄
+          </button>
         </span>
       </header>
 

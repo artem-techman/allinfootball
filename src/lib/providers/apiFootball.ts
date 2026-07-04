@@ -6,7 +6,7 @@ import {
   getCompetitionByLeagueId,
 } from "@/lib/constants/competitions";
 import { entitySlug } from "@/lib/utils/slug";
-import { todayKey } from "@/lib/utils/date";
+import { todayKey, shiftDateKey } from "@/lib/utils/date";
 import { mapStatus } from "./statusMap";
 import type {
   Competition,
@@ -701,13 +701,20 @@ export const apiFootball: FootballProvider = {
       const live = env.response.map(mapFixture).filter((m) => getCompetitionByLeagueId(m.competitionId));
       // Some fixtures report a live status on their own record but never surface in
       // the global live=all feed (seen with the World Cup data). Back-fill from
-      // today's in-scope fixtures so a live match is never missing from Live Now.
+      // the in-scope fixtures around now so a live match is never missing from Live
+      // Now. We span yesterday→tomorrow so a game that stays live across midnight
+      // (or one in a timezone ahead of/behind ours) is still caught.
       try {
-        const todays = (await apiFootball.getFixturesByDate(todayKey())).filter(
-          (m) => getCompetitionByLeagueId(m.competitionId) && (m.status === "live" || m.status === "ht"),
-        );
+        const today = todayKey();
+        const days = [shiftDateKey(today, -1), today, shiftDateKey(today, 1)];
+        const batches = await Promise.all(days.map((d) => apiFootball.getFixturesByDate(d).catch(() => [] as Match[])));
         const seen = new Set(live.map((m) => m.id));
-        for (const m of todays) if (!seen.has(m.id)) live.push(m);
+        for (const m of batches.flat()) {
+          if ((m.status === "live" || m.status === "ht") && getCompetitionByLeagueId(m.competitionId) && !seen.has(m.id)) {
+            seen.add(m.id);
+            live.push(m);
+          }
+        }
       } catch {
         /* best-effort back-fill; the live=all result is still returned */
       }

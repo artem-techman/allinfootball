@@ -39,9 +39,17 @@ export default function PrivacyPage() {
           site that referred you. This data is aggregated and is not used to personally identify you.
         </p>
         <p>
-          <strong>Local preferences.</strong> We store a small preference in your browser&apos;s
-          local storage — whether the sidebar is collapsed. This stays on your device and is never
-          sent to our servers.
+          <strong>Voluntary polls.</strong> The site features short, optional polls (&quot;Fan
+          Pulse&quot;). Answers are anonymous: they are stored against a random identifier generated
+          in your browser, never against your name, email or any account, and we use them only in
+          aggregate (for example, &quot;x% of visitors watch more than five matches a week&quot;) to
+          understand our audience and to describe it — in aggregate form only — to potential
+          advertising partners. Answering is entirely optional.
+        </p>
+        <p>
+          <strong>Local preferences.</strong> We store small preferences in your browser&apos;s
+          local storage — whether the sidebar is collapsed, and which polls you have already
+          answered. These stay on your device.
         </p>
       </LegalSection>
 

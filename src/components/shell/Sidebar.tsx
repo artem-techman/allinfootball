@@ -2,14 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Logo } from "@/components/primitives/Logo";
+import { FanPulseCard } from "./FanPulseCard";
 import { NAV, isNavActive } from "./navItems";
 import { PanelLeftIcon } from "@/components/primitives/icons";
-
-// Where ad enquiries go. Change this to your real ad-sales inbox.
-const AD_CONTACT = "mailto:ads@myfootballtracker.com?subject=Advertising%20on%20My%20Football%20Tracker";
 
 /**
  * Left sidebar (dark reference) — COLLAPSIBLE. The collapsed state persists in
@@ -105,22 +102,8 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto pt-4">
-        {/* The ad banner shows only when the sidebar is expanded. */}
-        {!collapsed && (
-          <a
-            href={AD_CONTACT}
-            aria-label="Advertise with us — contact us"
-            className="block overflow-hidden rounded-lg2 shadow-soft transition-opacity hover:opacity-90"
-          >
-            <Image
-              src="/ad-banner.png"
-              alt="Place your ad here — advertise on My Football Tracker"
-              width={1254}
-              height={1254}
-              className="h-auto w-full"
-            />
-          </a>
-        )}
+        {/* Fan Pulse micro-poll — shown only when the sidebar is expanded. */}
+        {!collapsed && <FanPulseCard />}
       </div>
     </aside>
   );

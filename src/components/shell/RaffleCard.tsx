@@ -36,8 +36,12 @@ interface RaffleState {
   team?: string;
   spend?: string;
   folded?: boolean;
-  already?: boolean;
 }
+
+// True once the widget has mounted in this JS session. The sidebar remounts on
+// every client-side navigation; this flag makes the reset-to-banner apply only
+// to a FRESH visit (full page load), not to moving between pages mid-flow.
+let sessionStarted = false;
 
 function freshState(): RaffleState {
   const sid =
@@ -75,10 +79,21 @@ export function RaffleCard() {
   const [tapped, setTapped] = useState<string | null>(null); // flash on one-tap answers
   const [submitting, setSubmitting] = useState(false);
   const [failed, setFailed] = useState(false);
+  // email that came back as "already entered" — blocks Continue until changed
+  const [dupEmail, setDupEmail] = useState<string | null>(null);
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const s = loadState();
+    // Fresh visit → always greet with the banner (folded stays respected; the
+    // name/email/answers are kept so a returning entrant never retypes them).
+    if (!sessionStarted) {
+      sessionStarted = true;
+      if (s.step !== "banner") {
+        s.step = "banner";
+        saveState(s);
+      }
+    }
     setState(s);
     if (s.step === "confirm") setConfirmStep(s.age ? (s.team ? 2 : 1) : 0);
     fetch("/api/raffle", { cache: "no-store" })
@@ -125,9 +140,15 @@ export function RaffleCard() {
         }),
       });
       const data = (await res.json()) as { ok?: boolean; already?: boolean };
-      if (data.ok) {
-        setCount((c) => (data.already ? c : c + 1));
-        update({ ...final, step: "done", already: Boolean(data.already) });
+      if (data.ok && data.already) {
+        // This email already holds an entry — bounce back to the register step
+        // and ask for a different one (answers are kept, so a corrected email
+        // resubmits without redoing the questions).
+        setDupEmail(s.email.trim().toLowerCase());
+        update({ ...final, step: "register" });
+      } else if (data.ok) {
+        setCount((c) => c + 1);
+        update({ ...final, step: "done" });
       } else {
         setFailed(true);
       }
@@ -198,6 +219,10 @@ export function RaffleCard() {
   if (state.step === "register") {
     const nameOk = isValidName(state.name);
     const emailOk = isValidEmail(state.email);
+    const isDup = dupEmail !== null && state.email.trim().toLowerCase() === dupEmail;
+    // Answers already given (e.g. coming back after a duplicate-email bounce):
+    // a corrected email re-submits directly instead of replaying the questions.
+    const answersDone = Boolean(state.age && state.team && state.spend);
     return (
       <Card onFold={toggleFold} badge="Messi shirt raffle">
         <h4 className="mb-0.5 text-[12.5px] font-bold leading-snug text-text-primary">
@@ -222,16 +247,34 @@ export function RaffleCard() {
             onChange={(e) => update({ email: e.target.value })}
             placeholder="you@email.com"
             aria-label="Your email"
-            className="w-full rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[12px] text-text-primary outline-none transition-colors placeholder:text-text-muted focus:border-[rgba(91,200,80,0.6)]"
+            aria-invalid={isDup}
+            className={`w-full rounded-md border bg-white/[0.04] px-2.5 py-1.5 text-[12px] text-text-primary outline-none transition-colors placeholder:text-text-muted ${
+              isDup
+                ? "border-live-red focus:border-live-red"
+                : "border-white/10 focus:border-[rgba(91,200,80,0.6)]"
+            }`}
           />
+          {isDup && (
+            <p role="alert" className="text-[10px] leading-snug text-live-red">
+              This email already has a reserved participation — please use another one.
+            </p>
+          )}
           <button
             type="button"
-            disabled={!nameOk || !emailOk}
-            onClick={() => update({ step: "confirm" })}
+            disabled={!nameOk || !emailOk || isDup || submitting}
+            onClick={() => {
+              if (answersDone) void submit({});
+              else update({ step: "confirm" });
+            }}
             className="w-full rounded-md bg-accent-gradient px-2 py-1.5 text-[12px] font-bold text-text-on-accent transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Continue →
+            {submitting ? "Registering…" : "Continue →"}
           </button>
+          {failed && !isDup && (
+            <p role="alert" className="text-[10px] leading-snug text-live-red">
+              Couldn&apos;t reach the stadium — give it another go.
+            </p>
+          )}
         </div>
         <p className="mt-2 text-[9.5px] leading-snug text-text-muted">
           18+ · No purchase necessary. By entering you agree to occasional emails from My Football
@@ -323,9 +366,7 @@ export function RaffleCard() {
         <div aria-hidden className="mb-1 text-[26px] leading-none">
           🎟️
         </div>
-        <h4 className="text-[13px] font-bold text-text-primary">
-          {state.already ? `You were already in, ${first}!` : `You're in, ${first}!`}
-        </h4>
+        <h4 className="text-[13px] font-bold text-text-primary">You&apos;re in, {first}!</h4>
         <p className="mt-1 text-[10.5px] leading-snug text-text-secondary">
           Ticket registered{count >= 10 ? ` — you and ${Math.max(count - 1, 1).toLocaleString()} other fans` : ""}.
           Winner announced soon. Good luck!

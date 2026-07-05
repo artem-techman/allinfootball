@@ -247,16 +247,15 @@ export function RaffleCard() {
             onChange={(e) => update({ email: e.target.value })}
             placeholder="you@email.com"
             aria-label="Your email"
-            aria-invalid={isDup}
             className={`w-full rounded-md border bg-white/[0.04] px-2.5 py-1.5 text-[12px] text-text-primary outline-none transition-colors placeholder:text-text-muted ${
               isDup
-                ? "border-live-red focus:border-live-red"
+                ? "border-[rgba(91,200,80,0.6)]"
                 : "border-white/10 focus:border-[rgba(91,200,80,0.6)]"
             }`}
           />
           {isDup && (
-            <p role="alert" className="text-[10px] leading-snug text-live-red">
-              This email already has a reserved participation — please use another one.
+            <p role="status" className="text-[10px] leading-snug text-accent-lime">
+              🎟️ That email is already entered — you&apos;re all set.
             </p>
           )}
           <button

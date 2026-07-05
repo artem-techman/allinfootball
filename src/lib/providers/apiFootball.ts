@@ -475,24 +475,58 @@ interface RawOdds {
   }[];
 }
 
-/** Map the first bookmaker's "Match Winner" (1X2) market to neutral decimal odds. */
+/** The big European online bookmakers, most popular first. Books in the API
+ *  response are ranked by this list (unknown names keep response order after
+ *  the known ones) and the top five are shown for comparison. */
+const BOOKMAKER_PRIORITY = [
+  "bet365",
+  "bwin",
+  "unibet",
+  "william hill",
+  "betfair",
+  "betway",
+  "1xbet",
+  "pinnacle",
+  "betsson",
+  "ladbrokes",
+  "888sport",
+  "paddy power",
+];
+
+const MAX_BOOKS = 5;
+
+function bookRank(name: string): number {
+  const i = BOOKMAKER_PRIORITY.indexOf(name.trim().toLowerCase());
+  return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+}
+
+/** Map every bookmaker's "Match Winner" (1X2) market to neutral decimal odds,
+ *  keeping the top five biggest European platforms so visitors can compare who
+ *  offers the best price. */
 export function mapOdds(raw: RawOdds | undefined, matchId: number): Odds | undefined {
   if (!raw) return undefined;
-  const book = raw.bookmakers?.[0];
-  const market = book?.bets.find((b) => b.name === "Match Winner");
-  if (!market) return { matchId, bookmaker: book?.name };
-  const pick = (value: string) => {
-    const o = market.values.find((v) => v.value === value)?.odd;
-    const n = o != null ? Number(o) : NaN;
-    return Number.isFinite(n) ? n : undefined;
-  };
-  return {
-    matchId,
-    bookmaker: book?.name,
-    home: pick("Home"),
-    draw: pick("Draw"),
-    away: pick("Away"),
-  };
+
+  const books = (raw.bookmakers ?? [])
+    .map((book, i) => {
+      const market = book.bets.find((b) => b.name === "Match Winner");
+      const pick = (value: string) => {
+        const o = market?.values.find((v) => v.value === value)?.odd;
+        const n = o != null ? Number(o) : NaN;
+        return Number.isFinite(n) ? n : undefined;
+      };
+      return {
+        rank: bookRank(book.name),
+        order: i,
+        odds: { name: book.name, home: pick("Home"), draw: pick("Draw"), away: pick("Away") },
+      };
+    })
+    // a book with no 1X2 prices at all adds nothing to a comparison
+    .filter((b) => b.odds.home != null || b.odds.draw != null || b.odds.away != null)
+    .sort((a, b) => a.rank - b.rank || a.order - b.order)
+    .slice(0, MAX_BOOKS)
+    .map((b) => b.odds);
+
+  return { matchId, books };
 }
 
 interface RawTeamEnvelope {

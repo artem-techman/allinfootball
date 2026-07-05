@@ -247,12 +247,18 @@ export interface PlayerProfile {
  * Pre-match 1X2 odds, NEUTRAL DATA ONLY (no betting CTAs/affiliate links —
  * CLAUDE.md section 17). Decimal prices; any field may be absent.
  */
-export interface Odds {
-  matchId: number;
-  bookmaker?: string;
+/** One bookmaker's 1X2 prices (decimal). */
+export interface BookmakerOdds {
+  name: string;
   home?: number;
   draw?: number;
   away?: number;
+}
+
+export interface Odds {
+  matchId: number;
+  /** Up to five bookmakers, biggest European platforms first, for comparison. */
+  books: BookmakerOdds[];
 }
 
 export interface TeamFixturesOptions {

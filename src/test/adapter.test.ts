@@ -97,12 +97,25 @@ describe("mapEvent names", () => {
 });
 
 describe("mapOdds", () => {
-  it("maps the 1X2 market to decimal prices", () => {
+  it("ranks the biggest European bookmakers first and caps at five", () => {
     const o = mapOdds((sample as any).odds[0], 1001);
-    expect(o?.bookmaker).toBe("Bet365");
-    expect(o?.home).toBeCloseTo(1.8);
-    expect(o?.draw).toBeCloseTo(3.6);
-    expect(o?.away).toBeCloseTo(4.2);
+    // Priority order beats response order (Bet365 is listed 3rd in the sample);
+    // the unknown local book sorts after all known ones, so the five-book cap
+    // squeezes it out (6 eligible books → 5 kept).
+    expect(o?.books.map((b) => b.name)).toEqual(["Bet365", "Bwin", "Unibet", "William Hill", "Betway"]);
+  });
+
+  it("maps 1X2 decimal prices per bookmaker", () => {
+    const o = mapOdds((sample as any).odds[0], 1001);
+    const bet365 = o?.books.find((b) => b.name === "Bet365");
+    expect(bet365?.home).toBeCloseTo(1.8);
+    expect(bet365?.draw).toBeCloseTo(3.6);
+    expect(bet365?.away).toBeCloseTo(4.2);
+  });
+
+  it("drops bookmakers without a 1X2 market", () => {
+    const o = mapOdds((sample as any).odds[0], 1001);
+    expect(o?.books.some((b) => b.name === "NoMarketBook")).toBe(false);
   });
 
   it("returns undefined when no odds payload", () => {

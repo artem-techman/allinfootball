@@ -496,6 +496,50 @@
           ]
         },
         {
+          "name": "Stake.com",
+          "bets": [
+            {
+              "name": "Match Winner",
+              "values": [
+                {
+                  "value": "Home",
+                  "odd": "1.84"
+                },
+                {
+                  "value": "Draw",
+                  "odd": "3.70"
+                },
+                {
+                  "value": "Away",
+                  "odd": "4.25"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Winamax",
+          "bets": [
+            {
+              "name": "Match Winner",
+              "values": [
+                {
+                  "value": "Home",
+                  "odd": "1.83"
+                },
+                {
+                  "value": "Draw",
+                  "odd": "3.68"
+                },
+                {
+                  "value": "Away",
+                  "odd": "4.30"
+                }
+              ]
+            }
+          ]
+        },
+        {
           "name": "Unibet",
           "bets": [
             {

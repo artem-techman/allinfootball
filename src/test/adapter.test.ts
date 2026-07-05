@@ -99,10 +99,10 @@ describe("mapEvent names", () => {
 describe("mapOdds", () => {
   it("ranks the biggest European bookmakers first and caps at five", () => {
     const o = mapOdds((sample as any).odds[0], 1001);
-    // Priority order beats response order (Bet365 is listed 3rd in the sample);
-    // the unknown local book sorts after all known ones, so the five-book cap
-    // squeezes it out (6 eligible books → 5 kept).
-    expect(o?.books.map((b) => b.name)).toEqual(["Bet365", "Bwin", "Unibet", "William Hill", "Betway"]);
+    // Priority order beats response order (Bet365 is listed 5th in the sample),
+    // "Stake.com" is normalized to match the "stake" priority entry, and the
+    // unknown local book sorts after all known ones — squeezed out by the cap.
+    expect(o?.books.map((b) => b.name)).toEqual(["Bet365", "Winamax", "Stake.com", "Bwin", "Unibet"]);
   });
 
   it("maps 1X2 decimal prices per bookmaker", () => {

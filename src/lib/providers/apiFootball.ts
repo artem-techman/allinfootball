@@ -480,6 +480,8 @@ interface RawOdds {
  *  the known ones) and the top five are shown for comparison. */
 const BOOKMAKER_PRIORITY = [
   "bet365",
+  "winamax",
+  "stake",
   "bwin",
   "unibet",
   "william hill",
@@ -496,7 +498,9 @@ const BOOKMAKER_PRIORITY = [
 const MAX_BOOKS = 5;
 
 function bookRank(name: string): number {
-  const i = BOOKMAKER_PRIORITY.indexOf(name.trim().toLowerCase());
+  // Normalize feed variants like "Stake.com" / "888Sport " before matching.
+  const key = name.trim().toLowerCase().replace(/\.com$/, "");
+  const i = BOOKMAKER_PRIORITY.indexOf(key);
   return i === -1 ? Number.MAX_SAFE_INTEGER : i;
 }
 

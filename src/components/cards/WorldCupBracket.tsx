@@ -118,6 +118,43 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
   // mobile, where the sidebar is collapsed), so the sidebar stays visible.
   const [sidebarRight, setSidebarRight] = useState(0);
   const [areaH, setAreaH] = useState(DOCKED_H);
+  const [sharing, setSharing] = useState(false);
+
+  // Capture the full bracket diagram (contentRef is the w-max content, so it's
+  // never clipped by the scroll container), frame it with a title + watermark,
+  // and hand it to the native share sheet — or download it where sharing files
+  // isn't supported.
+  async function shareBracket() {
+    const node = contentRef.current;
+    if (!node || sharing) return;
+    setSharing(true);
+    try {
+      const { toPng } = await import("html-to-image");
+      const bracketPng = await toPng(node, { pixelRatio: 2, cacheBust: true, skipFonts: false });
+      const blob = await composeShareImage(bracketPng);
+      const file = new File([blob], "world-cup-knockouts.png", { type: "image/png" });
+      if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
+        await navigator
+          .share({
+            files: [file],
+            title: "World Cup Knockouts",
+            text: "The World Cup knockout bracket — myfootballtracker.com",
+          })
+          .catch(() => {}); // user cancelled the share sheet
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "world-cup-knockouts.png";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      /* capture failed — leave the bracket untouched */
+    } finally {
+      setSharing(false);
+    }
+  }
 
   const register = useCallback((key: string, el: HTMLElement | null) => {
     cellRefs.current[key] = el;
@@ -287,6 +324,18 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
     </div>
   );
 
+  const shareButton = (
+    <button
+      type="button"
+      onClick={shareBracket}
+      disabled={sharing}
+      aria-label="Share the bracket as an image"
+      className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-[12px] font-semibold text-text-secondary backdrop-blur-sm transition-colors hover:text-text-primary disabled:opacity-60"
+    >
+      <ShareIcon size={14} /> {sharing ? "Preparing…" : "Share"}
+    </button>
+  );
+
   if (expanded && typeof document !== "undefined") {
     return createPortal(
       <div
@@ -299,13 +348,16 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
         <StadiumBackdrop />
         <header className="relative z-20 flex shrink-0 items-center justify-between border-b border-white/10 bg-page/80 px-5 py-4 backdrop-blur-sm">
           <BrandHeader />
-          <button
-            type="button"
-            onClick={() => setExpanded(false)}
-            className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-[12px] font-semibold text-text-secondary backdrop-blur-sm transition-colors hover:text-text-primary"
-          >
-            <CloseIcon size={14} /> Close
-          </button>
+          <div className="flex items-center gap-2">
+            {shareButton}
+            <button
+              type="button"
+              onClick={() => setExpanded(false)}
+              className="flex items-center gap-1.5 rounded-full border border-white/15 bg-black/30 px-3 py-1.5 text-[12px] font-semibold text-text-secondary backdrop-blur-sm transition-colors hover:text-text-primary"
+            >
+              <CloseIcon size={14} /> Close
+            </button>
+          </div>
         </header>
         {/* Scrolls vertically when the bracket is taller than the viewport;
             centres it when it fits — never spills over the header/legend. */}
@@ -335,6 +387,7 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
               >
                 Full schedule <ChevronRightIcon size={14} />
               </Link>
+              {shareButton}
               <button
                 type="button"
                 onClick={() => setExpanded(true)}
@@ -554,6 +607,61 @@ function CloseIcon({ size = 16 }: { size?: number }) {
       <path d="M18 6 6 18M6 6l12 12" />
     </svg>
   );
+}
+
+function ShareIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
+    </svg>
+  );
+}
+
+/**
+ * Frame the captured bracket PNG for social: a dark card with a "World Cup
+ * Knockouts" title above and a "myfootballtracker.com" watermark below. Drawn on
+ * a canvas (reliable text rendering) at the capture's 2× resolution.
+ */
+function composeShareImage(bracketPngUrl: string): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const PAD = 64;
+      const TITLE_H = 132;
+      const FOOT_H = 76;
+      const w = img.width + PAD * 2;
+      const h = img.height + PAD + TITLE_H + FOOT_H;
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("no 2d context"));
+        return;
+      }
+      // background
+      ctx.fillStyle = "#0b0c10";
+      ctx.fillRect(0, 0, w, h);
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      // title
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "700 66px Inter, system-ui, -apple-system, sans-serif";
+      ctx.fillText("World Cup Knockouts", w / 2, TITLE_H / 2 + 8);
+      // bracket
+      ctx.drawImage(img, PAD, TITLE_H);
+      // watermark
+      ctx.fillStyle = "#5bc850";
+      ctx.font = "600 40px Inter, system-ui, -apple-system, sans-serif";
+      ctx.fillText("myfootballtracker.com", w / 2, h - FOOT_H / 2);
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
+    };
+    img.onerror = () => reject(new Error("bracket image failed to load"));
+    img.src = bracketPngUrl;
+  });
 }
 
 function ShieldIcon({ size = 14, className }: { size?: number; className?: string }) {

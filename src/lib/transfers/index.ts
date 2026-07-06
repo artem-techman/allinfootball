@@ -1,6 +1,5 @@
 import "server-only";
 import { provider } from "@/lib/providers";
-import { swr, TTL } from "@/lib/cache";
 import type { Transfer } from "@/lib/providers/types";
 
 /**
@@ -10,9 +9,11 @@ import type { Transfer } from "@/lib/providers/types";
  * pulling every club across the nine competitions would be ~180 calls per refresh
  * and blow the daily quota. We instead poll a curated set of the biggest European
  * clubs — where confirmed-transfer interest concentrates — and aggregate their
- * completed moves. Each /transfers call is cached (TTL.transfers = 6h) and the
- * aggregate itself is memoised, so a full refresh costs the curated-club count
- * only a few times a day.
+ * completed moves. Each /transfers call is cached in the provider (TTL.transfers
+ * = 6h), so once warm the aggregation makes no new API calls. We deliberately do
+ * NOT cache the combined result: a transient per-club failure would otherwise
+ * poison the whole list until its TTL expired, whereas recombining each request
+ * lets a failed club heal on the next visit.
  */
 
 /** Top European clubs by transfer relevance (stable API-Football team ids). */
@@ -50,23 +51,21 @@ export async function loadConfirmedTransfers(nowIso?: string): Promise<Transfer[
   const now = nowIso ? new Date(nowIso) : new Date();
   const start = windowStartIso(now);
 
-  return swr(`transfers:confirmed:${start}`, TTL.transfers, async () => {
-    const lists = await Promise.all(
-      TOP_CLUBS.map((id) => provider.getTeamTransfers(id).catch(() => [] as Transfer[])),
-    );
+  const lists = await Promise.all(
+    TOP_CLUBS.map((id) => provider.getTeamTransfers(id).catch(() => [] as Transfer[])),
+  );
 
-    const seen = new Set<string>();
-    const out: Transfer[] = [];
-    for (const t of lists.flat()) {
-      // Only completed moves into a club, dated within the window.
-      if (!t.to?.id || !t.date || t.date < start) continue;
-      const key = `${t.playerId}|${t.date}|${t.to.id}|${t.from?.id ?? ""}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ ...t, type: cleanType(t.type) });
-    }
+  const seen = new Set<string>();
+  const out: Transfer[] = [];
+  for (const t of lists.flat()) {
+    // Only completed moves into a club, dated within the window.
+    if (!t.to?.id || !t.date || t.date < start) continue;
+    const key = `${t.playerId}|${t.date}|${t.to.id}|${t.from?.id ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ ...t, type: cleanType(t.type) });
+  }
 
-    out.sort((a, b) => b.date.localeCompare(a.date));
-    return out.slice(0, MAX_TRANSFERS);
-  });
+  out.sort((a, b) => b.date.localeCompare(a.date));
+  return out.slice(0, MAX_TRANSFERS);
 }

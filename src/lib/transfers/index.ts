@@ -1,5 +1,6 @@
 import "server-only";
 import { provider } from "@/lib/providers";
+import { getCompetitionBySlug } from "@/lib/constants/competitions";
 import type { Transfer } from "@/lib/providers/types";
 
 /**
@@ -27,12 +28,17 @@ const TOP_CLUBS: number[] = [
 
 const MAX_TRANSFERS = 20;
 
-/** Start of the currently-relevant transfer window (UTC ISO date). Summer opens
- *  ~June, winter ~January; between windows we still surface the latest window. */
-function windowStartIso(now: Date): string {
-  const y = now.getUTCFullYear();
-  const month = now.getUTCMonth() + 1; // 1-12
-  return month >= 6 ? `${y}-06-01` : `${y}-01-01`;
+/**
+ * Start of the current season's transfer activity (UTC ISO date). Anchored to the
+ * DOMESTIC season the site tracks (not the wall clock) — a season's squads are
+ * built by its summer + winter windows, which open the June before it, so we
+ * count everything from `${seasonYear}-06-01`. This keeps the widget populated
+ * with the season's real confirmed deals rather than an almost-empty brand-new
+ * calendar window.
+ */
+function windowStartIso(): string {
+  const seasonYear = getCompetitionBySlug("premier-league")?.defaultSeason ?? new Date().getUTCFullYear();
+  return `${seasonYear}-06-01`;
 }
 
 /** Normalise the provider's fee/type text; drop non-informative placeholders. */
@@ -47,9 +53,8 @@ function cleanType(type?: string): string | undefined {
  * de-duplicated (a move shows up under both clubs' queries) and most-recent
  * first. Returns [] on any failure — the rail simply hides.
  */
-export async function loadConfirmedTransfers(nowIso?: string): Promise<Transfer[]> {
-  const now = nowIso ? new Date(nowIso) : new Date();
-  const start = windowStartIso(now);
+export async function loadConfirmedTransfers(): Promise<Transfer[]> {
+  const start = windowStartIso();
 
   const lists = await Promise.all(
     TOP_CLUBS.map((id) => provider.getTeamTransfers(id).catch(() => [] as Transfer[])),

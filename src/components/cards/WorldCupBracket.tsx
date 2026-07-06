@@ -244,7 +244,9 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
       const sb = document.querySelector("[data-app-sidebar]");
       const r = sb?.getBoundingClientRect();
       setSidebarRight(r && r.width > 0 ? r.right : 0);
-      setAreaH(Math.max(DOCKED_H, window.innerHeight - 200));
+      // Leave room for the header, legend, gutters and the column round labels so
+      // the tree fills the viewport without forcing a scroll on normal screens.
+      setAreaH(Math.max(DOCKED_H, window.innerHeight - 260));
     };
     measure();
     const onKey = (e: KeyboardEvent) => {
@@ -295,7 +297,7 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
         aria-label="World Cup knockout bracket"
       >
         <StadiumBackdrop />
-        <header className="relative flex items-center justify-between border-b border-white/10 px-5 py-4">
+        <header className="relative z-20 flex shrink-0 items-center justify-between border-b border-white/10 bg-page/80 px-5 py-4 backdrop-blur-sm">
           <BrandHeader />
           <button
             type="button"
@@ -305,8 +307,12 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
             <CloseIcon size={14} /> Close
           </button>
         </header>
-        <div className="relative flex min-h-0 flex-1 items-center px-5 py-4">{board}</div>
-        <div className="relative pb-4">
+        {/* Scrolls vertically when the bracket is taller than the viewport;
+            centres it when it fits — never spills over the header/legend. */}
+        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          <div className="flex min-h-full items-center">{board}</div>
+        </div>
+        <div className="relative z-20 shrink-0 pb-4">
           <Legend />
         </div>
       </div>,

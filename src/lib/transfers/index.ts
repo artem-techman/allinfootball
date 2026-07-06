@@ -19,14 +19,28 @@ import type { Transfer } from "@/lib/providers/types";
 
 /** Top European clubs by transfer relevance (stable API-Football team ids). */
 const TOP_CLUBS: number[] = [
-  50, 33, 40, 42, 49, 47, // Man City, Man Utd, Liverpool, Arsenal, Chelsea, Tottenham
-  541, 529, 530, // Real Madrid, Barcelona, Atlético Madrid
-  496, 505, 489, 492, 497, // Juventus, Inter, AC Milan, Napoli, Roma
+  50, 33, 40, 42, 49, 47, 66, // Man City, Man Utd, Liverpool, Arsenal, Chelsea, Tottenham, Aston Villa
+  541, 529, 530, 531, 548, 543, // Real Madrid, Barcelona, Atlético, Athletic Club, Real Sociedad, Real Betis
+  496, 505, 489, 492, 497, 499, // Juventus, Inter, AC Milan, Napoli, Roma, Atalanta
   157, 165, // Bayern Munich, Borussia Dortmund
   85, 81, // Paris SG, Marseille
 ];
 
 const MAX_TRANSFERS = 20;
+
+/** A player coming back to their parent club at the end of a loan — a squad
+ *  admin record, not a signing anyone follows. Kept out of the widget. */
+function isLoanReturn(type?: string): boolean {
+  return !!type && /return/i.test(type);
+}
+
+/** Rank so marquee moves surface first: fees, then loans/frees, then the rest. */
+function transferRank(type?: string): number {
+  if (!type) return 2;
+  if (/[€$£]|\d/.test(type)) return 0; // a fee
+  if (/loan|free/i.test(type)) return 1;
+  return 2;
+}
 
 /**
  * Start of the current season's transfer activity (UTC ISO date). Anchored to the
@@ -63,14 +77,16 @@ export async function loadConfirmedTransfers(): Promise<Transfer[]> {
   const seen = new Set<string>();
   const out: Transfer[] = [];
   for (const t of lists.flat()) {
-    // Only completed moves into a club, dated within the window.
-    if (!t.to?.id || !t.date || t.date < start) continue;
+    // Only completed moves into a club, dated within the window, that are actual
+    // signings (loan returns are squad admin, not transfers).
+    if (!t.to?.id || !t.date || t.date < start || isLoanReturn(t.type)) continue;
     const key = `${t.playerId}|${t.date}|${t.to.id}|${t.from?.id ?? ""}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push({ ...t, type: cleanType(t.type) });
   }
 
-  out.sort((a, b) => b.date.localeCompare(a.date));
+  // Marquee (fee) moves first, then by most recent.
+  out.sort((a, b) => transferRank(a.type) - transferRank(b.type) || b.date.localeCompare(a.date));
   return out.slice(0, MAX_TRANSFERS);
 }

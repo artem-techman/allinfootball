@@ -1,9 +1,17 @@
+"use client";
+
 import Image from "next/image";
+import { useState } from "react";
 
 /**
  * Team/competition crest. Crests come from the data API's logo URLs (legally
- * clean — CLAUDE.md section 11). Falls back to a neutral monogram tile when no
- * logo is present, so a missing crest never breaks layout. Always has alt text.
+ * clean — CLAUDE.md section 11).
+ *
+ * Reliability: the tiny CDN icons are served `unoptimized` (loaded straight from
+ * media.api-sports.io rather than through Next's image optimizer, which
+ * intermittently failed to fetch the ~30 distinct World Cup flags at once and
+ * left blank icons). And a load error — a genuine 404 or a network blip — falls
+ * back to the neutral monogram, so a crest never renders as a broken/blank box.
  */
 export function Crest({
   src,
@@ -14,7 +22,9 @@ export function Crest({
   name: string;
   size?: number;
 }) {
-  if (!src) {
+  const [failed, setFailed] = useState(false);
+
+  if (!src || failed) {
     const initials = name.slice(0, 2).toUpperCase();
     return (
       <span
@@ -33,6 +43,8 @@ export function Crest({
       alt={`${name} crest`}
       width={size}
       height={size}
+      unoptimized
+      onError={() => setFailed(true)}
       className="shrink-0 object-contain"
     />
   );

@@ -12,6 +12,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const comp = getCompetitionBySlug(slug);
   return {
     title: comp ? `${comp.name} Top Scorers` : "Top Scorers",
+    description: comp ? `${comp.name} top scorers — the leading goalscorers and assist providers on My Football Tracker.` : undefined,
     alternates: { canonical: `/competition/${slug}/scorers` },
   };
 }

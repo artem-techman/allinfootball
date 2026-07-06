@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Feed — Match highlights",
   description: "Post-match highlights from across the Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Europa League, MLS and the World Cup.",
+  alternates: { canonical: "/feed" },
 };
 
 /**

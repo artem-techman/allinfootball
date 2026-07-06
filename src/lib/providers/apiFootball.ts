@@ -28,6 +28,7 @@ import type {
   TopScorer,
   Coach,
   Venue,
+  Transfer,
 } from "./types";
 
 /**
@@ -504,6 +505,39 @@ function bookRank(name: string): number {
   return i === -1 ? Number.MAX_SAFE_INTEGER : i;
 }
 
+interface RawTransfers {
+  player: { id: number; name: string };
+  transfers: {
+    date: string;
+    type: string | null;
+    teams: {
+      in?: { id: number | null; name: string | null; logo?: string | null };
+      out?: { id: number | null; name: string | null; logo?: string | null };
+    };
+  }[];
+}
+
+/** Map API-Football's per-player transfer history (from a team query) into flat
+ *  Transfer records. `teams.in` is the club joined, `teams.out` the club left. */
+export function mapTransfers(raw: RawTransfers[]): Transfer[] {
+  const out: Transfer[] = [];
+  for (const row of raw) {
+    for (const t of row.transfers ?? []) {
+      const to = t.teams.in;
+      const from = t.teams.out;
+      out.push({
+        playerId: row.player.id,
+        playerName: row.player.name,
+        date: t.date,
+        type: t.type ?? undefined,
+        from: from?.id ? { id: from.id, name: from.name ?? undefined, crest: from.logo ?? undefined } : undefined,
+        to: to?.id ? { id: to.id, name: to.name ?? undefined, crest: to.logo ?? undefined } : undefined,
+      });
+    }
+  }
+  return out;
+}
+
 /** Map every bookmaker's "Match Winner" (1X2) market to neutral decimal odds,
  *  keeping the top five biggest European platforms so visitors can compare who
  *  offers the best price. */
@@ -833,6 +867,13 @@ export const apiFootball: FootballProvider = {
     return swr(`odds:${fixtureId}`, TTL.standings, async () => {
       const env = await apiGet<RawOdds>("/odds", { fixture: fixtureId }, { revalidate: TTL.standings });
       return mapOdds(env.response[0], fixtureId);
+    });
+  },
+
+  async getTeamTransfers(teamId: number): Promise<Transfer[]> {
+    return swr(`transfers:team:${teamId}`, TTL.transfers, async () => {
+      const env = await apiGet<RawTransfers>("/transfers", { team: teamId }, { revalidate: TTL.transfers });
+      return mapTransfers(env.response);
     });
   },
 

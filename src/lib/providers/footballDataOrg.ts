@@ -36,4 +36,5 @@ export const footballDataOrg: FootballProvider = {
   getVenue: notImplemented("getVenue"),
   searchTeams: notImplemented("searchTeams"),
   getTeamsByLeague: notImplemented("getTeamsByLeague"),
+  getTeamTransfers: notImplemented("getTeamTransfers"),
 };

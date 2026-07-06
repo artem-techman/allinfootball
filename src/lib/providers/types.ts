@@ -261,6 +261,18 @@ export interface Odds {
   books: BookmakerOdds[];
 }
 
+/** A completed (confirmed) player transfer between two clubs. */
+export interface Transfer {
+  playerId: number;
+  playerName: string;
+  /** ISO date the move was recorded. */
+  date: string;
+  /** Fee / nature of the deal as the provider reports it, e.g. "€ 50M", "Loan", "Free". */
+  type?: string;
+  from?: { id?: number; name?: string; crest?: string };
+  to?: { id?: number; name?: string; crest?: string };
+}
+
 export interface TeamFixturesOptions {
   /** number of most recent finished fixtures */
   last?: number;
@@ -298,4 +310,6 @@ export interface FootballProvider {
   searchTeams(query: string): Promise<Team[]>;
   /** All teams competing in a league/season — used to scope search to the nine competitions. */
   getTeamsByLeague(leagueId: number, season: number): Promise<Team[]>;
+  /** Completed transfers involving a team (players moving in and out). */
+  getTeamTransfers(teamId: number): Promise<Transfer[]>;
 }

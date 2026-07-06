@@ -82,6 +82,7 @@ export const TTL = {
   teams: 60 * 60 * 24,
   competitions: 60 * 60 * 24,
   news: 300,
+  transfers: 60 * 60 * 6, // confirmed transfers change slowly; refresh a few times a day
 } as const;
 
 const inflight = new Map<string, Promise<unknown>>();

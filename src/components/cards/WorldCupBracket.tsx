@@ -128,30 +128,51 @@ export function WorldCupBracket({ rounds }: { rounds: BracketRound[] }) {
     const node = contentRef.current;
     if (!node || sharing) return;
     setSharing(true);
+    let restoreImages = () => {};
     try {
+      // Pre-inline every crest as a data URL so html-to-image has NOTHING external
+      // to fetch during capture (cross-origin image fetches were making it hang /
+      // CORS-fail). Combined with skipFonts this makes the capture deterministic.
+      restoreImages = await inlineCrests(node);
       const { toPng } = await import("html-to-image");
-      const bracketPng = await toPng(node, { pixelRatio: 2, cacheBust: true, skipFonts: false });
+      const bracketPng = await Promise.race([
+        toPng(node, { pixelRatio: 2, skipFonts: true, cacheBust: false }),
+        new Promise<string>((_, reject) => setTimeout(() => reject(new Error("capture timeout")), 15000)),
+      ]);
+      restoreImages();
+      restoreImages = () => {};
       const blob = await composeShareImage(bracketPng);
       const file = new File([blob], "world-cup-knockouts.png", { type: "image/png" });
-      if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
-        await navigator
-          .share({
-            files: [file],
-            title: "World Cup Knockouts",
-            text: "The World Cup knockout bracket — myfootballtracker.com",
-          })
-          .catch(() => {}); // user cancelled the share sheet
-      } else {
-        const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
+      const download = () => {
         const a = document.createElement("a");
         a.href = url;
         a.download = "world-cup-knockouts.png";
+        document.body.appendChild(a); // Safari/Firefox need it in the DOM to fire
         a.click();
-        URL.revokeObjectURL(url);
+        a.remove();
+      };
+      try {
+        // Native share sheet (mobile) when files are shareable; download otherwise.
+        if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: "World Cup Knockouts",
+            text: "The World Cup knockout bracket — myfootballtracker.com",
+          });
+        } else {
+          download();
+        }
+      } catch (err) {
+        // User dismissed the sheet → done; any other failure → fall back to download.
+        if (!(err instanceof DOMException && err.name === "AbortError")) download();
+      } finally {
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
       }
     } catch {
       /* capture failed — leave the bracket untouched */
     } finally {
+      restoreImages();
       setSharing(false);
     }
   }
@@ -618,6 +639,39 @@ function ShareIcon({ size = 16 }: { size?: number }) {
       <path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
     </svg>
   );
+}
+
+/**
+ * Swap every crest <img> under `root` for a data-URL copy, returning a function
+ * that restores the originals. Run before capturing so html-to-image never has
+ * to fetch a cross-origin image (which is what made it hang / CORS-fail). The
+ * crest CDN sends CORS *, so the fetch succeeds; failures are left as-is.
+ */
+async function inlineCrests(root: HTMLElement): Promise<() => void> {
+  const imgs = Array.from(root.querySelectorAll("img"));
+  const restores: Array<() => void> = [];
+  await Promise.all(
+    imgs.map(async (img) => {
+      const src = img.getAttribute("src");
+      if (!src || src.startsWith("data:")) return;
+      try {
+        const res = await fetch(src, { mode: "cors" });
+        if (!res.ok) return;
+        const blob = await res.blob();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(fr.result as string);
+          fr.onerror = () => reject(new Error("read failed"));
+          fr.readAsDataURL(blob);
+        });
+        img.setAttribute("src", dataUrl);
+        restores.push(() => img.setAttribute("src", src));
+      } catch {
+        /* leave this image as-is */
+      }
+    }),
+  );
+  return () => restores.forEach((r) => r());
 }
 
 /**

@@ -1,17 +1,17 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 
 /**
  * Team/competition crest. Crests come from the data API's logo URLs (legally
  * clean — CLAUDE.md section 11).
  *
- * Reliability: the tiny CDN icons are served `unoptimized` (loaded straight from
- * media.api-sports.io rather than through Next's image optimizer, which
- * intermittently failed to fetch the ~30 distinct World Cup flags at once and
- * left blank icons). And a load error — a genuine 404 or a network blip — falls
- * back to the neutral monogram, so a crest never renders as a broken/blank box.
+ * Reliability: loaded as a plain <img> straight from the CDN (media.api-sports.io
+ * is fast and reliable; Next's optimizer intermittently failed to fetch the ~30
+ * distinct World Cup flags at once). `crossOrigin="anonymous"` makes the browser
+ * cache a CORS-clean copy — required so the bracket can be captured to a canvas
+ * for the Share feature (the CDN sends `access-control-allow-origin: *`). A load
+ * error falls back to the neutral monogram, so a crest never renders blank.
  */
 export function Crest({
   src,
@@ -38,12 +38,16 @@ export function Crest({
     );
   }
   return (
-    <Image
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
       src={src}
       alt={`${name} crest`}
       width={size}
       height={size}
-      unoptimized
+      style={{ width: size, height: size }}
+      crossOrigin="anonymous"
+      loading="lazy"
+      decoding="async"
       onError={() => setFailed(true)}
       className="shrink-0 object-contain"
     />

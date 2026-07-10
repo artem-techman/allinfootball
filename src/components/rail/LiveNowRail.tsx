@@ -10,7 +10,7 @@ import { ErrorBanner } from "@/components/primitives/ErrorBanner";
 import { Countdown } from "@/components/primitives/Countdown";
 import { ChevronRightIcon } from "@/components/primitives/icons";
 
-const LIVE_POLL_MS = 15_000; // while a match is live
+const LIVE_POLL_MS = 30_000; // while a match is live (matches the server's 30s live TTL)
 const NEAR_KICKOFF_POLL_MS = 20_000; // around the next kickoff, to catch it going live
 const IDLE_POLL_MS = 5 * 60_000; // nothing live and the next match is a while away
 const NEAR_KICKOFF_WINDOW_MS = 2 * 60_000; // "around kickoff" threshold
@@ -77,6 +77,10 @@ export function LiveNowRail({
     }
 
     async function tick() {
+      // Hidden tabs don't poll: a backgrounded tab left open all day was a big
+      // slice of the 2026-07-10 quota burn. The visibilitychange listener below
+      // resumes (with an immediate refresh) when the tab is foregrounded.
+      if (typeof document !== "undefined" && document.hidden) return;
       try {
         const res = await fetch("/api/live", { cache: "no-store" });
         if (!res.ok) throw new Error(String(res.status));
@@ -102,9 +106,17 @@ export function LiveNowRail({
       }
     }
 
+    function onVisibilityChange() {
+      if (document.hidden) return;
+      if (timer.current) clearTimeout(timer.current);
+      tick();
+    }
+
     tick();
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       if (timer.current) clearTimeout(timer.current);
       if (celebrateTimer.current) clearTimeout(celebrateTimer.current);
     };

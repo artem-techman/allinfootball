@@ -68,6 +68,11 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
     if (!inPlay) return;
     let cancelled = false;
     async function tick() {
+      // Hidden tabs don't poll (quota protection); resumes on foreground below.
+      if (document.hidden) {
+        if (!cancelled) timer.current = setTimeout(tick, 30_000);
+        return;
+      }
       try {
         const res = await fetch(`/api/match?id=${match.id}`, { cache: "no-store" });
         const data = (await res.json()) as Partial<MatchBundle> & { delayed?: boolean };
@@ -80,15 +85,22 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
       } catch {
         if (!cancelled) setDegraded(true); // serve last-good, flag delay
       } finally {
-        if (!cancelled) timer.current = setTimeout(tick, 15_000);
+        if (!cancelled) timer.current = setTimeout(tick, 30_000);
       }
+    }
+    function onVisibilityChange() {
+      if (document.hidden || cancelled) return;
+      if (timer.current) clearTimeout(timer.current);
+      tick();
     }
     // Fetch straight away so a stale initial render (Next may serve a
     // prefetched/cached RSC that's minutes old) is corrected within one round
-    // trip instead of after the first 15s interval; tick() then re-schedules itself.
+    // trip instead of after the first 30s interval; tick() then re-schedules itself.
     tick();
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       if (timer.current) clearTimeout(timer.current);
     };
   }, [inPlay, match.id]);

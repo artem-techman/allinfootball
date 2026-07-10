@@ -231,7 +231,7 @@ async function loadFixturesWindow(): Promise<Match[]> {
     const today = todayKey();
     const days = [-3, -2, -1, 0, 1, 2, 3].map((d) => shiftDateKey(today, d));
     const batches = await Promise.all(days.map((d) => provider.getFixturesByDate(d).catch(() => [] as Match[])));
-    return batches.flat().filter((m) => isInScope(m.competitionId));
+    return batches.flat().filter((m) => isInScope(m.competitionId, m.round));
   } catch {
     return [];
   }

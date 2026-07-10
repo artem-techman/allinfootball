@@ -43,6 +43,11 @@ export function MatchCalendar({
     if (!anyLive) return;
 
     async function tick() {
+      // Hidden tabs don't poll (quota protection); resumes on foreground below.
+      if (document.hidden) {
+        if (!cancelled) timer.current = setTimeout(tick, 30_000);
+        return;
+      }
       try {
         const res = await fetch(`/api/fixtures?date=${dateKey}`, { cache: "no-store" });
         const data = (await res.json()) as { matches: Match[]; delayed?: boolean };
@@ -52,17 +57,24 @@ export function MatchCalendar({
       } catch {
         if (!cancelled) setDelayed(true);
       } finally {
-        if (!cancelled) timer.current = setTimeout(tick, 20_000);
+        if (!cancelled) timer.current = setTimeout(tick, 30_000);
       }
     }
-    timer.current = setTimeout(tick, 20_000);
+    function onVisibilityChange() {
+      if (document.hidden || cancelled) return;
+      if (timer.current) clearTimeout(timer.current);
+      tick();
+    }
+    timer.current = setTimeout(tick, 30_000);
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       if (timer.current) clearTimeout(timer.current);
     };
   }, [dateKey, matches]);
 
-  const inScope = useMemo(() => matches.filter((m) => isInScope(m.competitionId)), [matches]);
+  const inScope = useMemo(() => matches.filter((m) => isInScope(m.competitionId, m.round)), [matches]);
   const liveCount = useMemo(
     () => inScope.filter((m) => m.status === "live" || m.status === "ht").length,
     [inScope],

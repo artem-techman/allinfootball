@@ -70,8 +70,21 @@ export function getCompetitionByLeagueId(leagueId: number): CompetitionConst | u
   return BY_LEAGUE_ID.get(leagueId);
 }
 
-export function isInScope(leagueId: number): boolean {
-  return BY_LEAGUE_ID.has(leagueId);
+/**
+ * True for a competition's preliminary/qualifying phase. API-Football files
+ * UCL/UEL qualifiers under the SAME league ids as the competition proper (2/3),
+ * so in July the live feed fills up with 1st/2nd-qualifying-round minnows
+ * (Kazakh sides, second-division cup entrants). Those rounds are out of product
+ * scope — we track the competitions proper, not their qualification funnels.
+ * NOTE: matches only "Qualifying"/"Preliminary" round names — the UCL's
+ * main-phase "Knockout Round Play-offs" must NOT be excluded.
+ */
+export function isQualifyingRound(round?: string): boolean {
+  return !!round && /qualif|preliminary/i.test(round);
+}
+
+export function isInScope(leagueId: number, round?: string): boolean {
+  return BY_LEAGUE_ID.has(leagueId) && !isQualifyingRound(round);
 }
 
 export const LEAGUE_IDS: readonly number[] = COMPETITIONS.map((c) => c.leagueId);

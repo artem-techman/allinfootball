@@ -4,9 +4,10 @@ import { swr, TTL } from "@/lib/cache";
 import {
   COMPETITIONS,
   getCompetitionByLeagueId,
+  isInScope,
 } from "@/lib/constants/competitions";
 import { entitySlug } from "@/lib/utils/slug";
-import { todayKey, shiftDateKey } from "@/lib/utils/date";
+import { todayKey } from "@/lib/utils/date";
 import { mapStatus } from "./statusMap";
 import type {
   Competition,
@@ -102,6 +103,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  */
 const DAILY_BUDGET = Number(process.env.FOOTBALL_DAILY_BUDGET) || 7000;
 let budgetWarned = false;
+let budgetWarned80 = false;
 
 /**
  * Today's request count from API-Football's own `/status` — which is FREE (it
@@ -144,6 +146,12 @@ async function apiGet<T>(
 
   // Circuit breaker: stop before we burn the real quota.
   const used = await dailyRequestsUsed();
+  // Early warning at 80% so exhaustion is visible in the logs BEFORE it happens
+  // (the 2026-07-10 outage was only discovered at 103%).
+  if (used != null && !budgetWarned80 && used >= DAILY_BUDGET * 0.8) {
+    console.warn(`[apiFootball] daily usage at ${used}/${DAILY_BUDGET} (>=80%) — approaching the circuit breaker`);
+    budgetWarned80 = true;
+  }
   if (used != null && used >= DAILY_BUDGET) {
     if (!budgetWarned) {
       console.warn(`[apiFootball] daily budget reached (${used}/${DAILY_BUDGET}) — serving cached/empty until reset`);
@@ -769,20 +777,20 @@ export const apiFootball: FootballProvider = {
   async getLiveFixtures(): Promise<Match[]> {
     return swr("fixtures:live", TTL.live, async () => {
       const env = await apiGet<RawFixture>("/fixtures", { live: "all" }, { revalidate: TTL.live });
-      // Scope to our nine competitions only.
-      const live = env.response.map(mapFixture).filter((m) => getCompetitionByLeagueId(m.competitionId));
+      // Scope to our nine competitions only — and not their qualifying rounds
+      // (UCL/UEL qualifiers share the competition's league id).
+      const live = env.response.map(mapFixture).filter((m) => isInScope(m.competitionId, m.round));
       // Some fixtures report a live status on their own record but never surface in
       // the global live=all feed (seen with the World Cup data). Back-fill from
-      // the in-scope fixtures around now so a live match is never missing from Live
-      // Now. We span yesterday→tomorrow so a game that stays live across midnight
-      // (or one in a timezone ahead of/behind ours) is still caught.
+      // today's in-scope fixtures so a live match is never missing from Live Now.
+      // Today only (was yesterday→tomorrow): the wider net tripled this loop's
+      // API spend and helped exhaust the 2026-07-10 quota; a cross-midnight game
+      // is a rare cosmetic gap, an exhausted quota takes the whole site down.
       try {
-        const today = todayKey();
-        const days = [shiftDateKey(today, -1), today, shiftDateKey(today, 1)];
-        const batches = await Promise.all(days.map((d) => apiFootball.getFixturesByDate(d).catch(() => [] as Match[])));
+        const todays = await apiFootball.getFixturesByDate(todayKey());
         const seen = new Set(live.map((m) => m.id));
-        for (const m of batches.flat()) {
-          if ((m.status === "live" || m.status === "ht") && getCompetitionByLeagueId(m.competitionId) && !seen.has(m.id)) {
+        for (const m of todays) {
+          if ((m.status === "live" || m.status === "ht") && isInScope(m.competitionId, m.round) && !seen.has(m.id)) {
             seen.add(m.id);
             live.push(m);
           }

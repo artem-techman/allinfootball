@@ -11,6 +11,7 @@ import {
   mapOdds,
 } from "@/lib/providers/apiFootball";
 import { mapStatus, isInPlay } from "@/lib/providers/statusMap";
+import { isInScope, isQualifyingRound } from "@/lib/constants/competitions";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const fx = sample.fixtures as any[];
@@ -207,5 +208,27 @@ describe("mapTopScorers", () => {
     expect(scorers[0].assists).toBe(9);
     expect(scorers[1].assists).toBe(0); // null -> 0
     expect(scorers[1].player?.slug).toContain("1100");
+  });
+});
+
+describe("competition scope (qualifying rounds)", () => {
+  it("keeps competition-proper rounds in scope", () => {
+    expect(isInScope(2, "League Stage - 1")).toBe(true);
+    expect(isInScope(2, "Knockout Round Play-offs")).toBe(true); // real UCL main-phase round
+    expect(isInScope(1, "Group Stage - 1")).toBe(true);
+    expect(isInScope(39)).toBe(true); // leagues have no qualifying phase
+  });
+
+  it("excludes UCL/UEL qualifying + preliminary rounds (the July minnow leak)", () => {
+    expect(isInScope(2, "1st Qualifying Round")).toBe(false);
+    expect(isInScope(2, "2nd Qualifying Round")).toBe(false);
+    expect(isInScope(3, "3rd Qualifying Round")).toBe(false);
+    expect(isInScope(2, "Preliminary Round")).toBe(false);
+    expect(isQualifyingRound("Qualifying Round 1")).toBe(true);
+    expect(isQualifyingRound(undefined)).toBe(false);
+  });
+
+  it("out-of-scope league ids stay out regardless of round", () => {
+    expect(isInScope(999, "Regular Season - 1")).toBe(false);
   });
 });

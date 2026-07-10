@@ -31,7 +31,7 @@ export async function CalendarShell({ dateKey }: { dateKey: string }) {
     inWindow ? provider.getFixturesByDate(dateKey).catch(() => [] as Match[]) : Promise.resolve([] as Match[]),
     topComp ? provider.getStandings(topComp.leagueId, topComp.defaultSeason).catch(() => [] as Standing[]) : Promise.resolve([]),
   ]);
-  const initialMatches = allMatches.filter((m) => isInScope(m.competitionId));
+  const initialMatches = allMatches.filter((m) => isInScope(m.competitionId, m.round));
   // Soonest scheduled fixture on this date — the Live Now rail counts down to it
   // when nothing is live.
   const nextMatch = initialMatches

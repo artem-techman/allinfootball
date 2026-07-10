@@ -74,7 +74,9 @@ if (process.env.NODE_ENV !== "production") globalForCache.__allInFootballCache =
 
 /** Cache TTLs in seconds, per CLAUDE.md section 5. */
 export const TTL = {
-  live: 15,
+  // 30s (was 15): halves the upstream live=all spend after the 2026-07-10
+  // quota exhaustion; scores still feel live.
+  live: 30,
   lineups: 60,
   standings: 120,
   fixtures: 120,

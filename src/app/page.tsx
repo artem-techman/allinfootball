@@ -196,10 +196,12 @@ async function loadHomeData(): Promise<{
     .filter((m) => m.status === "scheduled")
     .sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc))
     .slice(0, 12);
+  // 5, not 3: MLS kicks off late US-evening, so a batch of MLS results can bump
+  // a marquee World Cup tie off a 3-item list within hours of it finishing.
   const results = windowMatches
     .filter((m) => m.status === "finished")
     .sort((a, b) => b.kickoffUtc.localeCompare(a.kickoffUtc))
-    .slice(0, 3);
+    .slice(0, 5);
   return { upcoming, results, standings, scorers, bracket, news, transferNews };
 }
 

@@ -7,7 +7,7 @@ import {
   isInScope,
 } from "@/lib/constants/competitions";
 import { entitySlug } from "@/lib/utils/slug";
-import { todayKey } from "@/lib/utils/date";
+import { todayKey, shiftDateKey } from "@/lib/utils/date";
 import { mapStatus } from "./statusMap";
 import type {
   Competition,
@@ -780,16 +780,27 @@ export const apiFootball: FootballProvider = {
       // Scope to our nine competitions only — and not their qualifying rounds
       // (UCL/UEL qualifiers share the competition's league id).
       const live = env.response.map(mapFixture).filter((m) => isInScope(m.competitionId, m.round));
-      // Some fixtures report a live status on their own record but never surface in
-      // the global live=all feed (seen with the World Cup data). Back-fill from
-      // today's in-scope fixtures so a live match is never missing from Live Now.
-      // Today only (was yesterday→tomorrow): the wider net tripled this loop's
-      // API spend and helped exhaust the 2026-07-10 quota; a cross-midnight game
-      // is a rare cosmetic gap, an exhausted quota takes the whole site down.
+      // Some fixtures report a live status on their own record but never surface
+      // in the global live=all feed (seen repeatedly with the World Cup data),
+      // so back-fill from the in-scope fixtures around now.
+      //
+      // Yesterday + today. Trimming this to today-only hid the 2026 World Cup
+      // third-place playoff (kickoff 18 Jul 21:00 UTC) for its whole duration:
+      // a late kickoff plus extra time and penalties runs past midnight UTC, at
+      // which point "today" no longer contains the fixture and live=all never
+      // listed it. That is not the cosmetic gap the earlier comment claimed.
+      // Cost is ~nil: the home page already fetches this exact ±3 day range, so
+      // these are cache hits on URLs in flight anyway. Tomorrow is omitted — a
+      // fixture dated tomorrow cannot be in play now.
       try {
-        const todays = await apiFootball.getFixturesByDate(todayKey());
+        const today = todayKey();
+        const batches = await Promise.all(
+          [shiftDateKey(today, -1), today].map((d) =>
+            apiFootball.getFixturesByDate(d).catch(() => [] as Match[]),
+          ),
+        );
         const seen = new Set(live.map((m) => m.id));
-        for (const m of todays) {
+        for (const m of batches.flat()) {
           if ((m.status === "live" || m.status === "ht") && isInScope(m.competitionId, m.round) && !seen.has(m.id)) {
             seen.add(m.id);
             live.push(m);

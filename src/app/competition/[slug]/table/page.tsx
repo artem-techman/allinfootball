@@ -4,6 +4,7 @@ import { CompetitionLayout } from "@/components/competition/CompetitionLayout";
 import { StandingsTable } from "@/components/tables/StandingsTable";
 import { ThirdPlaceTable } from "@/components/tables/ThirdPlaceTable";
 import { WorldCupBracket } from "@/components/cards/WorldCupBracket";
+import { EmptyState } from "@/components/primitives/EmptyState";
 import { provider } from "@/lib/providers";
 import { getCompetitionBySlug } from "@/lib/constants/competitions";
 import { loadWorldCupBracket } from "@/lib/worldcup/bracket";
@@ -27,14 +28,25 @@ export default async function CompetitionTablePage({ params }: { params: Promise
   if (!comp) notFound();
 
   // The World Cup has reached the knockout stage, so its Table tab shows the same
-  // knockout bracket as the home page (with the demo-bracket fallback) instead of
-  // the now-finished group standings.
+  // knockout bracket as the home page instead of the now-finished group standings.
+  // The demo bracket is for the keyless demo ONLY: with a real key, a transient
+  // provider failure previously rendered a fictional bracket (Italy, Wales and
+  // Uruguay in a tournament they never entered) indistinguishable from real data.
+  // An unavailable bracket now hides the widget instead of inventing one.
   if (slug === "world-cup") {
     const bracket = await loadWorldCupBracket();
-    const rounds = bracket.length > 0 ? bracket : PREVIEW_BRACKET;
+    const demo = !process.env.FOOTBALL_API_KEY;
+    const rounds = bracket.length > 0 ? bracket : demo ? PREVIEW_BRACKET : [];
     return (
       <CompetitionLayout slug={slug} active="table">
-        <WorldCupBracket rounds={rounds} />
+        {rounds.length > 0 ? (
+          <WorldCupBracket rounds={rounds} />
+        ) : (
+          <EmptyState
+            title="Bracket temporarily unavailable"
+            hint="The knockout bracket couldn't be loaded just now. Please check back shortly."
+          />
+        )}
       </CompetitionLayout>
     );
   }

@@ -37,11 +37,17 @@ export const metadata = { alternates: { canonical: "/" } };
 const TOP_TABLE_SLUG = "world-cup";
 
 export default async function HomePage() {
-  const { upcoming, results, standings, scorers, bracket, news, transferNews } = await loadHomeData();
+  const { upcoming, results, standings, scorers, bracket, news, transferNews, demo } = await loadHomeData();
 
-  const upcomingToShow = upcoming.length > 0 ? upcoming : PREVIEW_UPCOMING;
-  const resultsToShow = results.length > 0 ? results : PREVIEW_RESULTS;
-  const standingsToShow = standings && standings.length > 0 ? standings : PREVIEW_STANDINGS;
+  // Sample data renders ONLY in the keyless demo. With a real key, a failed or
+  // empty provider call must show nothing — never invented fixtures, results or
+  // brackets dressed up as real (a transient failure once rendered a fictional
+  // World Cup bracket containing teams that aren't in the tournament). Every one
+  // of these widgets hides itself on an empty array.
+  const upcomingToShow = upcoming.length > 0 ? upcoming : demo ? PREVIEW_UPCOMING : [];
+  const resultsToShow = results.length > 0 ? results : demo ? PREVIEW_RESULTS : [];
+  const standingsToShow =
+    standings && standings.length > 0 ? standings : demo ? PREVIEW_STANDINGS : [];
 
   const heroArticles = news.filter((a) => a.image).slice(0, 5);
   const storyPool = news.filter((a) => !heroArticles.includes(a));
@@ -53,12 +59,12 @@ export default async function HomePage() {
   // World Cup top scorers — rendered beside Top Stories on desktop, but moved to
   // the very end on mobile (after the stacked rail widgets), so it's the last
   // section the user scrolls to.
-  const scorersToShow = scorers.length > 0 ? scorers : PREVIEW_SCORERS;
+  const scorersToShow = scorers.length > 0 ? scorers : demo ? PREVIEW_SCORERS : [];
   const worldCupScorers = <WorldCupScorersCard scorers={scorersToShow} />;
 
-  // World Cup knockout bracket — falls back to a demo bracket until the real
-  // tournament reaches its knockout rounds.
-  const bracketToShow = bracket.length > 0 ? bracket : PREVIEW_BRACKET;
+  // World Cup knockout bracket — the demo bracket is keyless-demo only; live, an
+  // unavailable bracket hides the widget rather than inventing one.
+  const bracketToShow = bracket.length > 0 ? bracket : demo ? PREVIEW_BRACKET : [];
 
   // Soonest upcoming fixture — shown with a countdown in the Live Now rail when
   // nothing is live.
@@ -169,6 +175,8 @@ async function loadHomeData(): Promise<{
   bracket: BracketRound[];
   news: Article[];
   transferNews: Article[];
+  /** True only in the keyless demo — the ONLY case where sample data may render. */
+  demo: boolean;
 }> {
   const keyMissing = !process.env.FOOTBALL_API_KEY;
 
@@ -179,7 +187,7 @@ async function loadHomeData(): Promise<{
   ]);
 
   if (keyMissing) {
-    return { upcoming: [], results: [], standings: null, scorers: [], bracket: [], news, transferNews };
+    return { upcoming: [], results: [], standings: null, scorers: [], bracket: [], news, transferNews, demo: true };
   }
 
   // Top Table and the scorers leaderboard both default to the World Cup (the
@@ -202,7 +210,7 @@ async function loadHomeData(): Promise<{
     .filter((m) => m.status === "finished")
     .sort((a, b) => b.kickoffUtc.localeCompare(a.kickoffUtc))
     .slice(0, 5);
-  return { upcoming, results, standings, scorers, bracket, news, transferNews };
+  return { upcoming, results, standings, scorers, bracket, news, transferNews, demo: false };
 }
 
 /** Biggest goal scorers of the World Cup, as a compact leaderboard (top 5). */

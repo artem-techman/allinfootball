@@ -222,6 +222,42 @@ export async function apiGetAll<T>(
   return out;
 }
 
+/**
+ * Reconcile the global `live=all` feed against authoritative per-date fixtures.
+ * Pure and exported for testing.
+ *
+ * The two provider feeds disagree at the edges of a match, and we trust the
+ * right one for each job:
+ *  - `live=all` can LAG on the final whistle — it kept the 2026 World Cup final
+ *    frozen at 104' long after the by-date feed already reported "finished". So
+ *    the by-date status is AUTHORITATIVE for ending a match: if it says a
+ *    fixture is no longer in play, drop it from Live Now (never show a finished
+ *    match as live).
+ *  - `live=all` can also MISS a genuinely live match that the fixture's own
+ *    record shows in play (seen with World Cup data), so the by-date feed
+ *    back-fills live/ht matches that `live=all` omitted.
+ *
+ * A match only stays/enters "live" when a feed reports it live/ht; a by-date
+ * record with any terminal status (finished/postponed/cancelled/…) removes it.
+ */
+export function reconcileLiveFixtures(liveAll: Match[], byDateFixtures: Match[]): Match[] {
+  const byDate = new Map(byDateFixtures.map((m) => [m.id, m]));
+
+  const out = liveAll.filter((m) => {
+    const authoritative = byDate.get(m.id);
+    return !authoritative || authoritative.status === "live" || authoritative.status === "ht";
+  });
+
+  const seen = new Set(out.map((m) => m.id));
+  for (const m of byDate.values()) {
+    if ((m.status === "live" || m.status === "ht") && isInScope(m.competitionId, m.round) && !seen.has(m.id)) {
+      seen.add(m.id);
+      out.push(m);
+    }
+  }
+  return out;
+}
+
 /* --------------------------------- mappers --------------------------------- */
 
 export function mapTeam(raw: RawTeam): Team {
@@ -780,18 +816,13 @@ export const apiFootball: FootballProvider = {
       // Scope to our nine competitions only — and not their qualifying rounds
       // (UCL/UEL qualifiers share the competition's league id).
       const live = env.response.map(mapFixture).filter((m) => isInScope(m.competitionId, m.round));
-      // Some fixtures report a live status on their own record but never surface
-      // in the global live=all feed (seen repeatedly with the World Cup data),
-      // so back-fill from the in-scope fixtures around now.
-      //
-      // Yesterday + today. Trimming this to today-only hid the 2026 World Cup
-      // third-place playoff (kickoff 18 Jul 21:00 UTC) for its whole duration:
-      // a late kickoff plus extra time and penalties runs past midnight UTC, at
-      // which point "today" no longer contains the fixture and live=all never
-      // listed it. That is not the cosmetic gap the earlier comment claimed.
-      // Cost is ~nil: the home page already fetches this exact ±3 day range, so
-      // these are cache hits on URLs in flight anyway. Tomorrow is omitted — a
-      // fixture dated tomorrow cannot be in play now.
+
+      // Reconcile against the per-date fixtures (yesterday + today). Yesterday +
+      // today because a late kickoff plus extra time and penalties runs past
+      // midnight UTC (that gap once hid the third-place playoff for its whole
+      // duration); tomorrow is omitted — a fixture dated tomorrow can't be in
+      // play now. Cost is ~nil: the home page already fetches this exact date
+      // range, so these are cache hits on in-flight URLs.
       try {
         const today = todayKey();
         const batches = await Promise.all(
@@ -799,15 +830,9 @@ export const apiFootball: FootballProvider = {
             apiFootball.getFixturesByDate(d).catch(() => [] as Match[]),
           ),
         );
-        const seen = new Set(live.map((m) => m.id));
-        for (const m of batches.flat()) {
-          if ((m.status === "live" || m.status === "ht") && isInScope(m.competitionId, m.round) && !seen.has(m.id)) {
-            seen.add(m.id);
-            live.push(m);
-          }
-        }
+        return reconcileLiveFixtures(live, batches.flat());
       } catch {
-        /* best-effort back-fill; the live=all result is still returned */
+        /* best-effort reconcile/back-fill; the raw live=all result still returns */
       }
       return live;
     });

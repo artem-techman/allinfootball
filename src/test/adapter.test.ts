@@ -9,6 +9,7 @@ import {
   mapStandings,
   mapTopScorers,
   mapOdds,
+  reconcileLiveFixtures,
 } from "@/lib/providers/apiFootball";
 import { mapStatus, isInPlay } from "@/lib/providers/statusMap";
 import { isInScope, isQualifyingRound } from "@/lib/constants/competitions";
@@ -232,3 +233,40 @@ describe("competition scope (qualifying rounds)", () => {
     expect(isInScope(999, "Regular Season - 1")).toBe(false);
   });
 });
+
+describe("reconcileLiveFixtures", () => {
+  // Minimal Match factory — only the fields the reconciler reads.
+  const mk = (id: number, status: string, competitionId = 1, round = "Final") =>
+    ({ id, status, competitionId, round } as unknown as Parameters<typeof reconcileLiveFixtures>[0][number]);
+
+  it("drops a match live=all still shows live once the by-date feed says finished (the World Cup final at 104')", () => {
+    const liveAll = [mk(999, "live")];
+    const byDate = [mk(999, "finished")];
+    expect(reconcileLiveFixtures(liveAll, byDate).map((m) => m.id)).toEqual([]);
+  });
+
+  it("keeps a genuinely live match confirmed live by both feeds", () => {
+    const out = reconcileLiveFixtures([mk(1, "live")], [mk(1, "live")]);
+    expect(out.map((m) => m.id)).toEqual([1]);
+  });
+
+  it("keeps a live=all match the by-date feed hasn't got yet (no override, trust live=all)", () => {
+    const out = reconcileLiveFixtures([mk(2, "live")], []);
+    expect(out.map((m) => m.id)).toEqual([2]);
+  });
+
+  it("back-fills an in-scope live match that live=all omitted", () => {
+    const out = reconcileLiveFixtures([], [mk(3, "ht")]);
+    expect(out.map((m) => m.id)).toEqual([3]);
+  });
+
+  it("does not back-fill an out-of-scope or finished by-date match", () => {
+    const out = reconcileLiveFixtures([], [mk(4, "live", 99999), mk(5, "finished")]);
+    expect(out.map((m) => m.id)).toEqual([]);
+  });
+
+  it("also drops postponed/cancelled matches live=all may still list", () => {
+    const out = reconcileLiveFixtures([mk(6, "live"), mk(7, "live")], [mk(6, "postponed"), mk(7, "cancelled")]);
+    expect(out.map((m) => m.id)).toEqual([]);
+  });
+})

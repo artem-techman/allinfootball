@@ -6,7 +6,7 @@ const AD_CONTACT = "mailto:ads@myfootballtracker.com?subject=Advertising%20on%20
 /** Primary in-app links (kept in sync with the sidebar nav). */
 const EXPLORE = [
   { label: "Matches", href: "/matches" },
-  { label: "Competitions", href: "/competition/world-cup/table" },
+  { label: "Competitions", href: "/competition/premier-league/table" },
   { label: "News", href: "/news" },
   { label: "Highlights", href: "/feed" },
 ];

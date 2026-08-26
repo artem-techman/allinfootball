@@ -18,10 +18,11 @@ const TABS: { id: CompetitionTab; label: string }[] = [
 
 const LEAGUE_LOGO = (id: number) => `https://media.api-sports.io/football/leagues/${id}.png`;
 
-/** Switcher order: World Cup first (the current marquee event), then the rest. */
+/** Switcher order: the natural competition order — Premier League first, World
+ *  Cup last (the tournament has ended). */
 const SWITCHER_ORDER = [
-  ...COMPETITIONS.filter((c) => c.slug === "world-cup"),
   ...COMPETITIONS.filter((c) => c.slug !== "world-cup"),
+  ...COMPETITIONS.filter((c) => c.slug === "world-cup"),
 ];
 
 /**
@@ -50,7 +51,7 @@ export async function CompetitionLayout({
     <AppShell wide>
       <JsonLd
         data={breadcrumb([
-          { name: "Competitions", path: "/competition/world-cup" },
+          { name: "Competitions", path: "/competition/premier-league" },
           { name: comp.name, path: `/competition/${slug}/${active}` },
         ])}
       />

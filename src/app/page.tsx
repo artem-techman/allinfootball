@@ -8,8 +8,6 @@ import { TopStoriesCard } from "@/components/cards/TopStoriesCard";
 import type { StoryItem } from "@/components/cards/TopStoriesCard";
 import { WorldCupScorersCard } from "@/components/cards/WorldCupScorersCard";
 import type { ScorerItem } from "@/components/cards/WorldCupScorersCard";
-import { WorldCupBracket } from "@/components/cards/WorldCupBracket";
-import type { BracketRound } from "@/components/cards/WorldCupBracket";
 import { LiveNowRail } from "@/components/rail/LiveNowRail";
 import { TopTableRail } from "@/components/rail/TopTableRail";
 import { LatestResultsRail } from "@/components/rail/LatestResultsRail";
@@ -20,9 +18,8 @@ import { getNews } from "@/lib/news";
 import type { Article, Match, Standing } from "@/lib/providers/types";
 import { todayKey, shiftDateKey } from "@/lib/utils/date";
 import { getCompetitionBySlug, isInScope } from "@/lib/constants/competitions";
-import { loadWorldCupBracket } from "@/lib/worldcup/bracket";
 import { currentSeasonYear } from "@/lib/season";
-import { PREVIEW_UPCOMING, PREVIEW_RESULTS, PREVIEW_STANDINGS, PREVIEW_STORIES, PREVIEW_SCORERS, PREVIEW_HERO, PREVIEW_BRACKET } from "@/lib/preview/homePreview";
+import { PREVIEW_UPCOMING, PREVIEW_RESULTS, PREVIEW_STANDINGS, PREVIEW_STORIES, PREVIEW_SCORERS, PREVIEW_HERO } from "@/lib/preview/homePreview";
 
 export const dynamic = "force-dynamic";
 
@@ -38,11 +35,11 @@ export const metadata = { alternates: { canonical: "/" } };
  *  via the picker). The Premier League is the site's default home competition. */
 const TOP_TABLE_SLUG = "premier-league";
 
-/** The World Cup drives the knockout bracket + top-scorers leaderboard cards. */
+/** The World Cup drives the top-scorers leaderboard card. */
 const WORLD_CUP_SLUG = "world-cup";
 
 export default async function HomePage() {
-  const { upcoming, results, standings, scorers, bracket, news, transferNews, demo } = await loadHomeData();
+  const { upcoming, results, standings, scorers, news, transferNews, demo } = await loadHomeData();
 
   // Sample data renders ONLY in the keyless demo. With a real key, a failed or
   // empty provider call must show nothing — never invented fixtures, results or
@@ -67,10 +64,6 @@ export default async function HomePage() {
   const scorersToShow = scorers.length > 0 ? scorers : demo ? PREVIEW_SCORERS : [];
   const worldCupScorers = <WorldCupScorersCard scorers={scorersToShow} />;
 
-  // World Cup knockout bracket — the demo bracket is keyless-demo only; live, an
-  // unavailable bracket hides the widget rather than inventing one.
-  const bracketToShow = bracket.length > 0 ? bracket : demo ? PREVIEW_BRACKET : [];
-
   // Soonest upcoming fixture — shown with a countdown in the Live Now rail when
   // nothing is live.
   const nextUpcoming = upcomingToShow[0];
@@ -92,11 +85,6 @@ export default async function HomePage() {
               Top Stories instead (see below) and is hidden here. */}
           <div className="lg:hidden">{worldCupScorers}</div>
         </>
-      }
-      below={
-        /* Standalone, full-width section spanning both columns at the very
-           bottom of the page. */
-        <WorldCupBracket rounds={bracketToShow} />
       }
     >
       <GreetingHeader />
@@ -177,7 +165,6 @@ async function loadHomeData(): Promise<{
   results: Match[];
   standings: Standing[] | null;
   scorers: ScorerItem[];
-  bracket: BracketRound[];
   news: Article[];
   transferNews: Article[];
   /** True only in the keyless demo — the ONLY case where sample data may render. */
@@ -192,13 +179,13 @@ async function loadHomeData(): Promise<{
   ]);
 
   if (keyMissing) {
-    return { upcoming: [], results: [], standings: null, scorers: [], bracket: [], news, transferNews, demo: true };
+    return { upcoming: [], results: [], standings: null, scorers: [], news, transferNews, demo: true };
   }
 
-  // Top Table defaults to the Premier League; the scorers leaderboard + bracket
-  // are the World Cup. The Top Table season is resolved live (current season).
+  // Top Table defaults to the Premier League; the scorers leaderboard is the
+  // World Cup. The Top Table season is resolved live (current season).
   const tableComp = getCompetitionBySlug(TOP_TABLE_SLUG);
-  const [windowMatches, standings, scorers, bracket] = await Promise.all([
+  const [windowMatches, standings, scorers] = await Promise.all([
     loadFixturesWindow(),
     tableComp
       ? currentSeasonYear(tableComp)
@@ -206,7 +193,6 @@ async function loadHomeData(): Promise<{
           .catch(() => [])
       : Promise.resolve([]),
     loadWorldCupScorers(),
-    loadWorldCupBracket(),
   ]);
   // One date window feeds both: soonest scheduled = upcoming, latest finished = results.
   const upcoming = windowMatches
@@ -219,7 +205,7 @@ async function loadHomeData(): Promise<{
     .filter((m) => m.status === "finished")
     .sort((a, b) => b.kickoffUtc.localeCompare(a.kickoffUtc))
     .slice(0, 5);
-  return { upcoming, results, standings, scorers, bracket, news, transferNews, demo: false };
+  return { upcoming, results, standings, scorers, news, transferNews, demo: false };
 }
 
 /** Biggest goal scorers of the World Cup, as a compact leaderboard (top 5). */

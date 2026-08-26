@@ -6,7 +6,7 @@ export interface ScorerItem {
   rank: number;
   name: string;
   href: string;
-  /** national team (or club) the player scores for */
+  /** club (or national team) the player scores for */
   team: string;
   teamCrest?: string;
   /** player headshot; falls back to initials via Crest when absent */
@@ -16,11 +16,19 @@ export interface ScorerItem {
 }
 
 /**
- * Home "World Cup top scorers" card — the tournament's biggest goal scorers and
- * talents as a compact ranked leaderboard. Replaces the old single-player
- * spotlight. The leader (#1) is accented in lime; each row links to the player.
+ * Home top-scorers card — a competition's biggest goal scorers as a compact
+ * ranked leaderboard. The leader (#1) is accented in lime; each row links to the
+ * player. `competitionLabel` + `scorersHref` make it reusable across competitions.
  */
-export function WorldCupScorersCard({ scorers }: { scorers: ScorerItem[] }) {
+export function TopScorersCard({
+  scorers,
+  competitionLabel,
+  scorersHref,
+}: {
+  scorers: ScorerItem[];
+  competitionLabel: string;
+  scorersHref: string;
+}) {
   const top = scorers.slice(0, 5);
   return (
     <section className="relative flex h-full min-h-[300px] flex-col overflow-hidden rounded-card border border-hairline bg-card p-card">
@@ -30,10 +38,10 @@ export function WorldCupScorersCard({ scorers }: { scorers: ScorerItem[] }) {
       <div className="relative mb-3 flex items-start justify-between">
         <div>
           <h3 className="text-cardtitle text-text-primary">Top Scorers</h3>
-          <p className="mt-0.5 text-meta text-text-secondary">FIFA World Cup · Golden Boot race</p>
+          <p className="mt-0.5 text-meta text-text-secondary">{competitionLabel} · Golden Boot race</p>
         </div>
         <Link
-          href="/competition/world-cup/scorers"
+          href={scorersHref}
           className="flex shrink-0 items-center gap-1 text-[12px] font-semibold text-text-secondary hover:text-text-primary"
         >
           See all <ChevronRightIcon size={14} />
@@ -42,7 +50,7 @@ export function WorldCupScorersCard({ scorers }: { scorers: ScorerItem[] }) {
 
       {top.length === 0 ? (
         <p className="relative my-auto py-6 text-center text-meta text-text-secondary">
-          Scorers available once the tournament is under way.
+          Scorers appear once the season is under way.
         </p>
       ) : (
         <ol className="relative flex flex-1 flex-col justify-between">

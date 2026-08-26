@@ -6,8 +6,8 @@ import { HeroCarousel } from "@/components/cards/HeroCarousel";
 import { UpcomingMatches } from "@/components/cards/UpcomingMatches";
 import { TopStoriesCard } from "@/components/cards/TopStoriesCard";
 import type { StoryItem } from "@/components/cards/TopStoriesCard";
-import { WorldCupScorersCard } from "@/components/cards/WorldCupScorersCard";
-import type { ScorerItem } from "@/components/cards/WorldCupScorersCard";
+import { TopScorersCard } from "@/components/cards/TopScorersCard";
+import type { ScorerItem } from "@/components/cards/TopScorersCard";
 import { LiveNowRail } from "@/components/rail/LiveNowRail";
 import { TopTableRail } from "@/components/rail/TopTableRail";
 import { LatestResultsRail } from "@/components/rail/LatestResultsRail";
@@ -35,8 +35,8 @@ export const metadata = { alternates: { canonical: "/" } };
  *  via the picker). The Premier League is the site's default home competition. */
 const TOP_TABLE_SLUG = "premier-league";
 
-/** The World Cup drives the top-scorers leaderboard card. */
-const WORLD_CUP_SLUG = "world-cup";
+/** Competition behind the home Top Scorers leaderboard card. */
+const TOP_SCORERS_SLUG = "premier-league";
 
 export default async function HomePage() {
   const { upcoming, results, standings, scorers, news, transferNews, demo } = await loadHomeData();
@@ -58,11 +58,17 @@ export default async function HomePage() {
       ? { featured: toStory(storyPool[0]), items: storyPool.slice(1, 5).map(toStory) }
       : PREVIEW_STORIES;
 
-  // World Cup top scorers — rendered beside Top Stories on desktop, but moved to
-  // the very end on mobile (after the stacked rail widgets), so it's the last
-  // section the user scrolls to.
+  // Top scorers — rendered beside Top Stories on desktop, but moved to the very
+  // end on mobile (after the stacked rail widgets), so it's the last section the
+  // user scrolls to.
   const scorersToShow = scorers.length > 0 ? scorers : demo ? PREVIEW_SCORERS : [];
-  const worldCupScorers = <WorldCupScorersCard scorers={scorersToShow} />;
+  const topScorers = (
+    <TopScorersCard
+      scorers={scorersToShow}
+      competitionLabel="Premier League"
+      scorersHref="/competition/premier-league/scorers"
+    />
+  );
 
   // Soonest upcoming fixture — shown with a countdown in the Live Now rail when
   // nothing is live.
@@ -80,10 +86,10 @@ export default async function HomePage() {
           <LatestResultsRail matches={resultsToShow} />
           <TopTableRail initialSlug={TOP_TABLE_SLUG} initialRows={standingsToShow} />
           <TransferRumoursRail articles={transferNews} />
-          {/* On mobile the rail stacks below main, so the World Cup scorers card
-              here makes it the last section. On desktop (≥1024px) it shows beside
+          {/* On mobile the rail stacks below main, so the Top Scorers card here
+              makes it the last section. On desktop (≥1024px) it shows beside
               Top Stories instead (see below) and is hidden here. */}
-          <div className="lg:hidden">{worldCupScorers}</div>
+          <div className="lg:hidden">{topScorers}</div>
         </>
       }
     >
@@ -129,13 +135,13 @@ export default async function HomePage() {
         <UpcomingMatches matches={upcomingToShow} />
       </section>
 
-      {/* Top Stories (enlarged) · World Cup top scorers (desktop only here; on
-          mobile it's rendered at the end of the rail instead). Two columns only
+      {/* Top Stories (enlarged) · Top Scorers (desktop only here; on mobile it's
+          rendered at the end of the rail instead). Two columns only
           when the sidebar is collapsed — when it's expanded the main column is
           too narrow, so they stack to one column to avoid clipping. */}
       <section className="mt-7 grid grid-cols-1 gap-4 sidebar-collapsed:lg:grid-cols-[1.85fr_1fr]">
         <TopStoriesCard featured={stories.featured} items={stories.items} />
-        <div className="hidden lg:block">{worldCupScorers}</div>
+        <div className="hidden lg:block">{topScorers}</div>
       </section>
     </AppShell>
   );
@@ -192,7 +198,7 @@ async function loadHomeData(): Promise<{
           .then((season) => provider.getStandings(tableComp.leagueId, season))
           .catch(() => [])
       : Promise.resolve([]),
-    loadWorldCupScorers(),
+    loadTopScorers(),
   ]);
   // One date window feeds both: soonest scheduled = upcoming, latest finished = results.
   const upcoming = windowMatches
@@ -208,17 +214,17 @@ async function loadHomeData(): Promise<{
   return { upcoming, results, standings, scorers, news, transferNews, demo: false };
 }
 
-/** Biggest goal scorers of the World Cup, as a compact leaderboard (top 5). */
-async function loadWorldCupScorers(): Promise<ScorerItem[]> {
-  const wc = getCompetitionBySlug(WORLD_CUP_SLUG);
-  if (!wc) return [];
+/** Biggest goal scorers of the Premier League, as a compact leaderboard (top 5). */
+async function loadTopScorers(): Promise<ScorerItem[]> {
+  const comp = getCompetitionBySlug(TOP_SCORERS_SLUG);
+  if (!comp) return [];
   try {
-    const season = await currentSeasonYear(wc);
-    const scorers = await provider.getTopScorers(wc.leagueId, season);
+    const season = await currentSeasonYear(comp);
+    const scorers = await provider.getTopScorers(comp.leagueId, season);
     return scorers.slice(0, 5).map((s) => ({
       rank: s.rank,
       name: s.player?.name ?? "Unknown",
-      href: s.player?.slug ? `/player/${s.player.slug}` : "/competition/world-cup/scorers",
+      href: s.player?.slug ? `/player/${s.player.slug}` : `/competition/${TOP_SCORERS_SLUG}/scorers`,
       team: s.team?.name ?? "",
       teamCrest: s.team?.crest,
       portraitUrl: `https://media.api-sports.io/football/players/${s.playerId}.png`,

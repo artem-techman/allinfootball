@@ -4,6 +4,7 @@ import { CompetitionLayout } from "@/components/competition/CompetitionLayout";
 import { TopScorersTable } from "@/components/tables/TopScorersTable";
 import { provider } from "@/lib/providers";
 import { getCompetitionBySlug } from "@/lib/constants/competitions";
+import { currentSeasonYear } from "@/lib/season";
 
 export const dynamic = "force-dynamic";
 
@@ -22,9 +23,10 @@ export default async function CompetitionScorersPage({ params }: { params: Promi
   const comp = getCompetitionBySlug(slug);
   if (!comp) notFound();
 
+  const season = await currentSeasonYear(comp);
   const [scorers, assists] = await Promise.all([
-    provider.getTopScorers(comp.leagueId, comp.defaultSeason).catch(() => []),
-    provider.getTopAssists(comp.leagueId, comp.defaultSeason).catch(() => []),
+    provider.getTopScorers(comp.leagueId, season).catch(() => []),
+    provider.getTopAssists(comp.leagueId, season).catch(() => []),
   ]);
 
   return (

@@ -7,6 +7,7 @@ import { WorldCupBracket } from "@/components/cards/WorldCupBracket";
 import { EmptyState } from "@/components/primitives/EmptyState";
 import { provider } from "@/lib/providers";
 import { getCompetitionBySlug } from "@/lib/constants/competitions";
+import { currentSeasonYear } from "@/lib/season";
 import { loadWorldCupBracket } from "@/lib/worldcup/bracket";
 import { PREVIEW_BRACKET } from "@/lib/preview/homePreview";
 
@@ -51,7 +52,8 @@ export default async function CompetitionTablePage({ params }: { params: Promise
     );
   }
 
-  const standings = await provider.getStandings(comp.leagueId, comp.defaultSeason).catch(() => []);
+  const season = await currentSeasonYear(comp);
+  const standings = await provider.getStandings(comp.leagueId, season).catch(() => []);
 
   return (
     <CompetitionLayout slug={slug} active="table">

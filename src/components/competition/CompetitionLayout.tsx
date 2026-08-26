@@ -5,6 +5,7 @@ import { AppShell } from "@/components/shell/AppShell";
 import { Crest } from "@/components/primitives/Crest";
 import { JsonLd, breadcrumb } from "@/components/seo/JsonLd";
 import { getCompetitionBySlug, COMPETITIONS } from "@/lib/constants/competitions";
+import { currentSeasonYear } from "@/lib/season";
 
 export type CompetitionTab = "fixtures" | "table" | "scorers" | "news";
 
@@ -28,7 +29,7 @@ const SWITCHER_ORDER = [
  * a Fixtures / Table / Scorers / News tab bar. Each sub-page renders its own data
  * as children; the active tab is highlighted via the route.
  */
-export function CompetitionLayout({
+export async function CompetitionLayout({
   slug,
   active,
   children,
@@ -39,10 +40,11 @@ export function CompetitionLayout({
 }) {
   const comp = getCompetitionBySlug(slug);
   if (!comp) notFound();
-  const seasonLabel =
-    comp.type === "league" && comp.defaultSeason < 2026
-      ? `${comp.defaultSeason}/${(comp.defaultSeason + 1) % 100}`
-      : `${comp.defaultSeason}`;
+  const season = await currentSeasonYear(comp);
+  // European leagues and UEFA cups run a split year (2025/26); MLS and the World
+  // Cup are calendar-year (2026).
+  const splitYear = (comp.type === "league" || comp.type === "cup") && comp.country !== "USA";
+  const seasonLabel = splitYear ? `${season}/${`${(season + 1) % 100}`.padStart(2, "0")}` : `${season}`;
 
   return (
     <AppShell wide>

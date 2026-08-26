@@ -1,6 +1,7 @@
 import "server-only";
 import { provider } from "@/lib/providers";
 import { getCompetitionBySlug } from "@/lib/constants/competitions";
+import { currentSeasonYear } from "@/lib/season";
 import type { Match } from "@/lib/providers/types";
 import type { BracketRound } from "@/components/cards/WorldCupBracket";
 
@@ -37,7 +38,8 @@ export async function loadWorldCupBracket(): Promise<BracketRound[]> {
   const wc = getCompetitionBySlug(WORLD_CUP_SLUG);
   if (!wc) return [];
   try {
-    const fixtures = await provider.getFixturesByLeague(wc.leagueId, wc.defaultSeason);
+    const season = await currentSeasonYear(wc);
+    const fixtures = await provider.getFixturesByLeague(wc.leagueId, season);
     const byRound = new Map<string, Match[]>();
     for (const m of fixtures) {
       const name = knockoutRound(m.round);

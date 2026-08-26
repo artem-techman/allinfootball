@@ -4,6 +4,7 @@ import { TopTableRail } from "@/components/rail/TopTableRail";
 import { MatchCalendar } from "./MatchCalendar";
 import { provider } from "@/lib/providers";
 import { isInScope, getCompetitionBySlug } from "@/lib/constants/competitions";
+import { currentSeasonYear } from "@/lib/season";
 import { formatLongDate, todayKey, shiftDateKey } from "@/lib/utils/date";
 import type { Match, Standing } from "@/lib/providers/types";
 
@@ -13,8 +14,8 @@ import type { Match, Standing } from "@/lib/providers/types";
  *  via the client's /api/fixtures refresh. */
 const FETCH_WINDOW_DAYS = 10;
 
-/** The Top Table rail defaults to the World Cup (the marquee event), matching home. */
-const TOP_TABLE_SLUG = "world-cup";
+/** The Top Table rail defaults to the Premier League, matching home. */
+const TOP_TABLE_SLUG = "premier-league";
 
 /**
  * Server shell shared by /matches and /matches/[date]. Fetches the day's
@@ -29,7 +30,11 @@ export async function CalendarShell({ dateKey }: { dateKey: string }) {
     dateKey >= shiftDateKey(today, -FETCH_WINDOW_DAYS) && dateKey <= shiftDateKey(today, FETCH_WINDOW_DAYS);
   const [allMatches, standings] = await Promise.all([
     inWindow ? provider.getFixturesByDate(dateKey).catch(() => [] as Match[]) : Promise.resolve([] as Match[]),
-    topComp ? provider.getStandings(topComp.leagueId, topComp.defaultSeason).catch(() => [] as Standing[]) : Promise.resolve([]),
+    topComp
+      ? currentSeasonYear(topComp)
+          .then((season) => provider.getStandings(topComp.leagueId, season))
+          .catch(() => [] as Standing[])
+      : Promise.resolve([]),
   ]);
   const initialMatches = allMatches.filter((m) => isInScope(m.competitionId, m.round));
   // Soonest scheduled fixture on this date — the Live Now rail counts down to it

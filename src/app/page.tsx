@@ -21,6 +21,7 @@ import type { Article, Match, Standing } from "@/lib/providers/types";
 import { todayKey, shiftDateKey } from "@/lib/utils/date";
 import { getCompetitionBySlug, isInScope } from "@/lib/constants/competitions";
 import { loadWorldCupBracket } from "@/lib/worldcup/bracket";
+import { currentSeasonYear } from "@/lib/season";
 import { PREVIEW_UPCOMING, PREVIEW_RESULTS, PREVIEW_STANDINGS, PREVIEW_STORIES, PREVIEW_SCORERS, PREVIEW_HERO, PREVIEW_BRACKET } from "@/lib/preview/homePreview";
 
 export const dynamic = "force-dynamic";
@@ -33,8 +34,12 @@ export const metadata = { alternates: { canonical: "/" } };
  * API key; Upcoming / Live / Top Table / Player Spotlight use live football data.
  * Each section falls back to preview content if its source is unavailable.
  */
-/** Competition the home Top Table widget defaults to. */
-const TOP_TABLE_SLUG = "world-cup";
+/** Competition the home Top Table widget defaults to (users can still switch it
+ *  via the picker). The Premier League is the site's default home competition. */
+const TOP_TABLE_SLUG = "premier-league";
+
+/** The World Cup drives the knockout bracket + top-scorers leaderboard cards. */
+const WORLD_CUP_SLUG = "world-cup";
 
 export default async function HomePage() {
   const { upcoming, results, standings, scorers, bracket, news, transferNews, demo } = await loadHomeData();
@@ -190,12 +195,16 @@ async function loadHomeData(): Promise<{
     return { upcoming: [], results: [], standings: null, scorers: [], bracket: [], news, transferNews, demo: true };
   }
 
-  // Top Table and the scorers leaderboard both default to the World Cup (the
-  // current marquee event).
+  // Top Table defaults to the Premier League; the scorers leaderboard + bracket
+  // are the World Cup. The Top Table season is resolved live (current season).
   const tableComp = getCompetitionBySlug(TOP_TABLE_SLUG);
   const [windowMatches, standings, scorers, bracket] = await Promise.all([
     loadFixturesWindow(),
-    tableComp ? provider.getStandings(tableComp.leagueId, tableComp.defaultSeason).catch(() => []) : Promise.resolve([]),
+    tableComp
+      ? currentSeasonYear(tableComp)
+          .then((season) => provider.getStandings(tableComp.leagueId, season))
+          .catch(() => [])
+      : Promise.resolve([]),
     loadWorldCupScorers(),
     loadWorldCupBracket(),
   ]);
@@ -215,10 +224,11 @@ async function loadHomeData(): Promise<{
 
 /** Biggest goal scorers of the World Cup, as a compact leaderboard (top 5). */
 async function loadWorldCupScorers(): Promise<ScorerItem[]> {
-  const wc = getCompetitionBySlug(TOP_TABLE_SLUG);
+  const wc = getCompetitionBySlug(WORLD_CUP_SLUG);
   if (!wc) return [];
   try {
-    const scorers = await provider.getTopScorers(wc.leagueId, wc.defaultSeason);
+    const season = await currentSeasonYear(wc);
+    const scorers = await provider.getTopScorers(wc.leagueId, season);
     return scorers.slice(0, 5).map((s) => ({
       rank: s.rank,
       name: s.player?.name ?? "Unknown",

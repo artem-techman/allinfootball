@@ -6,6 +6,7 @@ import { JsonLd, sportsTeam, breadcrumb } from "@/components/seo/JsonLd";
 import { provider } from "@/lib/providers";
 import { entitySlug, idFromSlug } from "@/lib/utils/slug";
 import { getCompetitionByLeagueId, isInScope } from "@/lib/constants/competitions";
+import { currentSeasonYear } from "@/lib/season";
 import type { Match, Player, Standing } from "@/lib/providers/types";
 
 export const dynamic = "force-dynamic";
@@ -61,7 +62,9 @@ export default async function TeamPage({ params }: { params: Promise<{ slug: str
   const leagueId = inferLeague([...recent, ...upcoming]);
   const comp = leagueId ? getCompetitionByLeagueId(leagueId) : undefined;
   const standings = comp
-    ? await provider.getStandings(comp.leagueId, comp.defaultSeason).catch(() => [] as Standing[])
+    ? await currentSeasonYear(comp)
+        .then((season) => provider.getStandings(comp.leagueId, season))
+        .catch(() => [] as Standing[])
     : [];
 
   return (

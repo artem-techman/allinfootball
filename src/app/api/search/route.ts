@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { provider } from "@/lib/providers";
 import { COMPETITIONS } from "@/lib/constants/competitions";
+import { currentSeasonYear } from "@/lib/season";
 import { entitySlug } from "@/lib/utils/slug";
 
 /**
@@ -63,7 +64,11 @@ const IN_SCOPE_TTL_MS = 24 * 60 * 60 * 1000;
 async function getInScopeTeamIds(): Promise<Set<number>> {
   if (inScopeCache && inScopeCache.expires > Date.now()) return inScopeCache.ids;
   const lists = await Promise.all(
-    COMPETITIONS.map((c) => provider.getTeamsByLeague(c.leagueId, c.defaultSeason).catch(() => [])),
+    COMPETITIONS.map((c) =>
+      currentSeasonYear(c)
+        .then((season) => provider.getTeamsByLeague(c.leagueId, season))
+        .catch(() => []),
+    ),
   );
   const ids = new Set<number>();
   for (const list of lists) for (const t of list) ids.add(t.id);

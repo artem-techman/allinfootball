@@ -43,7 +43,8 @@ export function TopTableRail({
     setSlug(c.slug);
     setLoading(true);
     try {
-      const res = await fetch(`/api/standings?league=${c.leagueId}&season=${c.defaultSeason}`, { cache: "no-store" });
+      // Omit season — the route resolves each competition's current season.
+      const res = await fetch(`/api/standings?league=${c.leagueId}`, { cache: "no-store" });
       const data = (await res.json()) as { standings?: Standing[] };
       setRows(data.standings ?? []);
     } catch {

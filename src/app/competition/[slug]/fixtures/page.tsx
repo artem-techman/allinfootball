@@ -4,6 +4,7 @@ import { CompetitionLayout } from "@/components/competition/CompetitionLayout";
 import { CompetitionFixtures } from "@/components/competition/CompetitionFixtures";
 import { provider } from "@/lib/providers";
 import { getCompetitionBySlug } from "@/lib/constants/competitions";
+import { currentSeasonYear } from "@/lib/season";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,8 @@ export default async function CompetitionFixturesPage({ params }: { params: Prom
   const comp = getCompetitionBySlug(slug);
   if (!comp) notFound();
 
-  const matches = await provider.getFixturesByLeague(comp.leagueId, comp.defaultSeason).catch(() => []);
+  const season = await currentSeasonYear(comp);
+  const matches = await provider.getFixturesByLeague(comp.leagueId, season).catch(() => []);
 
   return (
     <CompetitionLayout slug={slug} active="fixtures">

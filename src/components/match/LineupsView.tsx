@@ -9,7 +9,21 @@ import { EmptyState } from "@/components/primitives/EmptyState";
  */
 export function LineupsView({ lineups, match }: { lineups: Lineup[]; match: Match }) {
   if (lineups.length === 0) {
-    return <EmptyState title="Lineups confirmed about 1 hour before kickoff" />;
+    // Don't promise a fixed pre-match timing we can't guarantee — the data
+    // provider publishes confirmed lineups around kickoff (not reliably an hour
+    // ahead), and some matches never carry lineup data at all. Keep the message
+    // honest and match-state-aware.
+    const pending = match.status === "scheduled";
+    return (
+      <EmptyState
+        title={pending ? "Lineups not confirmed yet" : "Lineups unavailable for this match"}
+        hint={
+          pending
+            ? "Confirmed starting XIs usually appear close to kickoff. Check back nearer the time."
+            : undefined
+        }
+      />
+    );
   }
 
   const home = lineups.find((l) => l.teamId === match.homeTeamId) ?? lineups[0];

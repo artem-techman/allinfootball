@@ -3,22 +3,20 @@
 -- Mirrors the tables the app previously used on Supabase. No RLS: the DB is only
 -- ever reached server-side via DATABASE_URL, never exposed to the browser.
 
--- Messi-shirt raffle leads (PII: name + email). One entry per email per raffle.
-create table if not exists raffle_entries (
-  id                bigint generated always as identity primary key,
-  raffle_id         text        not null,
-  name              text        not null,
-  email             text        not null,
-  age_bracket       text,
-  favourite_team    text,
-  spend_bracket     text,
-  consent_marketing boolean     not null default false,
-  session_id        text,
-  email_verified    boolean     not null default false,
-  verify_token      uuid        not null default gen_random_uuid(),
-  created_at        timestamptz not null default now(),
-  unique (raffle_id, email)
+-- Site feedback (replaced the Messi-shirt raffle). Message required; rating and
+-- email optional. No account required.
+create table if not exists feedback (
+  id         bigint generated always as identity primary key,
+  message    text        not null,
+  rating     smallint,               -- optional 1–5
+  email      text,                    -- optional, for a reply
+  page       text,                    -- where it was left from
+  session_id text,
+  user_agent text,
+  created_at timestamptz not null default now()
 );
+
+create index if not exists feedback_created_idx on feedback (created_at desc);
 
 -- Shared live-fixtures snapshot: one row all serverless instances read/refresh.
 create table if not exists live_snapshot (

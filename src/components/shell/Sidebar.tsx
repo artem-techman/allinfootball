@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Logo } from "@/components/primitives/Logo";
-import { RaffleCard } from "./RaffleCard";
+import { FeedbackCard } from "./FeedbackCard";
 import { NAV, isNavActive } from "./navItems";
 import { PanelLeftIcon } from "@/components/primitives/icons";
 
@@ -102,8 +102,8 @@ export function Sidebar() {
       </nav>
 
       <div className="mt-auto pt-4">
-        {/* Messi-shirt raffle — shown only when the sidebar is expanded. */}
-        {!collapsed && <RaffleCard />}
+        {/* Feedback widget — shown only when the sidebar is expanded. */}
+        {!collapsed && <FeedbackCard />}
       </div>
     </aside>
   );

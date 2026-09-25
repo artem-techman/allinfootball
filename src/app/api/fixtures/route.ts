@@ -35,12 +35,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ matches });
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
-    // TEMP diagnostic (gated by ?debug=1): surface the provider error message to
-    // find why specific dates fail. The message carries no key (the key is only
-    // ever a request header). Remove once the missing-dates bug is fixed.
-    const debug = searchParams.get("debug") === "1" ? { detail: message } : {};
     return NextResponse.json(
-      { matches: [], delayed: true, reason: message.includes("FOOTBALL_API_KEY") ? "no_key" : "provider_error", ...debug },
+      { matches: [], delayed: true, reason: message.includes("FOOTBALL_API_KEY") ? "no_key" : "provider_error" },
       { status: 200 },
     );
   }

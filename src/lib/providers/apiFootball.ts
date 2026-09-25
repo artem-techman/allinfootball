@@ -106,6 +106,13 @@ let budgetWarned = false;
 let budgetWarned80 = false;
 
 /**
+ * Retries for the PER-MINUTE rate limit (HTTP 200 + errors.rateLimit), separate
+ * from the HTTP 429/5xx retry budget. Kept small so a genuinely saturated minute
+ * degrades to last-good cache quickly rather than hanging a page.
+ */
+const RATE_LIMIT_RETRIES = 3;
+
+/**
  * Today's request count from API-Football's own `/status` — which is FREE (it
  * does not count against the quota). Cached 60s in the shared data cache, so it
  * costs ~1 free call/min across the whole fleet and gives a near-real-time,
@@ -186,6 +193,17 @@ async function apiGet<T>(
         ? errs.length > 0
         : errs != null && typeof errs === "object" && Object.keys(errs).length > 0;
       if (hasErrors) {
+        // The PER-MINUTE rate limit is delivered as HTTP 200 + errors.rateLimit
+        // ("Too many requests…"), NOT as a 429. It's a 429-equivalent, so back off
+        // and retry rather than throwing — otherwise one brushed per-minute limit
+        // blanks a whole date/page (and, being a throw, never caches, so it keeps
+        // re-hitting the limit). Real errors (bad params, etc.) still throw at once.
+        const isRateLimit = /rate.?limit|too many requests/i.test(JSON.stringify(errs));
+        if (isRateLimit && attempt < RATE_LIMIT_RETRIES) {
+          await sleep(Math.min(1500 * 2 ** attempt, 8000) + Math.random() * 250);
+          attempt += 1;
+          continue;
+        }
         throw new Error(`API-Football ${path} error: ${JSON.stringify(errs)}`);
       }
       return env;

@@ -9,6 +9,7 @@ import {
   mapStandings,
   mapTopScorers,
   mapOdds,
+  mapFixtures,
   reconcileLiveFixtures,
 } from "@/lib/providers/apiFootball";
 import { mapStatus, isInPlay } from "@/lib/providers/statusMap";
@@ -270,3 +271,23 @@ describe("reconcileLiveFixtures", () => {
     expect(out.map((m) => m.id)).toEqual([]);
   });
 })
+
+describe("mapFixtures resilience (2026-09-12 whole-day-wipe bug)", () => {
+  it("skips unmappable records instead of throwing away the whole batch", () => {
+    const good1 = fx[0];
+    const good2 = fx[1];
+    const broken = [
+      {} as unknown as (typeof fx)[number], // no fixture/league/teams
+      { fixture: { id: 9, status: {} }, league: null } as unknown as (typeof fx)[number], // null league
+      { fixture: { id: 10, status: { short: "NS" } }, league: { id: 39, season: 2026 }, teams: null } as unknown as (typeof fx)[number], // null teams
+    ];
+    const out = mapFixtures([good1, ...broken, good2]);
+    // Both good fixtures survive; the three broken records are dropped, no throw.
+    expect(out).toHaveLength(2);
+    expect(out.map((m) => m.id)).toEqual([fx[0].fixture.id, fx[1].fixture.id]);
+  });
+
+  it("returns [] (not a throw) when every record is broken", () => {
+    expect(mapFixtures([{} as unknown as (typeof fx)[number]])).toEqual([]);
+  });
+});

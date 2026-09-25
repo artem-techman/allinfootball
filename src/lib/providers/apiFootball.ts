@@ -308,6 +308,32 @@ export function mapFixture(raw: RawFixture): Match {
   };
 }
 
+/**
+ * Map a list of raw fixtures, skipping any single record that fails to map.
+ *
+ * `/fixtures?date=` returns EVERY fixture worldwide for that day (thousands), and
+ * a single malformed record — a null `league`, missing `teams`, etc. — used to
+ * throw inside `.map(mapFixture)` and take the ENTIRE day down with it: on
+ * 2026-09-12 that hid a full Saturday of Premier League / La Liga / Serie A /
+ * Bundesliga / Ligue 1 matches (25 fixtures) even though the data was there.
+ * One bad upstream row must never hide a whole slate — skip it and keep the rest.
+ */
+export function mapFixtures(raw: RawFixture[]): Match[] {
+  const out: Match[] = [];
+  let skipped = 0;
+  for (const r of raw) {
+    try {
+      out.push(mapFixture(r));
+    } catch {
+      skipped += 1;
+    }
+  }
+  if (skipped > 0) {
+    console.warn(`[apiFootball] skipped ${skipped}/${raw.length} unmappable fixture record(s)`);
+  }
+  return out;
+}
+
 interface RawEvent {
   time: { elapsed: number | null; extra: number | null };
   team: { id: number };
@@ -799,14 +825,14 @@ export const apiFootball: FootballProvider = {
   async getFixturesByDate(dateIso: string): Promise<Match[]> {
     return swr(`fixtures:date:${dateIso}`, TTL.fixtures, async () => {
       const env = await apiGet<RawFixture>("/fixtures", { date: dateIso }, { revalidate: TTL.fixtures });
-      return env.response.map(mapFixture);
+      return mapFixtures(env.response);
     });
   },
 
   async getFixturesByLeague(leagueId: number, season: number): Promise<Match[]> {
     return swr(`fixtures:league:${leagueId}:${season}`, TTL.fixtures, async () => {
       const env = await apiGet<RawFixture>("/fixtures", { league: leagueId, season }, { revalidate: TTL.fixtures });
-      return env.response.map(mapFixture);
+      return mapFixtures(env.response);
     });
   },
 
@@ -815,7 +841,7 @@ export const apiFootball: FootballProvider = {
       const env = await apiGet<RawFixture>("/fixtures", { live: "all" }, { revalidate: TTL.live });
       // Scope to our nine competitions only — and not their qualifying rounds
       // (UCL/UEL qualifiers share the competition's league id).
-      const live = env.response.map(mapFixture).filter((m) => isInScope(m.competitionId, m.round));
+      const live = mapFixtures(env.response).filter((m) => isInScope(m.competitionId, m.round));
 
       // Reconcile against the per-date fixtures (yesterday + today). Yesterday +
       // today because a late kickoff plus extra time and penalties runs past
@@ -892,7 +918,7 @@ export const apiFootball: FootballProvider = {
         h2h: `${team1Id}-${team2Id}`,
         last: limit,
       }, { revalidate: TTL.standings });
-      return env.response.map(mapFixture);
+      return mapFixtures(env.response);
     });
   },
 
@@ -903,7 +929,7 @@ export const apiFootball: FootballProvider = {
     const key = `teamfix:${teamId}:${opts.last ?? 0}:${opts.next ?? 0}`;
     return swr(key, TTL.fixtures, async () => {
       const env = await apiGet<RawFixture>("/fixtures", params, { revalidate: TTL.fixtures });
-      return env.response.map(mapFixture);
+      return mapFixtures(env.response);
     });
   },
 

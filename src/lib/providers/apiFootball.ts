@@ -171,6 +171,9 @@ async function apiGet<T>(
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, String(v));
 
   let attempt = 0;
+  // Once we've seen a cached rate-limit error we must BYPASS Next's data cache on
+  // retry — see the rate-limit branch below for why.
+  let bypassCache = false;
   // eslint-disable-next-line no-constant-condition
   while (true) {
     const res = await fetch(url, {
@@ -180,7 +183,9 @@ async function apiGet<T>(
       // is shared across all serverless invocations, so concurrent requests and
       // cold starts reuse one provider response per `revalidate` window instead
       // of each re-hitting the API. Falls back to no-store when no TTL is given.
-      ...(revalidate != null ? { next: { revalidate } } : { cache: "no-store" as const }),
+      ...(bypassCache || revalidate == null
+        ? { cache: "no-store" as const }
+        : { next: { revalidate } }),
     });
 
     if (res.ok) {
@@ -194,12 +199,17 @@ async function apiGet<T>(
         : errs != null && typeof errs === "object" && Object.keys(errs).length > 0;
       if (hasErrors) {
         // The PER-MINUTE rate limit is delivered as HTTP 200 + errors.rateLimit
-        // ("Too many requests…"), NOT as a 429. It's a 429-equivalent, so back off
-        // and retry rather than throwing — otherwise one brushed per-minute limit
-        // blanks a whole date/page (and, being a throw, never caches, so it keeps
-        // re-hitting the limit). Real errors (bad params, etc.) still throw at once.
+        // ("Too many requests…"), NOT as a 429. Two problems compound: (1) it's a
+        // 429-equivalent so it should back off + retry, not throw; and (2) because
+        // it's an HTTP 200, Next's data cache CACHES the error body for the whole
+        // revalidate window — so a single transient rate-limit blip pins a date/
+        // page to empty and every later request re-reads the cached error. That's
+        // exactly what hid 2026-09-12. So on rate-limit we retry with the cache
+        // BYPASSED (cache:"no-store"), which both ignores the poisoned entry and
+        // hits the API fresh. Real errors (bad params, etc.) still throw at once.
         const isRateLimit = /rate.?limit|too many requests/i.test(JSON.stringify(errs));
         if (isRateLimit && attempt < RATE_LIMIT_RETRIES) {
+          bypassCache = true;
           await sleep(Math.min(1500 * 2 ** attempt, 8000) + Math.random() * 250);
           attempt += 1;
           continue;

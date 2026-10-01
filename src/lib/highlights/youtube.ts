@@ -131,6 +131,37 @@ function looksLikeHighlights(title: string): boolean {
   return t.includes("highlight") || /\d\s*[-–]\s*\d/.test(t);
 }
 
+/** Archive / "old match" markers. The official channels re-upload old matches
+ *  and compilations with a RECENT upload date, so they can't be filtered by date
+ *  — only by title. NOTE: do NOT treat "classic" as old — Serie A brands its
+ *  CURRENT highlights "CLASSIC HIGHLIGHTS …", so that word is noise, not a signal.
+ *  The reliable signals are past-tournament years and goal compilations. */
+const OLD_MARKERS =
+  /\b(on this day|throwback|relived|rewind|retro|all[-\s][\w\s]*goals|every[-\s][\w\s]*goal|goal[-\s]?compilation|golazos?)\b/i;
+
+/** A tournament tagged with a year from 1900–2025 is an archive clip (the current
+ *  World Cup cycle is 2026). Matches e.g. "2010 FIFA World Cup" / "World Cup 2014". */
+const OLD_TOURNAMENT_YEAR =
+  /(?:19\d\d|20[01]\d|202[0-5])[^|]{0,25}(?:world cup|euro|copa)|(?:world cup|euro|copa)[^|]{0,25}(?:19\d\d|20[01]\d|202[0-5])/i;
+
+function isCurrentContent(title: string): boolean {
+  return !OLD_MARKERS.test(title) && !OLD_TOURNAMENT_YEAR.test(title);
+}
+
+/** Only clips uploaded within this many days — a "what's happening now" feed. */
+const MAX_AGE_DAYS = 45;
+
+/** Re-tag a clip's competition from its TITLE. Shared channels (notably @uefa,
+ *  which posts Champions League, Europa League AND Nations League) would otherwise
+ *  mislabel everything as the channel's default slug. Falls back to that default. */
+function competitionFromTitle(title: string, fallback: string): string {
+  const t = title.toLowerCase();
+  if (/nations league/.test(t)) return "nations-league";
+  if (/europa league|\buel\b/.test(t)) return "europa-league";
+  if (/champions league|\bucl\b/.test(t)) return "champions-league";
+  return fallback;
+}
+
 async function uploadsFor(channel: ResolvedChannel): Promise<Highlight[]> {
   return swr(`yt:uploads:${channel.uploadsPlaylistId}`, TTL.feed, async () => {
     const data = await ytGet<RawPlaylistItems>(
@@ -144,7 +175,7 @@ async function uploadsFor(channel: ResolvedChannel): Promise<Highlight[]> {
       const s = it.snippet;
       const id = s?.resourceId?.videoId;
       const title = s?.title;
-      if (!id || !title || !looksLikeHighlights(title)) continue;
+      if (!id || !title || !looksLikeHighlights(title) || !isCurrentContent(title)) continue;
       out.push({
         id,
         title,
@@ -152,7 +183,7 @@ async function uploadsFor(channel: ResolvedChannel): Promise<Highlight[]> {
         publishedAtUtc: s?.publishedAt ?? new Date().toISOString(),
         thumbnailUrl: s?.thumbnails?.high?.url ?? s?.thumbnails?.medium?.url ?? THUMB(id),
         watchUrl: WATCH(id),
-        competitionSlug: channel.competitionSlug,
+        competitionSlug: competitionFromTitle(title, channel.competitionSlug),
         embeddable: channel.allowsEmbed, // downgraded further by annotateEmbeddable
       });
     }
@@ -240,17 +271,14 @@ export const youtubeHighlights: HighlightsProvider = {
       const lists = await Promise.all(wanted.map((c) => uploadsFor(c).catch(() => [] as Highlight[])));
       const byId = new Map<string, Highlight>();
       for (const h of lists.flat()) if (!byId.has(h.id)) byId.set(h.id, h);
+      // Strict newest-first (release order), and only recent uploads — no old ones.
+      const cutoff = Date.now() - MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
       const merged = [...byId.values()]
+        .filter((h) => new Date(h.publishedAtUtc).getTime() >= cutoff)
         .sort((a, b) => b.publishedAtUtc.localeCompare(a.publishedAtUtc))
         .slice(0, opts.limit ?? 24);
-      const annotated = await annotateEmbeddable(merged);
-      // Lead the reel with clips that actually autoplay inline (embeddable), then
-      // the tap-to-open ones (FIFA/UEFA), each newest-first.
-      return annotated.sort(
-        (a, b) =>
-          Number(b.embeddable !== false) - Number(a.embeddable !== false) ||
-          b.publishedAtUtc.localeCompare(a.publishedAtUtc),
-      );
+      // annotateEmbeddable preserves order; the feed stays strictly release-sorted.
+      return annotateEmbeddable(merged);
     } catch {
       return [];
     }

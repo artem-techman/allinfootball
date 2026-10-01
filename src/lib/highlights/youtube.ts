@@ -156,6 +156,39 @@ async function uploadsFor(channel: ResolvedChannel): Promise<Highlight[]> {
   });
 }
 
+/* ------------------------------ embeddability ------------------------------ */
+
+interface RawVideoStatus {
+  items?: { id: string; status?: { embeddable?: boolean } }[];
+}
+
+/**
+ * Annotate each highlight with YouTube's `status.embeddable` so the Feed reel
+ * knows which clips can autoplay inline (many official channels — FIFA et al. —
+ * disable off-site embedding; those become tap-to-open posters). One videos.list
+ * call per ≤50 ids = 1 quota unit, cached. Ids we can't resolve are left
+ * optimistic (embeddable) rather than wrongly excluded.
+ */
+async function annotateEmbeddable(list: Highlight[]): Promise<Highlight[]> {
+  if (!list.length) return list;
+  const known = new Map<string, boolean>();
+  const ids = list.map((h) => h.id);
+  for (let i = 0; i < ids.length; i += 50) {
+    const batch = ids.slice(i, i + 50);
+    try {
+      const data = await ytGet<RawVideoStatus>(
+        "videos",
+        { part: "status", id: batch.join(",") },
+        TTL.feed,
+      );
+      for (const it of data.items ?? []) known.set(it.id, it.status?.embeddable !== false);
+    } catch {
+      // batch failed → leave those ids optimistic (embeddable)
+    }
+  }
+  return list.map((h) => ({ ...h, embeddable: known.has(h.id) ? known.get(h.id)! : true }));
+}
+
 /* ------------------------------- name matching ------------------------------- */
 
 function normalize(s: string): string {
@@ -198,9 +231,10 @@ export const youtubeHighlights: HighlightsProvider = {
       const lists = await Promise.all(wanted.map((c) => uploadsFor(c).catch(() => [] as Highlight[])));
       const byId = new Map<string, Highlight>();
       for (const h of lists.flat()) if (!byId.has(h.id)) byId.set(h.id, h);
-      return [...byId.values()]
+      const merged = [...byId.values()]
         .sort((a, b) => b.publishedAtUtc.localeCompare(a.publishedAtUtc))
         .slice(0, opts.limit ?? 24);
+      return annotateEmbeddable(merged);
     } catch {
       return [];
     }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AppShell } from "@/components/shell/AppShell";
-import { FeedGrid } from "@/components/highlights/FeedGrid";
+import { HighlightReel } from "@/components/highlights/HighlightReel";
 import { highlights } from "@/lib/highlights";
 import { PREVIEW_HIGHLIGHTS } from "@/lib/preview/highlightsPreview";
 
@@ -8,14 +8,15 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Feed — Match highlights",
-  description: "Post-match highlights from across the Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Europa League, MLS and the World Cup.",
+  description: "Match highlights from across the Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Europa League, MLS, the UEFA Nations League and the World Cup — autoplaying in a scrollable feed.",
   alternates: { canonical: "/feed" },
 };
 
 /**
- * Highlights Feed: a gallery of highlights from the latest finished games across
- * the nine competitions, sourced from official YouTube channels (link-out). Falls
- * back to preview clips until a YOUTUBE_API_KEY is configured.
+ * Highlights Feed: an Instagram/Reels-style vertical feed of match highlights
+ * from the latest finished games, sourced from official YouTube channels and
+ * embedded (never re-hosted). Clips autoplay as they scroll into view. Falls back
+ * to preview clips until a YOUTUBE_API_KEY is configured.
  */
 export default async function FeedPage() {
   const feed = await highlights.getFeed({ limit: 48 });
@@ -23,14 +24,12 @@ export default async function FeedPage() {
 
   return (
     <AppShell>
-      <header className="mb-6">
-        <h1 className="text-greeting text-text-primary">Highlights</h1>
-        <p className="mt-1 text-meta text-text-secondary">
-          Highlights from the latest finished games across the nine competitions.
-        </p>
+      <header className="mb-3">
+        <h1 className="text-section text-text-primary">Highlights</h1>
+        <p className="mt-0.5 text-meta text-text-secondary">Scroll the feed — clips play as you go.</p>
       </header>
 
-      <FeedGrid highlights={toShow} />
+      <HighlightReel highlights={toShow} />
     </AppShell>
   );
 }

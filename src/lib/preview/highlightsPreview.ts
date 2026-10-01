@@ -24,6 +24,9 @@ function h(
     thumbnailUrl: STOCK(thumb),
     watchUrl: `https://www.youtube.com/watch?v=${id}`,
     publishedAtUtc: new Date(Date.now() - hoursAgo * 3600_000).toISOString(),
+    // Preview ids are placeholders (keyless demo) — not real videos, so they
+    // render as tap-to-open posters rather than broken embeds.
+    embeddable: false,
   };
 }
 

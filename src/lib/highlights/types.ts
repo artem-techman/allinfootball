@@ -15,8 +15,13 @@ export interface Highlight {
   /** YouTube watch URL — opened in a new tab (FIFA/official channels block
    *  off-site embedding, so we link out rather than show a blocked player). */
   watchUrl: string;
-  /** which of the nine competitions this clip belongs to (channel-derived). */
+  /** which competition this clip belongs to (channel-derived). */
   competitionSlug?: string;
+  /** Whether YouTube allows this video to be embedded off-site. The Feed reel
+   *  autoplays embeddable clips inline and falls back to a tap-to-open poster for
+   *  the rest. Undefined = treat as embeddable (optimistic); only an explicit
+   *  false excludes inline playback. */
+  embeddable?: boolean;
 }
 
 export interface MatchHighlightQuery {

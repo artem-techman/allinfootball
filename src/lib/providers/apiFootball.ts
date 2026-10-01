@@ -795,7 +795,28 @@ export function mapVenue(raw: RawVenue): Venue {
 interface RawLeague {
   league: { id: number; name: string; type: string; logo?: string };
   country: { name: string };
-  seasons: { year: number; current: boolean }[];
+  seasons: { year: number; current: boolean; start?: string; end?: string }[];
+}
+
+/**
+ * Pick the CURRENT season year from a league's seasons list. Robust against a
+ * stale `current` flag (API-Football sometimes leaves it on the just-finished
+ * season): prefer the season whose [start,end] date range contains today, then
+ * the `current`-flagged one, then the most recent year. This is why the Premier
+ * League table must never show last season — today's date lands inside the live
+ * campaign's range.
+ */
+export function pickSeasonYear(
+  seasons: { year: number; current: boolean; start?: string; end?: string }[],
+  fallbackYear: number,
+  todayIso: string = new Date().toISOString().slice(0, 10),
+): number {
+  if (!seasons.length) return fallbackYear;
+  const byDate = seasons.find((s) => s.start && s.end && s.start <= todayIso && todayIso <= s.end);
+  if (byDate) return byDate.year;
+  const flagged = seasons.find((s) => s.current);
+  if (flagged) return flagged.year;
+  return seasons.reduce((a, b) => (b.year > a.year ? b : a)).year;
 }
 
 export const apiFootball: FootballProvider = {
@@ -829,8 +850,7 @@ export const apiFootball: FootballProvider = {
       try {
         const env = await apiGet<RawLeague>("/leagues", { id: competitionId }, { revalidate: TTL.competitions });
         const league = env.response[0];
-        const current = league?.seasons.find((s) => s.current);
-        const year = current?.year ?? fallbackYear;
+        const year = pickSeasonYear(league?.seasons ?? [], fallbackYear);
         return {
           id: year,
           competitionId,

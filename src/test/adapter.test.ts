@@ -11,6 +11,7 @@ import {
   mapOdds,
   mapFixtures,
   reconcileLiveFixtures,
+  pickSeasonYear,
 } from "@/lib/providers/apiFootball";
 import { mapStatus, isInPlay } from "@/lib/providers/statusMap";
 import { isInScope, isQualifyingRound } from "@/lib/constants/competitions";
@@ -289,5 +290,28 @@ describe("mapFixtures resilience (2026-09-12 whole-day-wipe bug)", () => {
 
   it("returns [] (not a throw) when every record is broken", () => {
     expect(mapFixtures([{} as unknown as (typeof fx)[number]])).toEqual([]);
+  });
+});
+
+describe("pickSeasonYear (never show last season)", () => {
+  const seasons = [
+    { year: 2025, current: true, start: "2025-08-15", end: "2026-05-24" },
+    { year: 2026, current: false, start: "2026-08-21", end: "2027-05-30" },
+  ];
+  it("picks the season whose date range contains today, even if the current flag is stale", () => {
+    // the exact PL bug: API left current:true on the finished 2025 season
+    expect(pickSeasonYear(seasons, 2025, "2026-10-01")).toBe(2026);
+  });
+  it("still works mid-2025/26 season", () => {
+    expect(pickSeasonYear(seasons, 2025, "2026-02-01")).toBe(2025);
+  });
+  it("falls back to the current flag in the off-season gap", () => {
+    expect(pickSeasonYear(seasons, 2025, "2026-07-01")).toBe(2025);
+  });
+  it("falls back to the newest year when no flag and no dates match", () => {
+    expect(pickSeasonYear([{ year: 2024, current: false }, { year: 2026, current: false }], 2024, "2026-07-01")).toBe(2026);
+  });
+  it("uses the fallback when there are no seasons", () => {
+    expect(pickSeasonYear([], 2026, "2026-10-01")).toBe(2026);
   });
 });

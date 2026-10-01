@@ -4,7 +4,7 @@ import { TopTableRail } from "@/components/rail/TopTableRail";
 import { MatchCalendar } from "./MatchCalendar";
 import { provider } from "@/lib/providers";
 import { isInScope, getCompetitionBySlug } from "@/lib/constants/competitions";
-import { currentSeasonYear } from "@/lib/season";
+import { currentSeasonYear, pickActiveTableSlug } from "@/lib/season";
 import { formatLongDate, todayKey, shiftDateKey } from "@/lib/utils/date";
 import type { Match, Standing } from "@/lib/providers/types";
 
@@ -24,19 +24,22 @@ const TOP_TABLE_SLUG = "premier-league";
  * empty list on provider failure (CLAUDE.md section 10).
  */
 export async function CalendarShell({ dateKey }: { dateKey: string }) {
-  const topComp = getCompetitionBySlug(TOP_TABLE_SLUG);
   const today = todayKey();
   const inWindow =
     dateKey >= shiftDateKey(today, -FETCH_WINDOW_DAYS) && dateKey <= shiftDateKey(today, FETCH_WINDOW_DAYS);
-  const [allMatches, standings] = await Promise.all([
-    inWindow ? provider.getFixturesByDate(dateKey).catch(() => [] as Match[]) : Promise.resolve([] as Match[]),
-    topComp
-      ? currentSeasonYear(topComp)
-          .then((season) => provider.getStandings(topComp.leagueId, season))
-          .catch(() => [] as Standing[])
-      : Promise.resolve([]),
-  ]);
+  const allMatches = inWindow
+    ? await provider.getFixturesByDate(dateKey).catch(() => [] as Match[])
+    : [];
   const initialMatches = allMatches.filter((m) => isInScope(m.competitionId, m.round));
+
+  // Default the Top Table to whatever competition is being played on this date.
+  const tableSlug = pickActiveTableSlug(initialMatches, TOP_TABLE_SLUG);
+  const topComp = getCompetitionBySlug(tableSlug);
+  const standings = topComp
+    ? await currentSeasonYear(topComp)
+        .then((season) => provider.getStandings(topComp.leagueId, season))
+        .catch(() => [] as Standing[])
+    : [];
   // Soonest scheduled fixture on this date — the Live Now rail counts down to it
   // when nothing is live.
   const nextMatch = initialMatches
@@ -48,7 +51,7 @@ export async function CalendarShell({ dateKey }: { dateKey: string }) {
       rail={
         <>
           <LiveNowRail nextMatch={nextMatch} />
-          <TopTableRail initialSlug={TOP_TABLE_SLUG} initialRows={standings} />
+          <TopTableRail initialSlug={tableSlug} initialRows={standings} />
         </>
       }
     >

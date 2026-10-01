@@ -1,38 +1,55 @@
 import "server-only";
 import { provider } from "@/lib/providers";
-import { swr, TTL } from "@/lib/cache";
-import type { CompetitionConst } from "@/lib/constants/competitions";
+import { getCompetitionByLeagueId, type CompetitionConst } from "@/lib/constants/competitions";
+import { todayKey } from "@/lib/utils/date";
+import type { Match } from "@/lib/providers/types";
 
 /**
  * The season year to display for a competition RIGHT NOW.
  *
- * The app must not be pinned to a hard-coded season (it silently showed last
- * season's tables once the new campaigns kicked off). This resolves the season
- * API-Football itself flags as `current`, then — for competitions that have a
- * league table — verifies that season actually has standings and falls back to
- * the most recent populated season. That matters at the turn of a season: e.g.
- * the Premier League's 2026/27 had no table yet (0 rows) while 2025/26 still
- * did, so the current flag alone would blank the widget.
- *
- * Resolution is cached 24h (TTL.competitions); the underlying /standings probes
- * reuse the same cache keys the pages hit, so this adds ~no extra quota.
+ * MUST always resolve the live campaign, never last season, and never fail the
+ * table. It's a single cached call to getCurrentSeason — which picks the season
+ * whose date range contains today (robust against a stale `current` flag). We do
+ * NOT probe /standings here: that earlier made the resolver fire a burst of calls
+ * that tripped the per-minute rate limit ("table not available") and could fall
+ * back to last season. Cached 24h; standings themselves refresh on their own TTL.
  */
 export async function currentSeasonYear(comp: CompetitionConst): Promise<number> {
-  return swr(`season:effective:${comp.leagueId}`, TTL.competitions, async () => {
-    const cur = await provider.getCurrentSeason(comp.leagueId).catch(() => undefined);
-    const start = cur?.year ?? comp.defaultSeason;
+  const season = await provider.getCurrentSeason(comp.leagueId).catch(() => undefined);
+  return season?.year ?? comp.defaultSeason;
+}
 
-    // International tournaments (World Cup) are driven off fixtures, and their
-    // group tables appear and vanish by stage — trust the current flag.
-    if (comp.type === "international") return start;
+/**
+ * Which competition's table to show by default: the one with games being played
+ * (or played today), highest-priority first — so the home/calendar Top Table
+ * tracks whatever's live, unless the user picks another. Only competitions that
+ * actually have a standings table are eligible (the World Cup is a bracket).
+ */
+const TABLE_PRIORITY = [
+  "premier-league",
+  "la-liga",
+  "serie-a",
+  "bundesliga",
+  "ligue-1",
+  "mls",
+  "nations-league",
+  "champions-league",
+  "europa-league",
+];
 
-    // Leagues and cups have a standings table: prefer the newest season that
-    // actually has one so a just-kicked-off season doesn't blank the table.
-    const candidates = Array.from(new Set([start, comp.defaultSeason, start - 1]));
-    for (const year of candidates) {
-      const rows = await provider.getStandings(comp.leagueId, year).catch(() => []);
-      if (rows.length > 0) return year;
-    }
-    return start;
-  });
+export function pickActiveTableSlug(matches: Match[], fallback = "premier-league"): string {
+  const today = todayKey();
+  const live = new Set<string>();
+  const todaySet = new Set<string>();
+  for (const m of matches) {
+    const slug = getCompetitionByLeagueId(m.competitionId)?.slug;
+    if (!slug) continue;
+    if (m.status === "live" || m.status === "ht") live.add(slug);
+    else if (m.kickoffUtc.slice(0, 10) === today) todaySet.add(slug);
+  }
+  return (
+    TABLE_PRIORITY.find((s) => live.has(s)) ??
+    TABLE_PRIORITY.find((s) => todaySet.has(s)) ??
+    fallback
+  );
 }

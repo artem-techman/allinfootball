@@ -18,7 +18,7 @@ import { getNews } from "@/lib/news";
 import type { Article, Match, Standing } from "@/lib/providers/types";
 import { todayKey, shiftDateKey } from "@/lib/utils/date";
 import { getCompetitionBySlug, isInScope } from "@/lib/constants/competitions";
-import { currentSeasonYear } from "@/lib/season";
+import { currentSeasonYear, pickActiveTableSlug } from "@/lib/season";
 import { PREVIEW_UPCOMING, PREVIEW_RESULTS, PREVIEW_STANDINGS, PREVIEW_STORIES, PREVIEW_SCORERS, PREVIEW_HERO } from "@/lib/preview/homePreview";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +39,7 @@ const TOP_TABLE_SLUG = "premier-league";
 const TOP_SCORERS_SLUG = "premier-league";
 
 export default async function HomePage() {
-  const { upcoming, results, standings, scorers, news, transferNews, demo } = await loadHomeData();
+  const { upcoming, results, standings, tableSlug, scorers, news, transferNews, demo } = await loadHomeData();
 
   // Sample data renders ONLY in the keyless demo. With a real key, a failed or
   // empty provider call must show nothing — never invented fixtures, results or
@@ -84,7 +84,7 @@ export default async function HomePage() {
             <LiveNowRail nextMatch={nextUpcoming} />
           </div>
           <LatestResultsRail matches={resultsToShow} />
-          <TopTableRail initialSlug={TOP_TABLE_SLUG} initialRows={standingsToShow} />
+          <TopTableRail initialSlug={tableSlug} initialRows={standingsToShow} />
           <TransferRumoursRail articles={transferNews} />
           {/* On mobile the rail stacks below main, so the Top Scorers card here
               makes it the last section. On desktop (≥1024px) it shows beside
@@ -170,6 +170,8 @@ async function loadHomeData(): Promise<{
   upcoming: Match[];
   results: Match[];
   standings: Standing[] | null;
+  /** Competition the Top Table defaults to — whatever's being played now. */
+  tableSlug: string;
   scorers: ScorerItem[];
   news: Article[];
   transferNews: Article[];
@@ -185,14 +187,16 @@ async function loadHomeData(): Promise<{
   ]);
 
   if (keyMissing) {
-    return { upcoming: [], results: [], standings: null, scorers: [], news, transferNews, demo: true };
+    return { upcoming: [], results: [], standings: null, tableSlug: TOP_TABLE_SLUG, scorers: [], news, transferNews, demo: true };
   }
 
-  // Top Table defaults to the Premier League; the scorers leaderboard is the
-  // World Cup. The Top Table season is resolved live (current season).
-  const tableComp = getCompetitionBySlug(TOP_TABLE_SLUG);
-  const [windowMatches, standings, scorers] = await Promise.all([
-    loadFixturesWindow(),
+  // Fetch the fixtures window first, then default the Top Table to whatever
+  // competition is being played (live, else today), falling back to the PL.
+  const windowMatches = await loadFixturesWindow();
+  const tableSlug = pickActiveTableSlug(windowMatches, TOP_TABLE_SLUG);
+  const tableComp = getCompetitionBySlug(tableSlug);
+
+  const [standings, scorers] = await Promise.all([
     tableComp
       ? currentSeasonYear(tableComp)
           .then((season) => provider.getStandings(tableComp.leagueId, season))
@@ -211,7 +215,7 @@ async function loadHomeData(): Promise<{
     .filter((m) => m.status === "finished")
     .sort((a, b) => b.kickoffUtc.localeCompare(a.kickoffUtc))
     .slice(0, 5);
-  return { upcoming, results, standings, scorers, news, transferNews, demo: false };
+  return { upcoming, results, standings, tableSlug, scorers, news, transferNews, demo: false };
 }
 
 /** Biggest goal scorers of the Premier League, as a compact leaderboard (top 5). */

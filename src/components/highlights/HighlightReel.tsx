@@ -36,11 +36,13 @@ function cmd(iframe: HTMLIFrameElement | null, func: "mute" | "unMute" | "playVi
 }
 
 export function HighlightReel({ highlights }: { highlights: Highlight[] }) {
+  const PAGE = 20;
   const [slug, setSlug] = useState<string | null>(null);
   const [muted, setMuted] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [visible, setVisible] = useState(PAGE);
 
-  const scrollerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const activeIframeRef = useRef<HTMLIFrameElement | null>(null);
 
   // Restore the viewer's mute preference.
@@ -64,12 +66,12 @@ export function HighlightReel({ highlights }: { highlights: Highlight[] }) {
     [slug, highlights],
   );
 
-  // Track which card is in view (the most-visible one autoplays).
+  // Track which card is in view within the PAGE viewport (root: null). The
+  // most-visible card autoplays; the others stay posters. Re-runs when the list
+  // or the revealed count changes so newly shown cards get observed.
   useEffect(() => {
-    const root = scrollerRef.current;
+    const root = listRef.current;
     if (!root) return;
-    // Track every card's visibility and make the MOST-visible one active (it
-    // autoplays); the others — including the one peeking below — stay posters.
     const ratios = new Map<string, number>();
     const obs = new IntersectionObserver(
       (entries) => {
@@ -87,17 +89,17 @@ export function HighlightReel({ highlights }: { highlights: Highlight[] }) {
         });
         if (bestId) setActiveId(bestId);
       },
-      { root, threshold: [0, 0.25, 0.5, 0.75, 1] },
+      { threshold: [0, 0.25, 0.5, 0.75, 1] }, // root: null = the page viewport
     );
     root.querySelectorAll("[data-id]").forEach((el) => obs.observe(el));
     return () => obs.disconnect();
-  }, [shown]);
+  }, [shown, visible]);
 
-  // Default the active card to the first one in view.
+  // Reset to the first page/clip when the filter changes.
   useEffect(() => {
-    setActiveId((prev) => (shown.some((h) => h.id === prev) ? prev : (shown[0]?.id ?? null)));
-    scrollerRef.current?.scrollTo({ top: 0 });
-  }, [shown]);
+    setVisible(PAGE);
+    setActiveId(shown[0]?.id ?? null);
+  }, [slug, shown]);
 
   const toggleMute = useCallback(() => {
     setMuted((m) => {
@@ -131,11 +133,10 @@ export function HighlightReel({ highlights }: { highlights: Highlight[] }) {
         </div>
       )}
 
-      <div
-        ref={scrollerRef}
-        className="mx-auto flex h-[calc(100svh-140px)] w-full max-w-[460px] snap-y snap-proximity flex-col gap-4 overflow-y-auto overscroll-contain scroll-pt-2 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {shown.map((h) => (
+      {/* Normal page flow: the feed scrolls with the page, so the footer sits
+          naturally below. First 20 clips, then "View more". */}
+      <div ref={listRef} className="mx-auto flex w-full max-w-[460px] flex-col gap-4">
+        {shown.slice(0, visible).map((h) => (
           <ReelCard
             key={h.id}
             highlight={h}
@@ -147,6 +148,16 @@ export function HighlightReel({ highlights }: { highlights: Highlight[] }) {
             }}
           />
         ))}
+
+        {visible < shown.length && (
+          <button
+            type="button"
+            onClick={() => setVisible((v) => v + PAGE)}
+            className="mx-auto mt-1 rounded-full border border-hairline bg-card px-5 py-2.5 text-meta font-semibold text-text-primary transition-colors hover:border-accent-lime hover:text-accent-lime"
+          >
+            View more highlights
+          </button>
+        )}
       </div>
     </div>
   );

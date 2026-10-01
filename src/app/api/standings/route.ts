@@ -26,13 +26,19 @@ export async function GET(request: Request) {
       ? await currentSeasonYear(comp)
       : new Date().getUTCFullYear();
 
+  const debugOn = searchParams.get("debug") === "1";
   try {
     const standings = await provider.getStandings(league, season);
-    return NextResponse.json({ standings });
+    return NextResponse.json({ standings, ...(debugOn ? { resolvedSeason: season } : {}) });
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
     return NextResponse.json(
-      { standings: [], delayed: true, reason: message.includes("FOOTBALL_API_KEY") ? "no_key" : "provider_error" },
+      {
+        standings: [],
+        delayed: true,
+        reason: message.includes("FOOTBALL_API_KEY") ? "no_key" : "provider_error",
+        ...(debugOn ? { resolvedSeason: season, detail: message } : {}),
+      },
       { status: 200 },
     );
   }

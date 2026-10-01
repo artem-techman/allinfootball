@@ -18,7 +18,12 @@ export async function GET(request: Request) {
   if (!Number.isFinite(league)) {
     return NextResponse.json({ error: "invalid league" }, { status: 400 });
   }
-  const seasonParam = Number(searchParams.get("season"));
+  // NOTE: Number(null) === 0 and Number("") === 0, both of which pass
+  // Number.isFinite — so we must check the raw param is actually present before
+  // trusting it, otherwise an omitted season silently becomes 0 (→ "Season cannot
+  // be 0") and the resolver never runs. This broke the Top Table picker.
+  const seasonRaw = searchParams.get("season");
+  const seasonParam = seasonRaw != null && seasonRaw.trim() !== "" ? Number(seasonRaw) : NaN;
   const comp = getCompetitionByLeagueId(league);
   const season = Number.isFinite(seasonParam)
     ? seasonParam

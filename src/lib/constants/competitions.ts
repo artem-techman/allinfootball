@@ -35,6 +35,11 @@ export const COMPETITIONS: readonly CompetitionConst[] = [
   { slug: "ligue-1", leagueId: 61, name: "Ligue 1", country: "France", type: "league", defaultSeason: 2025, verified: true },
   { slug: "champions-league", leagueId: 2, name: "UEFA Champions League", country: "UEFA", type: "cup", defaultSeason: 2025, verified: true },
   { slug: "europa-league", leagueId: 3, name: "UEFA Europa League", country: "UEFA", type: "cup", defaultSeason: 2025, verified: true },
+  // UEFA Nations League (id 5, verified 2026-10-01): national-team competition,
+  // live now. League-phase groups (Leagues A/B/C/D × Groups A–D) render via the
+  // standard group-standings Table; season 2026 confirmed to carry fixtures +
+  // grouped standings.
+  { slug: "nations-league", leagueId: 5, name: "UEFA Nations League", country: "UEFA", type: "international", defaultSeason: 2026, verified: true },
   // Confirmed via BUILD STEP ZERO against /leagues (2026-06-18): id 253 is
   // "Major League Soccer" (USA, current season 2026); id 1 is "World Cup" (current
   // season 2026). Note: searching "MLS" returns MLS All-Star/Next Pro, not the

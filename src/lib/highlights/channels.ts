@@ -21,6 +21,22 @@ export const OFFICIAL_CHANNELS: Record<string, string[]> = {
   "premier-league": ["@premierleague"],
 };
 
+/**
+ * Channels that return `status.embeddable = true` from the API but STILL block
+ * off-site display via content-owner rules — confirmed live on 2026-10-01: FIFA
+ * and UEFA clips render "Video unavailable … has blocked it from display on this
+ * website". Their highlights are shown as tap-to-open posters instead of inline
+ * autoplay, so the reel never shows a broken player. Domestic-league channels
+ * (La Liga, Serie A, Bundesliga, Ligue 1, MLS) embed fine.
+ */
+export const EMBED_BLOCKED_HANDLES: ReadonlySet<string> = new Set(
+  ["@fifaworldcup", "@FIFA", "@uefa"].map((h) => h.toLowerCase()),
+);
+
+export function handleAllowsEmbed(handle: string): boolean {
+  return !EMBED_BLOCKED_HANDLES.has(handle.toLowerCase());
+}
+
 /** Flat, de-duplicated list of every handle → which competition slug it maps to. */
 export function channelHandleEntries(): { handle: string; competitionSlug: string }[] {
   const seen = new Set<string>();

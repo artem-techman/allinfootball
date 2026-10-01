@@ -1,7 +1,7 @@
 import "server-only";
 
 import { swr } from "@/lib/cache";
-import { channelHandleEntries } from "./channels";
+import { channelHandleEntries, handleAllowsEmbed } from "./channels";
 import type { Highlight, HighlightsProvider, MatchHighlightQuery } from "./types";
 
 /**
@@ -46,6 +46,8 @@ interface ResolvedChannel {
   uploadsPlaylistId: string;
   channelTitle: string;
   competitionSlug: string;
+  /** false for channels that block off-site embedding (FIFA/UEFA). */
+  allowsEmbed: boolean;
 }
 
 interface RawChannels {
@@ -75,6 +77,7 @@ async function resolveChannels(): Promise<ResolvedChannel[]> {
             uploadsPlaylistId: uploads,
             channelTitle: item.snippet?.title ?? handle,
             competitionSlug,
+            allowsEmbed: handleAllowsEmbed(handle),
           });
         }
       } catch {
@@ -150,6 +153,7 @@ async function uploadsFor(channel: ResolvedChannel): Promise<Highlight[]> {
         thumbnailUrl: s?.thumbnails?.high?.url ?? s?.thumbnails?.medium?.url ?? THUMB(id),
         watchUrl: WATCH(id),
         competitionSlug: channel.competitionSlug,
+        embeddable: channel.allowsEmbed, // downgraded further by annotateEmbeddable
       });
     }
     return out;
@@ -186,7 +190,12 @@ async function annotateEmbeddable(list: Highlight[]): Promise<Highlight[]> {
       // batch failed → leave those ids optimistic (embeddable)
     }
   }
-  return list.map((h) => ({ ...h, embeddable: known.has(h.id) ? known.get(h.id)! : true }));
+  // A channel-level block (embeddable already false) stays false; otherwise use
+  // the API's answer, defaulting optimistic when the status call couldn't resolve.
+  return list.map((h) => ({
+    ...h,
+    embeddable: h.embeddable === false ? false : known.has(h.id) ? known.get(h.id)! : true,
+  }));
 }
 
 /* ------------------------------- name matching ------------------------------- */
@@ -234,7 +243,14 @@ export const youtubeHighlights: HighlightsProvider = {
       const merged = [...byId.values()]
         .sort((a, b) => b.publishedAtUtc.localeCompare(a.publishedAtUtc))
         .slice(0, opts.limit ?? 24);
-      return annotateEmbeddable(merged);
+      const annotated = await annotateEmbeddable(merged);
+      // Lead the reel with clips that actually autoplay inline (embeddable), then
+      // the tap-to-open ones (FIFA/UEFA), each newest-first.
+      return annotated.sort(
+        (a, b) =>
+          Number(b.embeddable !== false) - Number(a.embeddable !== false) ||
+          b.publishedAtUtc.localeCompare(a.publishedAtUtc),
+      );
     } catch {
       return [];
     }

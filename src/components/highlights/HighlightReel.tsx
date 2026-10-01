@@ -178,7 +178,9 @@ function ReelCard({
               allowFullScreen
               loading="eager"
               onLoad={(e) => {
-                // honour an existing unmute preference once the player is up
+                // nudge playback (some browsers hold muted autoplay until asked)
+                // and honour an existing unmute preference once the player is up
+                cmd(e.currentTarget, "playVideo");
                 if (!muted) cmd(e.currentTarget, "unMute");
               }}
             />

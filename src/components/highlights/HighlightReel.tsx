@@ -68,16 +68,26 @@ export function HighlightReel({ highlights }: { highlights: Highlight[] }) {
   useEffect(() => {
     const root = scrollerRef.current;
     if (!root) return;
+    // Track every card's visibility and make the MOST-visible one active (it
+    // autoplays); the others — including the one peeking below — stay posters.
+    const ratios = new Map<string, number>();
     const obs = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
-          if (e.isIntersecting && e.intersectionRatio >= 0.6) {
-            const id = (e.target as HTMLElement).dataset.id;
-            if (id) setActiveId(id);
-          }
+          const id = (e.target as HTMLElement).dataset.id;
+          if (id) ratios.set(id, e.isIntersecting ? e.intersectionRatio : 0);
         }
+        let bestId: string | null = null;
+        let best = 0;
+        ratios.forEach((r, id) => {
+          if (r > best) {
+            best = r;
+            bestId = id;
+          }
+        });
+        if (bestId) setActiveId(bestId);
       },
-      { root, threshold: [0.6] },
+      { root, threshold: [0, 0.25, 0.5, 0.75, 1] },
     );
     root.querySelectorAll("[data-id]").forEach((el) => obs.observe(el));
     return () => obs.disconnect();
@@ -123,7 +133,7 @@ export function HighlightReel({ highlights }: { highlights: Highlight[] }) {
 
       <div
         ref={scrollerRef}
-        className="mx-auto h-[calc(100svh-150px)] w-full max-w-[520px] snap-y snap-mandatory overflow-y-auto overscroll-contain rounded-card [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="mx-auto flex h-[calc(100svh-140px)] w-full max-w-[460px] snap-y snap-proximity flex-col gap-4 overflow-y-auto overscroll-contain scroll-pt-2 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {shown.map((h) => (
           <ReelCard
@@ -160,12 +170,10 @@ function ReelCard({
   const showPlayer = active && canEmbed;
 
   return (
-    <section
-      data-id={h.id}
-      className="relative flex h-full w-full snap-center snap-always items-center justify-center overflow-hidden bg-black"
-    >
-      {/* media: 16:9 player/poster centred in the tall reel panel */}
-      <div className="relative w-full">
+    <section data-id={h.id} className="w-full shrink-0 snap-start">
+      {/* a natural 16:9 card; the next one peeks below so the feed reads as a
+          scrollable reel, and there's gutter around the player to scroll on */}
+      <div className="relative overflow-hidden rounded-card bg-black shadow-soft">
         <div className="relative aspect-video w-full bg-black">
           {showPlayer ? (
             <iframe

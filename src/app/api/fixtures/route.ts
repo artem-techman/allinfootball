@@ -35,8 +35,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ matches });
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
+    const debug = searchParams.get("debug") === "1" ? { detail: message } : {};
     return NextResponse.json(
-      { matches: [], delayed: true, reason: message.includes("FOOTBALL_API_KEY") ? "no_key" : "provider_error" },
+      { matches: [], delayed: true, reason: message.includes("FOOTBALL_API_KEY") ? "no_key" : "provider_error", ...debug },
       { status: 200 },
     );
   }

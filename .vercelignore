@@ -1,2 +1,4 @@
 .claude/
 docs/improvement-plan-*.md
+.env*
+!.env*.example

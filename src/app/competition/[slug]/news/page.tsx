@@ -4,17 +4,13 @@ import { CompetitionLayout } from "@/components/competition/CompetitionLayout";
 import { NewsRiver } from "@/components/news/NewsRiver";
 import { getNews } from "@/lib/news";
 import { getCompetitionBySlug } from "@/lib/constants/competitions";
+import { competitionTabMetadata } from "@/lib/seo/competition";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const comp = getCompetitionBySlug(slug);
-  return {
-    title: comp ? `${comp.name} News` : "News",
-    description: comp ? `The latest ${comp.name} news — headlines from trusted sources on My Football Tracker.` : undefined,
-    alternates: { canonical: `/competition/${slug}/news` },
-  };
+  return competitionTabMetadata(slug, "news");
 }
 
 export default async function CompetitionNewsPage({ params }: { params: Promise<{ slug: string }> }) {

@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { JsonLd, organization, website } from "@/components/seo/JsonLd";
+import { buildMetadata, SITE_NAME, SITE_URL } from "@/lib/seo/metadata";
+import { competitionListSentence } from "@/lib/seo/copy";
+import { COMPETITIONS } from "@/lib/constants/competitions";
 import "@/styles/globals.css";
 
 // GA4 Measurement ID (G-XXXXXXXXXX). Set NEXT_PUBLIC_GA_ID in the environment
@@ -14,40 +17,41 @@ const inter = Inter({
   display: "swap",
 });
 
+const DEFAULT_TITLE = "My Football Tracker — Live scores, tables & match stats";
+const SHARE_DESCRIPTION =
+  "Live football scores, tables, fixtures, lineups and stats across the world's biggest competitions.";
+
 /**
- * Root metadata (CLAUDE.md section 13). metadataBase + og:site_name already
- * point at the production domain so canonical URLs are correct. The brand is
- * "My Football Tracker" everywhere.
+ * Root metadata (CLAUDE.md section 13). metadataBase + og:site_name point at the
+ * production domain. Routes override title/description/canonical/openGraph via
+ * buildMetadata() (src/lib/seo/metadata.ts); this root openGraph is the home
+ * page's share card. No canonical here — a root canonical would be inherited by
+ * every page that lacks its own (404s included) and point them all at home.
  */
+const rootShare = buildMetadata({
+  title: DEFAULT_TITLE,
+  description: SHARE_DESCRIPTION,
+  path: "/",
+  absoluteTitle: true,
+  // The root segment's own opengraph-image.tsx supplies og:image.
+  image: "file",
+});
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://myfootballtracker.com"),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "My Football Tracker — Live scores, tables & match stats",
-    template: "%s · My Football Tracker",
+    default: DEFAULT_TITLE,
+    template: `%s · ${SITE_NAME}`,
   },
-  description:
-    "My Football Tracker tracks the Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Europa League, MLS and the FIFA World Cup — live scores, tables, lineups and stats.",
-  applicationName: "My Football Tracker",
+  description: `${SITE_NAME} tracks ${competitionListSentence()} — live scores, tables, lineups and stats.`,
+  applicationName: SITE_NAME,
   keywords: [
     "football", "soccer", "live scores", "football scores", "league tables",
-    "fixtures", "results", "Premier League", "La Liga", "Serie A", "Bundesliga",
-    "Ligue 1", "Champions League", "Europa League", "MLS", "FIFA World Cup",
+    "fixtures", "results", ...COMPETITIONS.map((c) => c.name),
   ],
   category: "sports",
-  openGraph: {
-    siteName: "My Football Tracker",
-    type: "website",
-    url: "https://myfootballtracker.com",
-    title: "My Football Tracker — Live scores, tables & match stats",
-    description:
-      "Live football scores, tables, fixtures, lineups and stats across the world's biggest competitions.",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "My Football Tracker — Live scores, tables & match stats",
-    description:
-      "Live football scores, tables, fixtures, lineups and stats across the world's biggest competitions.",
-  },
+  openGraph: rootShare.openGraph,
+  twitter: rootShare.twitter,
   robots: { index: true, follow: true },
 };
 

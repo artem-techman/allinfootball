@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CalendarShell } from "@/components/calendar/CalendarShell";
 import { isValidDateKey, todayKey, shiftDateKey, formatLongDate } from "@/lib/utils/date";
+import { buildMetadata } from "@/lib/seo/metadata";
+import { competitionListSentence } from "@/lib/seo/copy";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +24,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { date } = await params;
   const key = resolveDate(date);
-  const label = key ? formatLongDate(key) : "Matches";
-  return {
+  if (!key) return { title: "Matches" };
+  const label = formatLongDate(key);
+  return buildMetadata({
     title: `Matches — ${label}`,
-    description: `Football fixtures and results for ${label} across the nine competitions on My Football Tracker.`,
-    alternates: { canonical: `/matches/${date}` },
-  };
+    description: `Football fixtures and results for ${label} across ${competitionListSentence()}.`,
+    path: `/matches/${date}`,
+  });
 }
 
 export default async function MatchesByDatePage({

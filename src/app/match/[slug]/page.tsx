@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { AppShell } from "@/components/shell/AppShell";
 import { MatchCenter, type MatchBundle } from "@/components/match/MatchCenter";
-import { JsonLd, sportsEvent, breadcrumb } from "@/components/seo/JsonLd";
+import { JsonLd, sportsEvent, breadcrumb, competitionTableCrumb } from "@/components/seo/JsonLd";
 import { provider } from "@/lib/providers";
 import { highlights } from "@/lib/highlights";
 import { archiveFinishedMatch, readArchivedMatch } from "@/lib/db/matchStore";
 import { entitySlug, idFromSlug } from "@/lib/utils/slug";
+import { buildMetadata } from "@/lib/seo/metadata";
+import { canonicalMatchSlug, matchDescription, matchTitle } from "@/lib/seo/matchShare";
 import type { Lineup, Match, MatchEvent, MatchStats, Odds, Standing } from "@/lib/providers/types";
 
 export const dynamic = "force-dynamic";
@@ -32,12 +34,13 @@ export async function generateMetadata({
   const id = idFromSlug(slug);
   const match = id ? await loadMatch(id) : undefined;
   if (!match) return { title: "Match" };
-  const title = `${match.homeTeam?.name} vs ${match.awayTeam?.name}`;
-  return {
-    title,
-    description: `${title} — live score, lineups, stats and head-to-head in the ${match.competition?.name}.`,
-    alternates: { canonical: `/match/${slug}` },
-  };
+  return buildMetadata({
+    title: matchTitle(match),
+    description: matchDescription(match),
+    path: `/match/${canonicalMatchSlug(match, slug)}`,
+    // og:image comes from ./opengraph-image.tsx (per-match score card).
+    image: "file",
+  });
 }
 
 export default async function MatchPage({
@@ -56,7 +59,7 @@ export default async function MatchPage({
   // names so a partial fixture never builds a malformed slug (redirect loop).
   if (match.homeTeam?.name && match.awayTeam?.name) {
     const canonical = entitySlug(`${match.homeTeam.name}-${match.awayTeam.name}`, id);
-    if (canonical !== slug) redirect(`/match/${canonical}`);
+    if (canonical !== slug) permanentRedirect(`/match/${canonical}`);
   }
 
   const finished = match.status === "finished";
@@ -110,7 +113,7 @@ export default async function MatchPage({
       <JsonLd
         data={breadcrumb([
           { name: "Matches", path: "/matches" },
-          ...(match.competition ? [{ name: match.competition.name, path: `/competition/${match.competition.slug}` }] : []),
+          ...(match.competition ? competitionTableCrumb(match.competition) : []),
           { name: `${match.homeTeam?.name} vs ${match.awayTeam?.name}`, path: `/match/${slug}` },
         ])}
       />

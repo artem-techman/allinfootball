@@ -2,7 +2,8 @@ import Link from "next/link";
 import type { Match, MatchEvent } from "@/lib/providers/types";
 import { Crest } from "@/components/primitives/Crest";
 import { LocalTime } from "@/components/primitives/LocalTime";
-import { hasShootout, liveMinuteLabel } from "@/lib/utils/match";
+import { LiveMinute } from "@/components/primitives/LiveMinute";
+import { hasShootout } from "@/lib/utils/match";
 
 /**
  * Match center header (CLAUDE.md section 8): competition/round breadcrumb, both
@@ -22,6 +23,10 @@ export function MatchHeader({ match, events }: { match: Match; events: MatchEven
 
   return (
     <section className="overflow-hidden rounded-card border border-hairline bg-surface-dark p-6 text-text-on-dark">
+      {/* The page's one h1 (B18). The names are already shown under the crests, so it's for assistive tech + crawlers. */}
+      <h1 className="sr-only">
+        {match.homeTeam?.name ?? "Home"} vs {match.awayTeam?.name ?? "Away"}
+      </h1>
       <div className="mb-5 flex items-center justify-center gap-1.5 text-[11px] text-text-on-dark-dim">
         {match.competition && (
           <Link href={`/competition/${match.competition.slug}/table`} className="hover:text-text-on-dark">
@@ -89,11 +94,7 @@ function ScoreCol({ match }: { match: Match }) {
 function statusBadge(match: Match) {
   switch (match.status) {
     case "live":
-      return (
-        <span className="tabular animate-live-pulse text-meta font-bold text-live-minute">
-          {liveMinuteLabel(match)}
-        </span>
-      );
+      return <LiveMinute match={match} className="tabular animate-live-pulse text-meta font-bold text-live-minute" />;
     case "ht":
       return <span className="text-meta font-bold text-live-red">HALF TIME</span>;
     case "finished":

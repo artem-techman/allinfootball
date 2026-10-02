@@ -37,10 +37,12 @@ export function ThirdPlaceTable({ rows }: { rows: Standing[] }) {
           {thirds.map((r, i) => (
             <tr key={`${r.groupLabel}-${r.teamId}`} className="border-b border-hairline last:border-0">
               <td className="tabular py-2 pl-4 text-text-secondary">{i + 1}</td>
-              <td className="py-2">
-                <span className="flex items-center gap-2">
-                  <Crest src={r.team?.crest} name={r.team?.name ?? "Team"} size={18} />
-                  <span className="truncate text-text-primary">{r.team?.name}</span>
+              <td className="w-full max-w-0 py-2 pr-2">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="shrink-0">
+                    <Crest src={r.team?.crest} name={r.team?.name ?? "Team"} size={18} />
+                  </span>
+                  <span className="min-w-0 truncate text-text-primary">{r.team?.name}</span>
                 </span>
               </td>
               <td className="py-2 text-text-secondary">{r.groupLabel}</td>

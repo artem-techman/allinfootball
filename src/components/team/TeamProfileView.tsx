@@ -7,6 +7,7 @@ import { Crest } from "@/components/primitives/Crest";
 import { MatchCard } from "@/components/cards/MatchCard";
 import { StandingsTable } from "@/components/tables/StandingsTable";
 import { EmptyState } from "@/components/primitives/EmptyState";
+import { LocalTime } from "@/components/primitives/LocalTime";
 
 type Tab = "overview" | "fixtures" | "results" | "squad" | "table";
 
@@ -36,6 +37,9 @@ export function TeamProfileView({
 }) {
   const [tab, setTab] = useState<Tab>("overview");
   const { team } = profile;
+  // Results newest-first, fixtures soonest-first, whatever order the provider sent (B35).
+  const results = [...recent].sort((a, b) => b.kickoffUtc.localeCompare(a.kickoffUtc));
+  const fixtures = [...upcoming].sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc));
 
   return (
     <div className="space-y-5">
@@ -71,29 +75,29 @@ export function TeamProfileView({
       {tab === "overview" && (
         <div className="grid gap-4 lg:grid-cols-2">
           <Panel title="Next fixtures">
-            <MatchList matches={upcoming.slice(0, 4)} empty="No upcoming fixtures" />
+            <MatchList matches={fixtures.slice(0, 4)} empty="No upcoming fixtures" />
           </Panel>
           <Panel title="Recent results">
-            <MatchList matches={recent.slice(0, 4)} empty="No recent results" />
+            <MatchList matches={results.slice(0, 4)} empty="No recent results" />
           </Panel>
         </div>
       )}
 
       {tab === "fixtures" && (
         <Panel title="Upcoming">
-          <MatchList matches={upcoming} empty="No upcoming fixtures" />
+          <MatchList matches={fixtures} empty="No upcoming fixtures" />
         </Panel>
       )}
 
       {tab === "results" && (
         <Panel title="Results">
-          <MatchList matches={[...recent].reverse()} empty="No recent results" />
+          <MatchList matches={results} empty="No recent results" withMeta />
         </Panel>
       )}
 
       {tab === "squad" && <Squad squad={squad} />}
 
-      {tab === "table" && <StandingsTable rows={standings} highlightTeamIds={[team.id]} />}
+      {tab === "table" && <StandingsTable rows={standings} highlightTeamIds={[team.id]} focusTeamIds={[team.id]} />}
     </div>
   );
 }
@@ -107,12 +111,24 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function MatchList({ matches, empty }: { matches: Match[]; empty: string }) {
+/** `withMeta` adds the date and a competition chip above each match (Results tab, B35). */
+function MatchList({ matches, empty, withMeta = false }: { matches: Match[]; empty: string; withMeta?: boolean }) {
   if (matches.length === 0) return <p className="py-3 text-center text-meta text-text-secondary">{empty}</p>;
   return (
     <ul className="divide-y divide-hairline">
       {matches.map((m) => (
         <li key={m.id}>
+          {withMeta && (
+            <div className="flex items-center gap-2 px-2 pt-2 text-[11px] text-text-muted">
+              <LocalTime iso={m.kickoffUtc} mode="date" />
+              {m.competition && (
+                <span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-card-2 px-2 py-0.5 text-text-secondary">
+                  <Crest src={m.competition.logo} name={m.competition.name} size={12} />
+                  <span className="truncate">{m.competition.name}</span>
+                </span>
+              )}
+            </div>
+          )}
           <MatchCard match={m} />
         </li>
       ))}

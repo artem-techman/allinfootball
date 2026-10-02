@@ -1,104 +1,54 @@
-import type { BookmakerOdds, Match, Odds } from "@/lib/providers/types";
+import type { Match, Odds } from "@/lib/providers/types";
 import { EmptyState } from "@/components/primitives/EmptyState";
+import { impliedSplit } from "./impliedOdds";
 
 /**
- * Odds tab — NEUTRAL DATA ONLY (CLAUDE.md sections 8 + 17). A 1X2 comparison
- * across the biggest European bookmakers: best price per outcome summarised on
- * top and highlighted in the table, so visitors can see who offers the best
- * odds. Purely informational; no betting CTAs, affiliate links or gambling
- * promotion.
+ * Odds tab — NEUTRAL DATA ONLY (CLAUDE.md sections 8 + 17; B16/N6). Shows the
+ * pre-match market's view of the match as implied probabilities (Home / Draw /
+ * Away, margin removed, median across price lists). No bookmaker is named, no
+ * prices are compared, nothing links out: no betting CTAs, affiliate links or
+ * gambling promotion. Pre-match prices say nothing about a game in progress, so
+ * once a match has started the tab only explains that they're hidden.
  */
 
-type OutcomeKey = "home" | "draw" | "away";
+const STARTED: Match["status"][] = ["live", "ht", "finished", "abandoned", "suspended"];
 
 export function OddsView({ odds, match }: { odds?: Odds; match: Match }) {
-  const books = odds?.books ?? [];
-  if (books.length === 0) {
-    return <EmptyState title="Odds not available for this match" />;
+  if (STARTED.includes(match.status)) {
+    return <EmptyState title="Pre-match odds are hidden once a match starts." />;
   }
+  const split = impliedSplit(odds?.books ?? []);
+  if (!split) return <EmptyState title="Odds not available for this match" />;
 
-  const outcomes: { key: OutcomeKey; label: string }[] = [
-    { key: "home", label: match.homeTeam?.name ?? "Home" },
-    { key: "draw", label: "Draw" },
-    { key: "away", label: match.awayTeam?.name ?? "Away" },
+  const segments = [
+    { key: "home", label: match.homeTeam?.name ?? "Home", pct: split.home, bar: "bg-accent-lime" },
+    { key: "draw", label: "Draw", pct: split.draw, bar: "bg-surface-dark-2" },
+    { key: "away", label: match.awayTeam?.name ?? "Away", pct: split.away, bar: "bg-accent-electric" },
   ];
-
-  // Highest decimal price per outcome = the best deal for the punter.
-  const best: Record<OutcomeKey, number | undefined> = { home: undefined, draw: undefined, away: undefined };
-  for (const o of outcomes) {
-    const prices = books.map((b) => b[o.key]).filter((v): v is number => v != null);
-    best[o.key] = prices.length ? Math.max(...prices) : undefined;
-  }
-  const bestBook = (key: OutcomeKey): BookmakerOdds | undefined =>
-    best[key] == null ? undefined : books.find((b) => b[key] === best[key]);
 
   return (
     <section className="rounded-card border border-hairline bg-card p-card">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h3 className="text-cardtitle text-text-primary">Match odds (1X2)</h3>
-        <span className="shrink-0 text-[11px] text-text-muted">
-          {books.length} bookmaker{books.length > 1 ? "s" : ""} compared
-        </span>
-      </div>
+      <h3 className="mb-3 text-cardtitle text-text-primary">Pre-match market view</h3>
 
-      {/* Best price per outcome */}
-      <div className="grid grid-cols-3 gap-3">
-        {outcomes.map((o) => (
-          <div key={o.key} className="rounded-tile border border-[rgba(91,200,80,0.35)] bg-card-2 p-3 text-center">
-            <div className="truncate text-[11px] text-text-secondary">{o.label}</div>
-            <div className="tabular mt-1 text-section font-bold text-accent-lime">
-              {best[o.key] != null ? best[o.key]!.toFixed(2) : "-"}
-            </div>
-            <div className="mt-0.5 truncate text-[10px] text-text-muted">
-              {bestBook(o.key) ? `best · ${bestBook(o.key)!.name}` : " "}
-            </div>
-          </div>
+      {/* three-segment bar; the numbers below carry the same data for screen readers */}
+      <div aria-hidden className="flex h-2.5 w-full gap-0.5 overflow-hidden rounded-full">
+        {segments.map((s) => (
+          <span key={s.key} className={`h-full ${s.bar}`} style={{ width: `${s.pct}%` }} />
         ))}
       </div>
 
-      {/* Per-bookmaker comparison, best price per column highlighted */}
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[420px] border-collapse text-left">
-          <thead>
-            <tr className="border-b border-hairline text-[11px] uppercase tracking-wide text-text-muted">
-              <th className="py-2 pr-3 font-semibold">Bookmaker</th>
-              {outcomes.map((o) => (
-                <th key={o.key} className="px-3 py-2 text-right font-semibold">
-                  <span className="block max-w-[110px] truncate">{o.label}</span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-hairline">
-            {books.map((b) => (
-              <tr key={b.name}>
-                <td className="py-2.5 pr-3 text-meta font-semibold text-text-primary">{b.name}</td>
-                {outcomes.map((o) => {
-                  const v = b[o.key];
-                  const isBest = v != null && v === best[o.key];
-                  return (
-                    <td key={o.key} className="px-3 py-2.5 text-right">
-                      <span
-                        className={`tabular inline-block min-w-[52px] rounded-md px-2 py-1 text-meta ${
-                          isBest
-                            ? "bg-accent-lime-soft font-bold text-accent-lime"
-                            : "text-text-primary"
-                        }`}
-                      >
-                        {v != null ? v.toFixed(2) : "-"}
-                      </span>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <dl className="mt-3 grid grid-cols-3 gap-3">
+        {segments.map((s, i) => (
+          <div key={s.key} className={i === 0 ? "text-left" : i === 1 ? "text-center" : "text-right"}>
+            <dt className="truncate text-[11px] text-text-secondary">{s.label}</dt>
+            <dd className="tabular mt-0.5 text-section font-bold text-text-primary">{s.pct}%</dd>
+          </div>
+        ))}
+      </dl>
 
       <p className="mt-3 text-[11px] text-text-muted">
-        Decimal odds, best price per outcome highlighted. Shown for information only — My Football
-        Tracker does not offer betting.
+        Implied probabilities from pre-match 1X2 prices, margin removed. Shown for information only —
+        My Football Tracker does not offer betting.
       </p>
     </section>
   );

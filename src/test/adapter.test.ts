@@ -14,6 +14,7 @@ import {
   pickSeasonYear,
 } from "@/lib/providers/apiFootball";
 import { mapStatus, isInPlay } from "@/lib/providers/statusMap";
+import { seasonYearFor } from "@/lib/season";
 import { isInScope, isQualifyingRound } from "@/lib/constants/competitions";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -313,5 +314,28 @@ describe("pickSeasonYear (never show last season)", () => {
   });
   it("uses the fallback when there are no seasons", () => {
     expect(pickSeasonYear([], 2026, "2026-10-01")).toBe(2026);
+  });
+});
+
+describe("seasonYearFor (date-driven current season)", () => {
+  const PL = { slug: "premier-league", leagueId: 39, name: "PL", country: "England", type: "league", defaultSeason: 2025, verified: true } as const;
+  const MLS = { slug: "mls", leagueId: 253, name: "MLS", country: "USA", type: "league", defaultSeason: 2026, verified: true } as const;
+  const WC = { slug: "world-cup", leagueId: 1, name: "WC", country: "FIFA", type: "international", defaultSeason: 2026, verified: true } as const;
+  const NL = { slug: "nations-league", leagueId: 5, name: "NL", country: "UEFA", type: "international", defaultSeason: 2026, verified: true } as const;
+
+  it("European leagues: Aug–Dec use the current year (2026/27 = 2026)", () => {
+    expect(seasonYearFor(PL, new Date("2026-10-02T00:00:00Z"))).toBe(2026);
+    expect(seasonYearFor(PL, new Date("2026-08-01T00:00:00Z"))).toBe(2026);
+  });
+  it("European leagues: Jan–July use the previous year (still 2025/26)", () => {
+    expect(seasonYearFor(PL, new Date("2026-02-15T00:00:00Z"))).toBe(2025);
+    expect(seasonYearFor(PL, new Date("2026-05-24T00:00:00Z"))).toBe(2025);
+  });
+  it("Nations League is split-year like the European leagues", () => {
+    expect(seasonYearFor(NL, new Date("2026-10-02T00:00:00Z"))).toBe(2026);
+  });
+  it("calendar-year competitions use the calendar year", () => {
+    expect(seasonYearFor(MLS, new Date("2026-02-15T00:00:00Z"))).toBe(2026);
+    expect(seasonYearFor(WC, new Date("2026-02-15T00:00:00Z"))).toBe(2026);
   });
 });

@@ -1,22 +1,34 @@
 import "server-only";
-import { provider } from "@/lib/providers";
 import { getCompetitionByLeagueId, type CompetitionConst } from "@/lib/constants/competitions";
 import { todayKey } from "@/lib/utils/date";
 import type { Match } from "@/lib/providers/types";
 
 /**
- * The season year to display for a competition RIGHT NOW.
+ * The season year to display for a competition RIGHT NOW — computed from today's
+ * date, NOT from the provider.
  *
- * MUST always resolve the live campaign, never last season, and never fail the
- * table. It's a single cached call to getCurrentSeason — which picks the season
- * whose date range contains today (robust against a stale `current` flag). We do
- * NOT probe /standings here: that earlier made the resolver fire a burst of calls
- * that tripped the per-minute rate limit ("table not available") and could fall
- * back to last season. Cached 24h; standings themselves refresh on their own TTL.
+ * This must always resolve the live campaign and can never fail the table. Both
+ * previous approaches relied on provider signals and both broke: the API `current`
+ * flag sat on the just-finished season (Premier League showed last season), and
+ * probing /standings for the "most recent populated" season fired a burst that
+ * tripped the per-minute rate limit ("table not available"). Date math has none
+ * of those failure modes — no API call, nothing to rate-limit, nothing to go
+ * stale — and API-Football labels a season by its STARTING year, which is exactly
+ * what this computes:
+ *   • calendar-year competitions (MLS, World Cup): the current calendar year.
+ *   • split-year competitions (European leagues, UEFA cups, Nations League,
+ *     Aug–May): the current year from August onward, else the previous year.
  */
+export function seasonYearFor(comp: CompetitionConst, now: Date = new Date()): number {
+  const year = now.getUTCFullYear();
+  const calendarYear = comp.country === "USA" || comp.slug === "world-cup";
+  if (calendarYear) return year;
+  return now.getUTCMonth() >= 7 ? year : year - 1; // 7 = August (0-indexed)
+}
+
+/** Async wrapper so existing `await` / `.then()` call sites keep working. */
 export async function currentSeasonYear(comp: CompetitionConst): Promise<number> {
-  const season = await provider.getCurrentSeason(comp.leagueId).catch(() => undefined);
-  return season?.year ?? comp.defaultSeason;
+  return seasonYearFor(comp);
 }
 
 /**

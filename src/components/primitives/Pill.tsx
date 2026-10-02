@@ -29,13 +29,17 @@ export function Pill({
   );
 }
 
-/** Form result pill (W/D/L) used in standings (section 8). */
+/**
+ * Form result pill (W/D/L) used in standings (section 8). Dark text on the
+ * bright fills (B18): white on lime was 1.15:1 and white on red 3.27:1; dark
+ * text gives ~17:1 on lime and ~6:1 on red, both above WCAG AA's 4.5:1.
+ */
 export function FormPill({ result }: { result: "W" | "D" | "L" }) {
   const tone =
     result === "W"
-      ? "bg-live-minute text-text-on-dark"
+      ? "bg-live-minute text-text-on-accent"
       : result === "L"
-        ? "bg-live-red text-text-on-dark"
+        ? "bg-live-red text-text-on-accent"
         : "bg-hairline text-text-secondary";
   return (
     <span

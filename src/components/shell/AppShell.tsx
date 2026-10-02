@@ -30,6 +30,14 @@ export function AppShell({
 }) {
   return (
     <div className="min-h-screen bg-page">
+      {/* Skip link (B18): first focusable element, visible only when focused. */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-tile focus:bg-card focus:px-4 focus:py-2.5 focus:text-meta focus:font-semibold focus:text-text-primary focus:shadow-elevated"
+      >
+        Skip to content
+      </a>
+
       {/* mobile top bar (sidebar collapses below 820px) */}
       <div className="sticky top-0 z-40 flex items-center justify-between border-b border-hairline bg-card px-4 py-3 min-[821px]:hidden">
         <Logo />
@@ -45,7 +53,11 @@ export function AppShell({
         {/* content column: the main+rail row, then any full-width `below` */}
         <div className="flex min-w-0 flex-1 flex-col gap-6 py-6">
           <div className="flex flex-col gap-6 min-[1201px]:flex-row min-[1201px]:items-start">
-            <main className={`min-w-0 flex-1 px-4 min-[821px]:px-7 ${wide ? "" : "min-[1201px]:max-w-main"}`}>
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className={`min-w-0 flex-1 px-4 focus:outline-none min-[821px]:px-7 ${wide ? "" : "min-[1201px]:max-w-main"}`}
+            >
               <PageTransition>{children}</PageTransition>
             </main>
             {rail && (

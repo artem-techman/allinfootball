@@ -1,12 +1,12 @@
 import type { MetadataRoute } from "next";
+import { competitionListSentence } from "@/lib/seo/copy";
 
 /** Web app manifest — site identity for browsers, Android install, and crawlers. */
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "My Football Tracker",
     short_name: "Football Tracker",
-    description:
-      "Live football scores, tables, fixtures, lineups and stats across the Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Europa League, MLS and the FIFA World Cup.",
+    description: `Live football scores, tables, fixtures, lineups and stats across ${competitionListSentence()}.`,
     start_url: "/",
     display: "standalone",
     background_color: "#08090c",

@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { BallMark } from "@/components/primitives/BallMark";
-
-const AD_CONTACT = "mailto:ads@myfootballtracker.com?subject=Advertising%20on%20My%20Football%20Tracker";
+import { competitionListSentence } from "@/lib/seo/copy";
 
 /** Primary in-app links (kept in sync with the sidebar nav). */
 const EXPLORE = [
@@ -33,10 +32,10 @@ export function Footer() {
             <span className="text-cardtitle font-bold">My Football Tracker</span>
           </Link>
           <p className="mt-3 text-meta leading-relaxed">
-            Live scores, tables, lineups and stats across the world&apos;s biggest competitions —
-            the Premier League, La Liga, Serie A, Bundesliga, Ligue 1, the Champions League,
-            Europa League, MLS and the FIFA World Cup.
+            Live scores, tables, lineups and stats across the world&apos;s biggest competitions:{" "}
+            {competitionListSentence()}.
           </p>
+          <p className="mt-2 text-meta font-semibold text-text-primary">No betting ads, ever.</p>
         </div>
 
         <nav className="flex gap-12" aria-label="Footer">
@@ -62,11 +61,6 @@ export function Footer() {
                   </Link>
                 </li>
               ))}
-              <li>
-                <a href={AD_CONTACT} className="hover:text-text-primary">
-                  Advertise
-                </a>
-              </li>
             </ul>
           </div>
         </nav>

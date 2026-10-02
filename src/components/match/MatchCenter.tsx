@@ -17,6 +17,7 @@ import { ErrorBanner } from "@/components/primitives/ErrorBanner";
 import { HighlightThumb } from "@/components/highlights/HighlightThumb";
 import type { Highlight } from "@/lib/highlights";
 import { compareProgress } from "@/lib/utils/match";
+import { TABS, defaultTab, parseTab, type TabId } from "./matchTabs";
 
 export interface MatchBundle {
   match: Match;
@@ -28,19 +29,6 @@ export interface MatchBundle {
   odds?: Odds;
   highlight?: Highlight;
 }
-
-type TabId = "summary" | "live" | "lineups" | "stats" | "highlights" | "h2h" | "table" | "odds";
-
-const TABS: { id: TabId; label: string }[] = [
-  { id: "summary", label: "Summary" },
-  { id: "live", label: "Live" },
-  { id: "lineups", label: "Lineups" },
-  { id: "stats", label: "Stats" },
-  { id: "highlights", label: "Highlights" },
-  { id: "h2h", label: "Head-to-head" },
-  { id: "table", label: "Table" },
-  { id: "odds", label: "Odds" },
-];
 
 const IN_PLAY_POLL_MS = 30_000; // matches the server's 30s live TTL
 const PRE_MATCH_POLL_MS = 60_000; // lineups land ~1h before; kickoff flips the status
@@ -58,12 +46,6 @@ function pollInterval(m: Match, now = Date.now()): number | null {
   return toKickoff <= PRE_MATCH_WINDOW_MS ? PRE_MATCH_POLL_MS : null;
 }
 
-function defaultTab(status: Match["status"]): TabId {
-  if (status === "live" || status === "ht") return "live";
-  if (status === "scheduled") return "lineups";
-  return "summary";
-}
-
 /**
  * Match center (CLAUDE.md section 8). Renders the header + tabbed content and,
  * while the fixture is live/ht (or about to kick off), polls /api/match for score,
@@ -74,12 +56,33 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
   const [events, setEvents] = useState(bundle.events);
   const [lineups, setLineups] = useState(bundle.lineups);
   const [stats, setStats] = useState(bundle.stats);
-  const [tab, setTab] = useState<TabId>(defaultTab(bundle.match.status));
+  const [tab, setTab] = useState<TabId>(() =>
+    defaultTab(bundle.match.status, { stats: bundle.stats, lineups: bundle.lineups }),
+  );
   const [degraded, setDegraded] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const matchRef = useRef(bundle.match);
   matchRef.current = match;
   const router = useRouter();
+
+  // Deep link: `?tab=stats` opens that tab. Read after mount (not during render)
+  // so the server HTML and the first client render agree.
+  useEffect(() => {
+    const fromUrl = parseTab(new URLSearchParams(window.location.search).get("tab"));
+    if (fromUrl) setTab(fromUrl);
+  }, []);
+
+  // Switching tabs rewrites `?tab=` in place: shareable, no navigation, no history entry.
+  function selectTab(id: TabId) {
+    setTab(id);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", id);
+      window.history.replaceState(null, "", url);
+    } catch {
+      /* URL sync is a nicety; the tab switch itself already happened */
+    }
+  }
 
   // A fresh server render for this same match (router refresh) is adopted only
   // if it's at least as far along as what we're already showing.
@@ -166,7 +169,7 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
               key={t.id}
               role="tab"
               aria-selected={active}
-              onClick={() => setTab(t.id)}
+              onClick={() => selectTab(t.id)}
               className={`relative whitespace-nowrap px-3.5 py-2.5 text-meta font-semibold transition-colors ${
                 active ? "text-text-primary" : "text-text-secondary hover:text-text-primary"
               }`}

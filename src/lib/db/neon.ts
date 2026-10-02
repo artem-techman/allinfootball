@@ -39,3 +39,65 @@ export async function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Pr
     clearTimeout(timer!);
   }
 }
+
+/**
+ * The tables this app needs (mirrors db/schema.sql). Every statement is
+ * `if not exists`: purely additive, never drops or alters existing data, so it's
+ * safe to run on every cold start. This is what actually brings the Neon layer
+ * online — the Vercel integration created an empty database, and until these
+ * tables exist every live-snapshot / archive / feedback query fails.
+ */
+const SCHEMA: string[] = [
+  `create table if not exists feedback (
+    id         bigint generated always as identity primary key,
+    message    text        not null,
+    rating     smallint,
+    email      text,
+    page       text,
+    session_id text,
+    user_agent text,
+    created_at timestamptz not null default now()
+  )`,
+  `create index if not exists feedback_created_idx on feedback (created_at desc)`,
+  `create table if not exists live_snapshot (
+    id         smallint    primary key,
+    matches    jsonb       not null,
+    fetched_at timestamptz not null default now()
+  )`,
+  `create table if not exists match_archive (
+    id             bigint      primary key,
+    match          jsonb       not null,
+    details        jsonb,
+    status         text        not null,
+    kickoff_utc    timestamptz,
+    competition_id integer,
+    updated_at     timestamptz not null default now()
+  )`,
+  `create index if not exists match_archive_kickoff_idx on match_archive (kickoff_utc desc)`,
+];
+
+let schemaReady: Promise<boolean> | null = null;
+
+function ensureSchema(sql: NeonQueryFunction<false, false>): Promise<boolean> {
+  schemaReady ??= (async () => {
+    for (const stmt of SCHEMA) await sql.query(stmt);
+    return true;
+  })().catch((err) => {
+    schemaReady = null; // retry on a later request
+    console.warn("[db] schema setup failed:", err instanceof Error ? err.message : err);
+    return false;
+  });
+  return schemaReady;
+}
+
+/**
+ * The database client once its tables are guaranteed to exist, or null (no
+ * DATABASE_URL, or setup failed / is slow). Callers treat null exactly like "no
+ * database" and fall back to the provider, so a DB problem never blocks a page.
+ */
+export async function readyDb(timeoutMs = 3_000): Promise<NeonQueryFunction<false, false> | null> {
+  const sql = db();
+  if (!sql) return null;
+  const ok = await withTimeout(ensureSchema(sql), timeoutMs, false);
+  return ok ? sql : null;
+}

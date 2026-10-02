@@ -1,6 +1,6 @@
 import "server-only";
 import { cache as reactCache } from "react";
-import { db, withTimeout } from "@/lib/db/neon";
+import { readyDb, withTimeout } from "@/lib/db/neon";
 import type { Lineup, Match, MatchEvent, MatchStats } from "@/lib/providers/types";
 
 /**
@@ -42,7 +42,7 @@ export interface ArchivedMatch {
 /* --------------------------------- live snapshot --------------------------------- */
 
 export async function readLiveSnapshot(): Promise<{ matches: Match[]; ageSeconds: number } | null> {
-  const sql = db();
+  const sql = await readyDb();
   if (!sql) return null;
   try {
     const rows = await withTimeout(
@@ -62,7 +62,7 @@ export async function readLiveSnapshot(): Promise<{ matches: Match[]; ageSeconds
 }
 
 export async function writeLiveSnapshot(matches: Match[]): Promise<void> {
-  const sql = db();
+  const sql = await readyDb();
   if (!sql) return;
   try {
     await withTimeout(
@@ -87,7 +87,7 @@ export async function writeLiveSnapshot(matches: Match[]): Promise<void> {
  * body share ONE DB round-trip per request.
  */
 export const readArchivedMatch = reactCache(async (id: number): Promise<ArchivedMatch | null> => {
-  const sql = db();
+  const sql = await readyDb();
   if (!sql || !Number.isFinite(id)) return null;
   try {
     const rows = await withTimeout(
@@ -111,10 +111,15 @@ export const readArchivedMatch = reactCache(async (id: number): Promise<Archived
  * during a provider outage) would freeze the emptiness forever.
  */
 export async function archiveFinishedMatch(match: Match, details: ArchivedDetails): Promise<void> {
-  const sql = db();
+  const sql = await readyDb();
   if (!sql || match.status !== "finished") return;
   const hasSubstance = details.events.length + details.lineups.length + details.stats.length > 0;
   if (!hasSubstance) return;
+  // The archive is written once and served forever, so it must be COMPLETE: if
+  // the events feed is still a few seconds behind the final score (a late goal
+  // not in it yet), skip — the next view archives the settled version instead.
+  const goals = details.events.filter((e) => e.type === "goal" || e.type === "own_goal" || e.type === "penalty").length;
+  if (goals < (match.homeScore ?? 0) + (match.awayScore ?? 0)) return;
   try {
     await withTimeout(
       sql`

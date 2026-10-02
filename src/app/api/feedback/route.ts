@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db/neon";
+import { db, readyDb } from "@/lib/db/neon";
 import { isValidEmailOptional, isValidMessage, isValidRating, MESSAGE_MAX } from "@/lib/feedback/config";
 
 /**
@@ -14,8 +14,9 @@ import { isValidEmailOptional, isValidMessage, isValidRating, MESSAGE_MAX } from
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const sql = db();
-  if (!sql) return NextResponse.json({ ok: false, error: "no_db" }, { status: 503 });
+  if (!db()) return NextResponse.json({ ok: false, error: "no_db" }, { status: 503 });
+  const sql = await readyDb(8_000); // a suspended Neon compute can take a few seconds to wake
+  if (!sql) return NextResponse.json({ ok: false }, { status: 502 });
 
   let body: {
     message?: string;

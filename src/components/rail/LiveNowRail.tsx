@@ -9,22 +9,23 @@ import { Skeleton } from "@/components/primitives/Skeleton";
 import { ErrorBanner } from "@/components/primitives/ErrorBanner";
 import { Countdown } from "@/components/primitives/Countdown";
 import { ChevronRightIcon } from "@/components/primitives/icons";
+import { liveMinuteLabel, mergeLive } from "@/lib/utils/match";
 
 const LIVE_POLL_MS = 30_000; // while a match is live (matches the server's 30s live TTL)
 const NEAR_KICKOFF_POLL_MS = 20_000; // around the next kickoff, to catch it going live
 const IDLE_POLL_MS = 5 * 60_000; // nothing live and the next match is a while away
 const NEAR_KICKOFF_WINDOW_MS = 2 * 60_000; // "around kickoff" threshold
 
-/**
- * Live Now rail. While matches are in play it lists them (team rows + score +
- * minute, refreshing every 15s). When NOTHING is live it shows the next upcoming
- * fixture (`nextMatch`) with a live "Starts in" countdown, and polls faster as
- * kickoff approaches so it flips to the live view automatically once it starts.
- *
- * `previewMatches` still renders sample live fixtures in the keyless demo.
- */
+/** Stable default: a fresh `[]` per render used to re-run the polling effect on
+ *  EVERY render, so each response triggered another fetch — a tight loop that
+ *  flashed whichever server instance answered (fresh or stale) straight onto
+ *  the screen. */
+const NO_PREVIEW: Match[] = [];
+
+const isInPlay = (m: Match) => m.status === "live" || m.status === "ht";
+
 export function LiveNowRail({
-  previewMatches = [],
+  previewMatches = NO_PREVIEW,
   nextMatch,
 }: {
   previewMatches?: Match[];
@@ -38,6 +39,14 @@ export function LiveNowRail({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevScores = useRef<Map<number, { home: number; away: number }>>(new Map());
   const celebrateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shown = useRef<Match[] | null>(null);
+  const lastSeen = useRef<Map<number, Match>>(new Map());
+  const ended = useRef<Set<number>>(new Set());
+  // Read through a ref so a new `nextMatch` object (same fixture) doesn't tear
+  // down and restart the polling loop.
+  const nextMatchRef = useRef(nextMatch);
+  nextMatchRef.current = nextMatch;
+  const nextKickoff = nextMatch?.kickoffUtc;
 
   useEffect(() => {
     let cancelled = false;
@@ -69,8 +78,8 @@ export function LiveNowRail({
       let delay = IDLE_POLL_MS;
       if (anyLive) {
         delay = LIVE_POLL_MS;
-      } else if (nextMatch) {
-        const ms = new Date(nextMatch.kickoffUtc).getTime() - Date.now();
+      } else if (nextMatchRef.current) {
+        const ms = new Date(nextMatchRef.current.kickoffUtc).getTime() - Date.now();
         delay = ms <= NEAR_KICKOFF_WINDOW_MS ? NEAR_KICKOFF_POLL_MS : IDLE_POLL_MS;
       }
       timer.current = setTimeout(tick, delay);
@@ -91,11 +100,21 @@ export function LiveNowRail({
           setMatches(previewMatches);
           setIsPreview(true);
         } else {
-          setMatches(data.matches);
+          const merged = mergeLive(
+            shown.current,
+            (data.matches ?? []).filter(isInPlay),
+            lastSeen.current,
+            ended.current,
+            // A degraded response (provider error / stale snapshot) can't prove a
+            // match has ended, so it may only add or advance, never remove.
+            !data.delayed,
+          );
+          shown.current = merged;
+          setMatches(merged);
           setIsPreview(false);
+          detectGoals(merged);
         }
-        detectGoals(data.matches ?? []);
-        const anyLive = (data.matches ?? []).some((m) => m.status === "live" || m.status === "ht");
+        const anyLive = (shown.current ?? []).length > 0;
         scheduleNext(anyLive);
       } catch {
         if (cancelled) return;
@@ -120,9 +139,9 @@ export function LiveNowRail({
       if (timer.current) clearTimeout(timer.current);
       if (celebrateTimer.current) clearTimeout(celebrateTimer.current);
     };
-  }, [previewMatches, nextMatch]);
+  }, [previewMatches, nextKickoff]);
 
-  const live = (matches ?? []).filter((m) => m.status === "live" || m.status === "ht");
+  const live = (matches ?? []).filter(isInPlay);
   const hasLive = live.length > 0;
 
   const card = (
@@ -173,7 +192,7 @@ export function LiveNowRail({
                     <Row name={m.homeTeam?.name ?? "Home"} crest={m.homeTeam?.crest} score={m.homeScore} />
                     <Row name={m.awayTeam?.name ?? "Away"} crest={m.awayTeam?.crest} score={m.awayScore} />
                   </div>
-                  <LiveStatus minute={m.minute} status={m.status} />
+                  <LiveStatus match={m} />
                 </Link>
               </li>
             ))}
@@ -258,13 +277,9 @@ function GoalCelebration() {
   );
 }
 
-function LiveStatus({ minute, status }: { minute?: number; status: Match["status"] }) {
-  if (status === "ht") return <span className="shrink-0 text-meta font-bold text-live-red">HT</span>;
-  if (status === "live")
-    return (
-      <span className="tabular shrink-0 text-meta font-bold text-live-minute">
-        {minute != null ? `${minute}'` : "LIVE"}
-      </span>
-    );
+function LiveStatus({ match }: { match: Match }) {
+  if (match.status === "ht") return <span className="shrink-0 text-meta font-bold text-live-red">HT</span>;
+  if (match.status === "live")
+    return <span className="tabular shrink-0 text-meta font-bold text-live-minute">{liveMinuteLabel(match)}</span>;
   return <span className="shrink-0 text-meta text-text-secondary">FT</span>;
 }

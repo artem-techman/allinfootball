@@ -70,7 +70,7 @@ interface RawFixture {
   fixture: {
     id: number;
     date: string;
-    status: { short: string; elapsed: number | null };
+    status: { short: string; elapsed: number | null; extra?: number | null };
     venue?: { id: number | null; name?: string | null; city?: string | null };
     referee?: string | null;
   };
@@ -189,6 +189,18 @@ async function apiGet<T>(
     });
 
     if (res.ok) {
+      // Next's data cache is STALE-WHILE-REVALIDATE: once an entry expires, the
+      // next request is still handed the old body (however old) while a refresh
+      // runs in the background. For live data that was the "match page is empty
+      // until I reload" bug: the first visit got the pre-kickoff record (no
+      // score, no lineups, status NS) and only the reload saw the refreshed one.
+      // The provider's own Date header survives the cache, so it tells us the
+      // body's true age; anything older than its TTL plus a small grace is
+      // refetched straight from the API instead of being served.
+      if (!bypassCache && revalidate != null && isTooStale(res.headers.get("date"), revalidate)) {
+        bypassCache = true;
+        continue;
+      }
       const env = (await res.json()) as RawEnvelope<T>;
       // API-Football returns HTTP 200 with a populated `errors` object on
       // application-level failures (bad params, rate limit, etc.). Treat those
@@ -230,6 +242,22 @@ async function apiGet<T>(
   }
 }
 
+/** Seconds past its TTL a cached provider body may be before we refetch it. */
+const STALE_GRACE_S = 10;
+
+/**
+ * True when a cached response (by its provider `Date` header) is older than its
+ * TTL plus grace. A missing or unparseable header counts as fresh, so an
+ * upstream header change can never turn every cache hit into a paid refetch.
+ * Exported for testing.
+ */
+export function isTooStale(dateHeader: string | null, revalidateS: number, now = Date.now()): boolean {
+  if (!dateHeader) return false;
+  const fetchedAt = Date.parse(dateHeader);
+  if (!Number.isFinite(fetchedAt)) return false;
+  return now - fetchedAt > (revalidateS + STALE_GRACE_S) * 1000;
+}
+
 /**
  * Read every page of a genuinely paginated endpoint (e.g. the full /players list
  * at 25/page — CLAUDE.md section 5). NOTE: /players/topscorers and topassists are
@@ -251,39 +279,68 @@ export async function apiGetAll<T>(
 }
 
 /**
- * Reconcile the global `live=all` feed against authoritative per-date fixtures.
- * Pure and exported for testing.
+ * Reconcile the global `live=all` feed against the per-date fixtures. Pure and
+ * exported for testing.
  *
- * The two provider feeds disagree at the edges of a match, and we trust the
- * right one for each job:
+ * The two feeds disagree at the edges of a match, and neither is reliably the
+ * newer one (each comes through its own cache):
  *  - `live=all` can LAG on the final whistle — it kept the 2026 World Cup final
- *    frozen at 104' long after the by-date feed already reported "finished". So
- *    the by-date status is AUTHORITATIVE for ending a match: if it says a
- *    fixture is no longer in play, drop it from Live Now (never show a finished
- *    match as live).
- *  - `live=all` can also MISS a genuinely live match that the fixture's own
- *    record shows in play (seen with World Cup data), so the by-date feed
- *    back-fills live/ht matches that `live=all` omitted.
+ *    frozen at 104' after the by-date feed already said "finished".
+ *  - `live=all` can MISS a genuinely live match its own record shows in play.
+ *  - a by-date record can be minutes old: still "live" after the match ended
+ *    (which resurrected a finished Kazakhstan v Moldova in Live Now and flipped
+ *    the widget between it and "Up next"), or still "scheduled" after kickoff.
  *
- * A match only stays/enters "live" when a feed reports it live/ht; a by-date
- * record with any terminal status (finished/postponed/cancelled/…) removes it.
+ * So every disagreement is a DISPUTE, settled by `verified`: fresh by-id records
+ * fetched straight from the API (see liveDisputes). A verified record always
+ * wins. Unverified fallbacks: a terminal by-date status still ends a match (it
+ * can't un-finish), a stale "scheduled" never hides a live match, and a by-date
+ * back-fill is only trusted once verified, so a stale record can never bring a
+ * finished match back.
  */
-export function reconcileLiveFixtures(liveAll: Match[], byDateFixtures: Match[]): Match[] {
+export function reconcileLiveFixtures(liveAll: Match[], byDateFixtures: Match[], verified: Match[] = []): Match[] {
   const byDate = new Map(byDateFixtures.map((m) => [m.id, m]));
+  const truth = new Map(verified.map((m) => [m.id, m]));
+  const isLive = (m: Match) => m.status === "live" || m.status === "ht";
 
-  const out = liveAll.filter((m) => {
-    const authoritative = byDate.get(m.id);
-    return !authoritative || authoritative.status === "live" || authoritative.status === "ht";
-  });
+  const out: Match[] = [];
+  const seen = new Set<number>();
+  for (const m of liveAll) {
+    const fresh = truth.get(m.id);
+    if (fresh) {
+      if (isLive(fresh)) out.push(fresh);
+    } else {
+      const other = byDate.get(m.id);
+      if (!other || isLive(other) || other.status === "scheduled") out.push(m);
+    }
+    seen.add(m.id);
+  }
 
-  const seen = new Set(out.map((m) => m.id));
   for (const m of byDate.values()) {
-    if ((m.status === "live" || m.status === "ht") && isInScope(m.competitionId, m.round) && !seen.has(m.id)) {
+    if (seen.has(m.id) || !isLive(m) || !isInScope(m.competitionId, m.round)) continue;
+    const fresh = truth.get(m.id);
+    if (fresh && isLive(fresh)) {
       seen.add(m.id);
-      out.push(m);
+      out.push(fresh);
     }
   }
   return out;
+}
+
+/** Fixture ids the two live feeds disagree on — the ones to re-check by id. */
+export function liveDisputes(liveAll: Match[], byDateFixtures: Match[]): number[] {
+  const isLive = (m: Match) => m.status === "live" || m.status === "ht";
+  const liveIds = new Set(liveAll.map((m) => m.id));
+  const byDate = new Map(byDateFixtures.map((m) => [m.id, m]));
+  const ids: number[] = [];
+  for (const m of liveAll) {
+    const other = byDate.get(m.id);
+    if (other && !isLive(other)) ids.push(m.id);
+  }
+  for (const m of byDate.values()) {
+    if (isLive(m) && isInScope(m.competitionId, m.round) && !liveIds.has(m.id)) ids.push(m.id);
+  }
+  return ids;
 }
 
 /* --------------------------------- mappers --------------------------------- */
@@ -313,6 +370,9 @@ export function mapFixture(raw: RawFixture): Match {
     kickoffUtc: raw.fixture.date,
     status,
     minute: inPlay && raw.fixture.status.elapsed != null ? raw.fixture.status.elapsed : undefined,
+    // Stoppage time arrives separately: elapsed stays at 45/90/105/120 and
+    // `extra` counts the added minutes (90 + 3 → "90+3'").
+    extraMinute: inPlay && raw.fixture.status.extra ? raw.fixture.status.extra : undefined,
     homeTeamId: home.id,
     awayTeamId: away.id,
     homeScore: raw.goals.home ?? undefined,
@@ -895,8 +955,7 @@ export const apiFootball: FootballProvider = {
       // today because a late kickoff plus extra time and penalties runs past
       // midnight UTC (that gap once hid the third-place playoff for its whole
       // duration); tomorrow is omitted — a fixture dated tomorrow can't be in
-      // play now. Cost is ~nil: the home page already fetches this exact date
-      // range, so these are cache hits on in-flight URLs.
+      // play now. These dates are cache hits on what the home page fetches.
       try {
         const today = todayKey();
         const batches = await Promise.all(
@@ -904,7 +963,18 @@ export const apiFootball: FootballProvider = {
             apiFootball.getFixturesByDate(d).catch(() => [] as Match[]),
           ),
         );
-        return reconcileLiveFixtures(live, batches.flat());
+        const byDate = batches.flat();
+        // Settle every disagreement with ONE fresh by-id call (the API takes up
+        // to 20 ids, uncached). Usually there are none, so this costs nothing;
+        // around kickoffs and final whistles it's one request per refresh.
+        const disputed = liveDisputes(live, byDate).slice(0, 20);
+        let verified: Match[] = [];
+        if (disputed.length) {
+          verified = await apiGet<RawFixture>("/fixtures", { ids: disputed.join("-") })
+            .then((env) => mapFixtures(env.response))
+            .catch(() => [] as Match[]);
+        }
+        return reconcileLiveFixtures(live, byDate, verified);
       } catch {
         /* best-effort reconcile/back-fill; the raw live=all result still returns */
       }

@@ -16,6 +16,7 @@ import { StandingsTable } from "@/components/tables/StandingsTable";
 import { ErrorBanner } from "@/components/primitives/ErrorBanner";
 import { HighlightThumb } from "@/components/highlights/HighlightThumb";
 import type { Highlight } from "@/lib/highlights";
+import { compareProgress } from "@/lib/utils/match";
 
 export interface MatchBundle {
   match: Match;
@@ -41,6 +42,22 @@ const TABS: { id: TabId; label: string }[] = [
   { id: "odds", label: "Odds" },
 ];
 
+const IN_PLAY_POLL_MS = 30_000; // matches the server's 30s live TTL
+const PRE_MATCH_POLL_MS = 60_000; // lineups land ~1h before; kickoff flips the status
+const PRE_MATCH_WINDOW_MS = 90 * 60_000;
+const OVERDUE_WINDOW_MS = 4 * 60 * 60_000; // "scheduled" well past kickoff = stale or delayed
+
+/** How often to refresh this match, or null when it can't change any more. */
+function pollInterval(m: Match, now = Date.now()): number | null {
+  if (m.status === "live" || m.status === "ht") return IN_PLAY_POLL_MS;
+  if (m.status !== "scheduled") return null;
+  const toKickoff = new Date(m.kickoffUtc).getTime() - now;
+  // Kickoff time has passed but we still say "scheduled": either our copy is
+  // behind or the start is delayed — poll at the in-play rate until it flips.
+  if (toKickoff <= 0) return -toKickoff < OVERDUE_WINDOW_MS ? IN_PLAY_POLL_MS : null;
+  return toKickoff <= PRE_MATCH_WINDOW_MS ? PRE_MATCH_POLL_MS : null;
+}
+
 function defaultTab(status: Match["status"]): TabId {
   if (status === "live" || status === "ht") return "live";
   if (status === "scheduled") return "lineups";
@@ -49,8 +66,8 @@ function defaultTab(status: Match["status"]): TabId {
 
 /**
  * Match center (CLAUDE.md section 8). Renders the header + tabbed content and,
- * while the fixture is live/ht, polls /api/match for score, events and stats
- * every 15s (stops when not in play). Every tab degrades to its own empty state.
+ * while the fixture is live/ht (or about to kick off), polls /api/match for score,
+ * events, lineups and stats (stops once it can't change). Every tab degrades to its own empty state.
  */
 export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
   const [match, setMatch] = useState(bundle.match);
@@ -60,32 +77,53 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
   const [tab, setTab] = useState<TabId>(defaultTab(bundle.match.status));
   const [degraded, setDegraded] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const matchRef = useRef(bundle.match);
+  matchRef.current = match;
   const router = useRouter();
 
-  const inPlay = match.status === "live" || match.status === "ht";
+  // A fresh server render for this same match (router refresh) is adopted only
+  // if it's at least as far along as what we're already showing.
+  useEffect(() => {
+    setMatch((cur) => (compareProgress(bundle.match, cur) >= 0 ? bundle.match : cur));
+  }, [bundle.match]);
+
+  // Poll while the match is in play, AND in the run-up to kickoff (lineups, the
+  // flip to live). Previously only an in-play first render polled, so a page
+  // first rendered as "scheduled" stayed empty until a manual reload.
+  const interval = pollInterval(match);
+  const polling = interval != null;
 
   useEffect(() => {
-    if (!inPlay) return;
+    if (!polling) return;
     let cancelled = false;
     async function tick() {
       // Hidden tabs don't poll (quota protection); resumes on foreground below.
       if (document.hidden) {
-        if (!cancelled) timer.current = setTimeout(tick, 30_000);
+        if (!cancelled) timer.current = setTimeout(tick, IN_PLAY_POLL_MS);
         return;
       }
+      let next = IN_PLAY_POLL_MS;
       try {
         const res = await fetch(`/api/match?id=${match.id}`, { cache: "no-store" });
         const data = (await res.json()) as Partial<MatchBundle> & { delayed?: boolean };
         if (cancelled) return;
         setDegraded(Boolean(data.delayed));
-        if (data.match) setMatch(data.match);
-        if (data.events) setEvents(data.events);
+        const incoming = data.match;
+        // Never step backwards: a response from a server instance whose cache is
+        // a few seconds older must not rewind the clock, score or status.
+        const ahead = incoming != null && compareProgress(incoming, matchRef.current) >= 0;
+        if (ahead) {
+          matchRef.current = incoming;
+          setMatch(incoming);
+          if (data.events) setEvents(data.events);
+          if (data.stats) setStats(data.stats);
+        }
         if (data.lineups?.length) setLineups(data.lineups);
-        if (data.stats) setStats(data.stats);
+        next = pollInterval(ahead ? incoming : matchRef.current) ?? IN_PLAY_POLL_MS;
       } catch {
         if (!cancelled) setDegraded(true); // serve last-good, flag delay
       } finally {
-        if (!cancelled) timer.current = setTimeout(tick, 30_000);
+        if (!cancelled) timer.current = setTimeout(tick, next);
       }
     }
     function onVisibilityChange() {
@@ -93,9 +131,7 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
       if (timer.current) clearTimeout(timer.current);
       tick();
     }
-    // Fetch straight away so a stale initial render (Next may serve a
-    // prefetched/cached RSC that's minutes old) is corrected within one round
-    // trip instead of after the first 30s interval; tick() then re-schedules itself.
+    // Fetch straight away, then re-schedule; tick() keeps its own cadence.
     tick();
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
@@ -103,7 +139,7 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [inPlay, match.id]);
+  }, [polling, match.id]);
 
   const homeStats = useMemo(() => stats.find((s) => s.teamId === match.homeTeamId), [stats, match.homeTeamId]);
   const awayStats = useMemo(() => stats.find((s) => s.teamId === match.awayTeamId), [stats, match.awayTeamId]);

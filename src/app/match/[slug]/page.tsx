@@ -114,7 +114,9 @@ export default async function MatchPage({
           { name: `${match.homeTeam?.name} vs ${match.awayTeam?.name}`, path: `/match/${slug}` },
         ])}
       />
-      <MatchCenter bundle={bundle} />
+      {/* keyed per fixture: client navigation between matches must remount, not
+          keep the previous match's state */}
+      <MatchCenter key={match.id} bundle={bundle} />
     </AppShell>
   );
 }

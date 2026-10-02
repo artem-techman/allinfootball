@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Match } from "@/lib/providers/types";
 import { Crest } from "@/components/primitives/Crest";
 import { LocalTime } from "@/components/primitives/LocalTime";
-import { matchWinner, hasShootout } from "@/lib/utils/match";
+import { matchWinner, hasShootout, liveMinuteLabel } from "@/lib/utils/match";
 
 /**
  * Compact match row used in lists/rails. Status drives the right-hand cell:
@@ -79,7 +79,7 @@ function StatusCell({ match }: { match: Match }) {
     case "live":
       return (
         <span className="tabular animate-live-pulse text-meta font-bold text-live-minute">
-          {match.minute != null ? `${match.minute}'` : "LIVE"}
+          {liveMinuteLabel(match)}
         </span>
       );
     case "ht":

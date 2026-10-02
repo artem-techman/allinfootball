@@ -65,6 +65,8 @@ export interface Match {
   kickoffUtc: string; // ISO 8601, UTC
   status: MatchStatus;
   minute?: number;
+  /** Added-time minutes past `minute` (90+3 → minute 90, extraMinute 3). */
+  extraMinute?: number;
   homeTeamId: number;
   awayTeamId: number;
   homeScore?: number;

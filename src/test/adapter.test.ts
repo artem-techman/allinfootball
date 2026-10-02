@@ -11,6 +11,8 @@ import {
   mapOdds,
   mapFixtures,
   reconcileLiveFixtures,
+  liveDisputes,
+  isTooStale,
   pickSeasonYear,
 } from "@/lib/providers/apiFootball";
 import { mapStatus, isInPlay } from "@/lib/providers/statusMap";
@@ -259,7 +261,10 @@ describe("reconcileLiveFixtures", () => {
   });
 
   it("back-fills an in-scope live match that live=all omitted", () => {
-    const out = reconcileLiveFixtures([], [mk(3, "ht")]);
+    // Only once a fresh by-id check confirms it — an unverified by-date "live"
+    // may be a stale copy of a match that has already ended.
+    expect(reconcileLiveFixtures([], [mk(3, "ht")]).map((m) => m.id)).toEqual([]);
+    const out = reconcileLiveFixtures([], [mk(3, "ht")], [mk(3, "ht")]);
     expect(out.map((m) => m.id)).toEqual([3]);
   });
 
@@ -272,7 +277,29 @@ describe("reconcileLiveFixtures", () => {
     const out = reconcileLiveFixtures([mk(6, "live"), mk(7, "live")], [mk(6, "postponed"), mk(7, "cancelled")]);
     expect(out.map((m) => m.id)).toEqual([]);
   });
-})
+
+  it("never resurrects an ended match from a stale by-date record (Kazakhstan v Moldova)", () => {
+    // live=all has dropped it (finished); the cached by-date copy still says live;
+    // the by-id check says finished → it stays out of Live Now.
+    const out = reconcileLiveFixtures([], [mk(10, "live")], [mk(10, "finished")]);
+    expect(out).toEqual([]);
+  });
+
+  it("keeps a just-kicked-off match even while the by-date copy still says scheduled", () => {
+    expect(reconcileLiveFixtures([mk(11, "live")], [mk(11, "scheduled")]).map((m) => m.id)).toEqual([11]);
+  });
+
+  it("lets a fresh by-id record override both feeds", () => {
+    const out = reconcileLiveFixtures([mk(12, "live")], [mk(12, "finished")], [mk(12, "live")]);
+    expect(out.map((m) => m.id)).toEqual([12]);
+  });
+
+  it("lists exactly the disputed fixtures", () => {
+    const liveAll = [mk(1, "live"), mk(2, "live"), mk(3, "live")];
+    const byDate = [mk(1, "live"), mk(2, "finished"), mk(4, "live"), mk(5, "live", 99999)];
+    expect(liveDisputes(liveAll, byDate).sort()).toEqual([2, 4]);
+  });
+});
 
 describe("mapFixtures resilience (2026-09-12 whole-day-wipe bug)", () => {
   it("skips unmappable records instead of throwing away the whole batch", () => {
@@ -337,5 +364,19 @@ describe("seasonYearFor (date-driven current season)", () => {
   it("calendar-year competitions use the calendar year", () => {
     expect(seasonYearFor(MLS, new Date("2026-02-15T00:00:00Z"))).toBe(2026);
     expect(seasonYearFor(WC, new Date("2026-02-15T00:00:00Z"))).toBe(2026);
+  });
+});
+
+describe("isTooStale (Next data-cache stale-while-revalidate guard)", () => {
+  const now = Date.parse("2026-10-02T16:00:00Z");
+  it("accepts a body within its TTL plus grace", () => {
+    expect(isTooStale(new Date(now - 35_000).toUTCString(), 30, now)).toBe(false);
+  });
+  it("rejects a body older than TTL plus grace (the pre-kickoff record served after kickoff)", () => {
+    expect(isTooStale(new Date(now - 3 * 3600_000).toUTCString(), 30, now)).toBe(true);
+  });
+  it("treats a missing or garbled Date header as fresh (never a refetch storm)", () => {
+    expect(isTooStale(null, 30, now)).toBe(false);
+    expect(isTooStale("not a date", 30, now)).toBe(false);
   });
 });

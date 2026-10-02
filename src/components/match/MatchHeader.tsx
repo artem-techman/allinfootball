@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Match, MatchEvent } from "@/lib/providers/types";
 import { Crest } from "@/components/primitives/Crest";
 import { LocalTime } from "@/components/primitives/LocalTime";
-import { hasShootout } from "@/lib/utils/match";
+import { hasShootout, liveMinuteLabel } from "@/lib/utils/match";
 
 /**
  * Match center header (CLAUDE.md section 8): competition/round breadcrumb, both
@@ -91,7 +91,7 @@ function statusBadge(match: Match) {
     case "live":
       return (
         <span className="tabular animate-live-pulse text-meta font-bold text-live-minute">
-          {match.minute != null ? `${match.minute}'` : "LIVE"}
+          {liveMinuteLabel(match)}
         </span>
       );
     case "ht":

@@ -93,7 +93,7 @@ export function TeamProfileView({
 
       {tab === "squad" && <Squad squad={squad} />}
 
-      {tab === "table" && <StandingsTable rows={standings} highlightTeamIds={[team.id]} />}
+      {tab === "table" && <StandingsTable rows={standings} highlightTeamIds={[team.id]} focusTeamIds={[team.id]} />}
     </div>
   );
 }

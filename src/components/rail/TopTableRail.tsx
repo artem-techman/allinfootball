@@ -118,10 +118,12 @@ export function TopTableRail({
             {displayRows.slice(0, 5).map((r) => (
               <tr key={`${r.groupLabel ?? ""}-${r.teamId}`} className="border-t border-hairline">
                 <td className="tabular py-1.5 text-text-secondary">{r.position}</td>
-                <td className="py-1.5">
-                  <span className="flex items-center gap-2">
-                    <Crest src={r.team?.crest} name={r.team?.name ?? "Team"} size={16} />
-                    <span className="truncate text-text-primary">{r.team?.shortName ?? r.team?.name}</span>
+                <td className="w-full max-w-0 py-1.5 pr-2">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0">
+                      <Crest src={r.team?.crest} name={r.team?.name ?? "Team"} size={16} />
+                    </span>
+                    <span className="min-w-0 truncate text-text-primary">{r.team?.shortName ?? r.team?.name}</span>
                   </span>
                 </td>
                 <td className="tabular py-1.5 text-right text-text-secondary">{r.played}</td>

@@ -189,7 +189,11 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
         {tab === "highlights" && <HighlightsTab highlight={bundle.highlight} status={match.status} />}
         {tab === "h2h" && <HeadToHead fixtures={bundle.h2h} match={match} />}
         {tab === "table" && (
-          <StandingsTable rows={bundle.standings} highlightTeamIds={[match.homeTeamId, match.awayTeamId]} />
+          <StandingsTable
+            rows={bundle.standings}
+            highlightTeamIds={[match.homeTeamId, match.awayTeamId]}
+            focusTeamIds={[match.homeTeamId, match.awayTeamId]}
+          />
         )}
         {tab === "odds" && <OddsView odds={bundle.odds} match={match} />}
       </div>

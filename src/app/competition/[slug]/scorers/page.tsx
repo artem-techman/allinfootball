@@ -5,17 +5,13 @@ import { TopScorersTable } from "@/components/tables/TopScorersTable";
 import { provider } from "@/lib/providers";
 import { getCompetitionBySlug } from "@/lib/constants/competitions";
 import { currentSeasonYear } from "@/lib/season";
+import { competitionTabMetadata } from "@/lib/seo/competition";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const comp = getCompetitionBySlug(slug);
-  return {
-    title: comp ? `${comp.name} Top Scorers` : "Top Scorers",
-    description: comp ? `${comp.name} top scorers — the leading goalscorers and assist providers on My Football Tracker.` : undefined,
-    alternates: { canonical: `/competition/${slug}/scorers` },
-  };
+  return competitionTabMetadata(slug, "scorers");
 }
 
 export default async function CompetitionScorersPage({ params }: { params: Promise<{ slug: string }> }) {

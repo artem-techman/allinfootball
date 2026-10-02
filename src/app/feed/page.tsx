@@ -3,14 +3,16 @@ import { AppShell } from "@/components/shell/AppShell";
 import { HighlightReel } from "@/components/highlights/HighlightReel";
 import { highlights } from "@/lib/highlights";
 import { PREVIEW_HIGHLIGHTS } from "@/lib/preview/highlightsPreview";
+import { buildMetadata } from "@/lib/seo/metadata";
+import { competitionListSentence } from "@/lib/seo/copy";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
   title: "Feed — Match highlights",
-  description: "Match highlights from across the Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Europa League, MLS, the UEFA Nations League and the World Cup — autoplaying in a scrollable feed.",
-  alternates: { canonical: "/feed" },
-};
+  description: `Official match highlights from ${competitionListSentence()}, in one scrollable feed.`,
+  path: "/feed",
+});
 
 /**
  * Highlights Feed: an Instagram/Reels-style vertical feed of match highlights
@@ -26,7 +28,7 @@ export default async function FeedPage() {
     <AppShell>
       <header className="mb-3">
         <h1 className="text-section text-text-primary">Highlights</h1>
-        <p className="mt-0.5 text-meta text-text-secondary">Scroll the feed — clips play as you go.</p>
+        <p className="mt-0.5 text-meta text-text-secondary">Official highlights, newest first.</p>
       </header>
 
       <HighlightReel highlights={toShow} />

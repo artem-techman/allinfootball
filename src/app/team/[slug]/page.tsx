@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { AppShell } from "@/components/shell/AppShell";
 import { TeamProfileView } from "@/components/team/TeamProfileView";
-import { JsonLd, sportsTeam, breadcrumb } from "@/components/seo/JsonLd";
+import { JsonLd, sportsTeam, breadcrumb, competitionTableCrumb } from "@/components/seo/JsonLd";
+import { buildMetadata } from "@/lib/seo/metadata";
 import { provider } from "@/lib/providers";
 import { entitySlug, idFromSlug } from "@/lib/utils/slug";
 import { getCompetitionByLeagueId, isInScope } from "@/lib/constants/competitions";
@@ -15,12 +16,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const id = idFromSlug(slug);
   const profile = id ? await provider.getTeam(id).catch(() => undefined) : undefined;
-  if (!profile) return { title: "Team" };
-  return {
+  if (!profile || !id) return { title: "Team" };
+  return buildMetadata({
     title: profile.team.name,
-    description: `${profile.team.name} — fixtures, results, squad and league table on My Football Tracker.`,
-    alternates: { canonical: `/team/${slug}` },
-  };
+    description: `${profile.team.name}: fixtures, results, squad and league table on My Football Tracker.`,
+    path: `/team/${entitySlug(profile.team.name, id)}`,
+  });
 }
 
 /** Pick the team's most-played in-scope competition for the Table tab. */
@@ -51,7 +52,7 @@ export default async function TeamPage({ params }: { params: Promise<{ slug: str
   // match the real team, send the user to the canonical URL (no stale/mismatched
   // slugs, no duplicate-content indexing).
   const canonical = entitySlug(profile.team.name, id);
-  if (canonical !== slug) redirect(`/team/${canonical}`);
+  if (canonical !== slug) permanentRedirect(`/team/${canonical}`);
 
   const [squad, recent, upcoming] = await Promise.all([
     provider.getSquad(id).catch(() => [] as Player[]),
@@ -72,7 +73,8 @@ export default async function TeamPage({ params }: { params: Promise<{ slug: str
       <JsonLd data={sportsTeam(profile, slug)} />
       <JsonLd
         data={breadcrumb([
-          { name: "Teams", path: "/teams" },
+          // No /teams index exists (it 404s): the team's competition is the parent.
+          ...(comp ? competitionTableCrumb(comp) : []),
           { name: profile.team.name, path: `/team/${slug}` },
         ])}
       />

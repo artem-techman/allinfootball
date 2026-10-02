@@ -7,15 +7,16 @@ import { NewsFilters } from "@/components/news/NewsFilters";
 import { getNews } from "@/lib/news";
 import { loadConfirmedTransfers } from "@/lib/transfers";
 import { getCompetitionBySlug } from "@/lib/constants/competitions";
+import { buildMetadata } from "@/lib/seo/metadata";
+import { competitionListSentence } from "@/lib/seo/copy";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
   title: "Football News",
-  description:
-    "The latest football news across the Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Europa League, MLS and the World Cup — from trusted sources.",
-  alternates: { canonical: "/news" },
-};
+  description: `The latest football news across ${competitionListSentence()}: headlines from trusted sources, linked to the original publisher.`,
+  path: "/news",
+});
 
 export default async function NewsPage({
   searchParams,

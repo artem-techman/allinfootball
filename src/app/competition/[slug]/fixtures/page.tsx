@@ -5,17 +5,13 @@ import { CompetitionFixtures } from "@/components/competition/CompetitionFixture
 import { provider } from "@/lib/providers";
 import { getCompetitionBySlug } from "@/lib/constants/competitions";
 import { currentSeasonYear } from "@/lib/season";
+import { competitionTabMetadata } from "@/lib/seo/competition";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const comp = getCompetitionBySlug(slug);
-  return {
-    title: comp ? `${comp.name} Fixtures` : "Fixtures",
-    description: comp ? `${comp.name} fixtures — upcoming matches, kick-off times and results on My Football Tracker.` : undefined,
-    alternates: { canonical: `/competition/${slug}/fixtures` },
-  };
+  return competitionTabMetadata(slug, "fixtures");
 }
 
 export default async function CompetitionFixturesPage({ params }: { params: Promise<{ slug: string }> }) {

@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/primitives/EmptyState";
 import { provider } from "@/lib/providers";
 import { getCompetitionBySlug } from "@/lib/constants/competitions";
 import { currentSeasonYear } from "@/lib/season";
+import { competitionTabMetadata } from "@/lib/seo/competition";
 import { loadWorldCupBracket } from "@/lib/worldcup/bracket";
 import { PREVIEW_BRACKET } from "@/lib/preview/homePreview";
 
@@ -15,12 +16,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const comp = getCompetitionBySlug(slug);
-  return {
-    title: comp ? `${comp.name} Table` : "Table",
-    description: comp ? `${comp.name} table — live standings, points, goal difference and form on My Football Tracker.` : undefined,
-    alternates: { canonical: `/competition/${slug}/table` },
-  };
+  return competitionTabMetadata(slug, "table");
 }
 
 export default async function CompetitionTablePage({ params }: { params: Promise<{ slug: string }> }) {

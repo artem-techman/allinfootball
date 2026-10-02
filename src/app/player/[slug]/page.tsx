@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { AppShell } from "@/components/shell/AppShell";
 import { PlayerProfileView } from "@/components/player/PlayerProfileView";
 import { provider } from "@/lib/providers";
@@ -7,6 +7,7 @@ import { entitySlug, idFromSlug } from "@/lib/utils/slug";
 import { getCompetitionBySlug } from "@/lib/constants/competitions";
 import { seasonYearFor } from "@/lib/season";
 import type { PlayerProfile } from "@/lib/providers/types";
+import { buildMetadata } from "@/lib/seo/metadata";
 
 export const dynamic = "force-dynamic";
 
@@ -28,12 +29,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const id = idFromSlug(slug);
   const profile = id ? await loadProfile(id) : undefined;
-  if (!profile) return { title: "Player" };
-  return {
+  if (!profile || !id) return { title: "Player" };
+  return buildMetadata({
     title: profile.player.name,
-    description: `${profile.player.name} — season stats and profile on My Football Tracker.`,
-    alternates: { canonical: `/player/${slug}` },
-  };
+    description: `${profile.player.name}: season stats and profile on My Football Tracker.`,
+    path: `/player/${entitySlug(profile.player.name, id)}`,
+  });
 }
 
 export default async function PlayerPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -44,7 +45,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ slug: s
   const profile = await loadProfile(id);
   if (!profile) notFound();
   const canonical = entitySlug(profile.player.name, id);
-  if (canonical !== slug) redirect(`/player/${canonical}`);
+  if (canonical !== slug) permanentRedirect(`/player/${canonical}`);
 
   return (
     <AppShell>

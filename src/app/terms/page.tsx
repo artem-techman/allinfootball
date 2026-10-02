@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { LegalLayout, LegalSection } from "@/components/legal/LegalLayout";
+import { buildMetadata } from "@/lib/seo/metadata";
 
 // The shared AppShell sidebar reads search params, so render on demand (matches
 // the rest of the app); the content itself is static.
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildMetadata({
   title: "Terms of Service",
   description: "The terms governing your use of My Football Tracker.",
-  alternates: { canonical: "/terms" },
-};
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (

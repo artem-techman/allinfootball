@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { defaultTab, parseTab } from "@/components/match/matchTabs";
 import { tickMinute, periodCap } from "@/components/primitives/liveClock";
+import { pitchName } from "@/components/match/pitchName";
 import { liveMinuteLabel } from "@/lib/utils/match";
 import type { Lineup, MatchStats } from "@/lib/providers/types";
 
@@ -69,5 +70,26 @@ describe("tickMinute (N7)", () => {
     // ...but the floor still can't push past provider + 2 or the period cap.
     expect(label(live(68), 0, 75)).toBe("70'");
     expect(label(live(45), 0, 47)).toBe("45'");
+  });
+});
+
+describe("pitchName (B33)", () => {
+  it("shows the surname only, whole", () => {
+    expect(pitchName("M. Mittelstädt")).toBe("Mittelstädt");
+    expect(pitchName("Maximilian Mittelstädt")).toBe("Mittelstädt");
+    expect(pitchName("Rodri")).toBe("Rodri");
+  });
+
+  it("keeps particles and suffixes with the surname", () => {
+    expect(pitchName("Virgil van Dijk")).toBe("van Dijk");
+    expect(pitchName("Kevin De Bruyne")).toBe("De Bruyne");
+    expect(pitchName("Marc-André ter Stegen")).toBe("ter Stegen");
+    expect(pitchName("Wissam Ben Yedder")).toBe("Ben Yedder");
+    expect(pitchName("de Jong")).toBe("de Jong");
+    expect(pitchName("Vinícius Jr.")).toBe("Vinícius Jr.");
+  });
+
+  it("doesn't mistake a capitalised first name for a particle", () => {
+    expect(pitchName("Ben White")).toBe("White");
   });
 });

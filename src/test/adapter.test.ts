@@ -10,8 +10,11 @@ import {
   mapTopScorers,
   mapOdds,
   mapFixtures,
-  reconcileLiveFixtures,
-  liveDisputes,
+  mergeLiveSources,
+  fixLegacyEvents,
+  decodeName,
+  allowCall,
+  effectiveBudget,
   isTooStale,
   pickSeasonYear,
 } from "@/lib/providers/apiFootball";
@@ -144,7 +147,32 @@ describe("mapEvent", () => {
     const sub = mapEvent(events[4], 1001, 4);
     expect(sub.minute).toBe(75);
     expect(sub.extraMinute).toBe(2);
-    expect(sub.relatedPlayerId).toBe(1485);
+  });
+
+  it("reads substitutions the right way round: provider `assist` comes ON, `player` goes OFF", () => {
+    // In the recorded fixture C. Eriksen (1485) is on the bench and B. Fernandes
+    // starts — so Eriksen is the one coming on. The v1 mapper showed it backwards.
+    const sub = mapEvent(events[4], 1001, 4);
+    expect(sub.playerId).toBe(1485);
+    expect(sub.playerName).toBe("C. Eriksen");
+    expect(sub.relatedPlayerName).toBe("B. Fernandes");
+    // Goals are unchanged: player = scorer, assist = assister.
+    const goal = mapEvent(events[0], 1001, 0);
+    expect(goal.playerName).toBe("B. Fernandes");
+  });
+
+  it("corrects substitutions in archived v1 rows on read, and leaves v2 rows alone", () => {
+    const v1 = { id: "x", matchId: 1, minute: 58, type: "sub", teamId: 1, playerId: 10, playerName: "Torres", relatedPlayerId: 20, relatedPlayerName: "Pedri" } as const;
+    const fixed = fixLegacyEvents([v1 as never], null)[0];
+    expect(fixed.playerName).toBe("Pedri");
+    expect(fixed.relatedPlayerName).toBe("Torres");
+    expect(fixLegacyEvents([v1 as never], 2)[0].playerName).toBe("Torres");
+  });
+
+  it("decodes HTML entities in names", () => {
+    expect(decodeName("O&apos;runov")).toBe("O'runov");
+    expect(decodeName("A &amp; B")).toBe("A & B");
+    expect(decodeName(undefined)).toBeUndefined();
   });
 });
 
@@ -232,6 +260,10 @@ describe("competition scope (qualifying rounds)", () => {
     expect(isInScope(2, "Preliminary Round")).toBe(false);
     expect(isQualifyingRound("Qualifying Round 1")).toBe(true);
     expect(isQualifyingRound(undefined)).toBe(false);
+    // UEFA pre-league play-offs are qualifying; the main-phase knockout play-offs are not.
+    expect(isInScope(2, "Play-offs")).toBe(false);
+    expect(isInScope(2, "Knockout Round Play-offs")).toBe(true);
+    expect(isInScope(253, "Play-offs")).toBe(true);
   });
 
   it("out-of-scope league ids stay out regardless of round", () => {
@@ -239,65 +271,62 @@ describe("competition scope (qualifying rounds)", () => {
   });
 });
 
-describe("reconcileLiveFixtures", () => {
-  // Minimal Match factory — only the fields the reconciler reads.
+describe("mergeLiveSources", () => {
   const mk = (id: number, status: string, competitionId = 1, round = "Final") =>
-    ({ id, status, competitionId, round } as unknown as Parameters<typeof reconcileLiveFixtures>[0][number]);
+    ({ id, status, competitionId, round } as unknown as Parameters<typeof mergeLiveSources>[0][number]);
+  const listed = (...ms: ReturnType<typeof mk>[]) => new Map(ms.map((m) => [m.id, m]));
+  const bundles = (...ms: ReturnType<typeof mk>[]) => new Map(ms.map((m) => [m.id, { match: m }]));
+  const ids = (ms: { id: number }[]) => ms.map((m) => m.id).sort();
 
-  it("drops a match live=all still shows live once the by-date feed says finished (the World Cup final at 104')", () => {
-    const liveAll = [mk(999, "live")];
-    const byDate = [mk(999, "finished")];
-    expect(reconcileLiveFixtures(liveAll, byDate).map((m) => m.id)).toEqual([]);
+  it("the fresh by-id bundle decides: an ended match never comes back (Kazakhstan v Moldova)", () => {
+    expect(mergeLiveSources([mk(1, "live")], listed(mk(1, "live")), bundles(mk(1, "finished")))).toEqual([]);
   });
 
-  it("keeps a genuinely live match confirmed live by both feeds", () => {
-    const out = reconcileLiveFixtures([mk(1, "live")], [mk(1, "live")]);
-    expect(out.map((m) => m.id)).toEqual([1]);
+  it("a live=all straggler is dropped once our fixture list says it's over (World Cup final at 104')", () => {
+    expect(mergeLiveSources([mk(2, "live")], listed(mk(2, "finished")), new Map())).toEqual([]);
   });
 
-  it("keeps a live=all match the by-date feed hasn't got yet (no override, trust live=all)", () => {
-    const out = reconcileLiveFixtures([mk(2, "live")], []);
-    expect(out.map((m) => m.id)).toEqual([2]);
+  it("a just-kicked-off match shows even while the list still says scheduled", () => {
+    expect(ids(mergeLiveSources([mk(3, "live")], listed(mk(3, "scheduled")), new Map()))).toEqual([3]);
+    expect(ids(mergeLiveSources([], listed(mk(4, "scheduled")), bundles(mk(4, "live"))))).toEqual([4]);
   });
 
-  it("back-fills an in-scope live match that live=all omitted", () => {
-    // Only once a fresh by-id check confirms it — an unverified by-date "live"
-    // may be a stale copy of a match that has already ended.
-    expect(reconcileLiveFixtures([], [mk(3, "ht")]).map((m) => m.id)).toEqual([]);
-    const out = reconcileLiveFixtures([], [mk(3, "ht")], [mk(3, "ht")]);
-    expect(out.map((m) => m.id)).toEqual([3]);
+  it("includes half-time, and live=all matches we have no other record of", () => {
+    expect(ids(mergeLiveSources([mk(5, "live")], new Map(), bundles(mk(6, "ht"))))).toEqual([5, 6]);
   });
 
-  it("does not back-fill an out-of-scope or finished by-date match", () => {
-    const out = reconcileLiveFixtures([], [mk(4, "live", 99999), mk(5, "finished")]);
-    expect(out.map((m) => m.id)).toEqual([]);
+  it("drops postponed/cancelled matches live=all may still list", () => {
+    expect(mergeLiveSources([mk(7, "live"), mk(8, "live")], listed(mk(7, "postponed"), mk(8, "cancelled")), new Map())).toEqual([]);
   });
+});
 
-  it("also drops postponed/cancelled matches live=all may still list", () => {
-    const out = reconcileLiveFixtures([mk(6, "live"), mk(7, "live")], [mk(6, "postponed"), mk(7, "cancelled")]);
-    expect(out.map((m) => m.id)).toEqual([]);
+describe("quota tiers (allowCall)", () => {
+  const at = (used: number, limit: number | null = 7500) => ({ used, limit });
+  it("sheds extras first, then detail, then core; live runs to the budget", () => {
+    expect(allowCall("extra", at(4000), NaN)).toBe(true);
+    expect(allowCall("extra", at(5000), NaN)).toBe(false); // 71%
+    expect(allowCall("detail", at(5000), NaN)).toBe(true);
+    expect(allowCall("detail", at(6000), NaN)).toBe(false); // 86%
+    expect(allowCall("core", at(6000), NaN)).toBe(true);
+    expect(allowCall("core", at(6700), NaN)).toBe(false); // 96%
+    expect(allowCall("live", at(6900), NaN)).toBe(true);
+    expect(allowCall("live", at(7000), NaN)).toBe(false);
   });
-
-  it("never resurrects an ended match from a stale by-date record (Kazakhstan v Moldova)", () => {
-    // live=all has dropped it (finished); the cached by-date copy still says live;
-    // the by-id check says finished → it stays out of Live Now.
-    const out = reconcileLiveFixtures([], [mk(10, "live")], [mk(10, "finished")]);
-    expect(out).toEqual([]);
+  it("fails CLOSED for low priorities when usage can't be read", () => {
+    expect(allowCall("extra", null, NaN)).toBe(false);
+    expect(allowCall("detail", null, NaN)).toBe(false);
+    expect(allowCall("core", null, NaN)).toBe(true);
+    expect(allowCall("live", null, NaN)).toBe(true);
   });
-
-  it("keeps a just-kicked-off match even while the by-date copy still says scheduled", () => {
-    expect(reconcileLiveFixtures([mk(11, "live")], [mk(11, "scheduled")]).map((m) => m.id)).toEqual([11]);
+  it("shrinks the budget with the plan's real limit (Free plan = 100/day)", () => {
+    expect(effectiveBudget(100)).toBe(93);
+    expect(effectiveBudget(7500)).toBe(6975);
+    expect(effectiveBudget(null)).toBe(7000);
+    expect(allowCall("core", at(90, 100), NaN)).toBe(false);
   });
-
-  it("lets a fresh by-id record override both feeds", () => {
-    const out = reconcileLiveFixtures([mk(12, "live")], [mk(12, "finished")], [mk(12, "live")]);
-    expect(out.map((m) => m.id)).toEqual([12]);
-  });
-
-  it("lists exactly the disputed fixtures", () => {
-    const liveAll = [mk(1, "live"), mk(2, "live"), mk(3, "live")];
-    const byDate = [mk(1, "live"), mk(2, "finished"), mk(4, "live"), mk(5, "live", 99999)];
-    expect(liveDisputes(liveAll, byDate).sort()).toEqual([2, 4]);
+  it("honours a forced brownout drill", () => {
+    expect(allowCall("detail", at(0), 0.9)).toBe(false);
+    expect(allowCall("core", at(0), 0.9)).toBe(true);
   });
 });
 
@@ -364,6 +393,16 @@ describe("seasonYearFor (date-driven current season)", () => {
   it("calendar-year competitions use the calendar year", () => {
     expect(seasonYearFor(MLS, new Date("2026-02-15T00:00:00Z"))).toBe(2026);
     expect(seasonYearFor(WC, new Date("2026-02-15T00:00:00Z"))).toBe(2026);
+  });
+  it("the World Cup keeps its latest edition between tournaments (no blank hub on 2027-01-01)", () => {
+    expect(seasonYearFor(WC, new Date("2027-01-01T00:00:00Z"))).toBe(2026);
+    expect(seasonYearFor(WC, new Date("2029-12-31T00:00:00Z"))).toBe(2026);
+    expect(seasonYearFor(WC, new Date("2030-06-01T00:00:00Z"))).toBe(2030);
+  });
+  it("the Nations League only starts new editions in even years", () => {
+    expect(seasonYearFor(NL, new Date("2027-03-20T00:00:00Z"))).toBe(2026);
+    expect(seasonYearFor(NL, new Date("2027-09-01T00:00:00Z"))).toBe(2026);
+    expect(seasonYearFor(NL, new Date("2028-09-01T00:00:00Z"))).toBe(2028);
   });
 });
 

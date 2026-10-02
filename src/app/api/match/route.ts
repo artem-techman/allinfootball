@@ -24,12 +24,17 @@ export async function GET(request: Request) {
       provider.getStatistics(id).catch(() => []),
     ]);
     if (!match) return NextResponse.json({ error: "not found" }, { status: 404 });
-    return NextResponse.json({ match, events, lineups, stats });
+    // Short CDN share: every viewer of a live match polls this same URL. Viewers
+    // never step backwards on an older copy (MatchCenter merges monotonically).
+    return NextResponse.json(
+      { match, events, lineups, stats },
+      { headers: { "Cache-Control": "public, s-maxage=15, stale-while-revalidate=15" } },
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
     return NextResponse.json(
       { delayed: true, reason: message.includes("FOOTBALL_API_KEY") ? "no_key" : "provider_error" },
-      { status: 200 },
+      { status: 200, headers: { "Cache-Control": "no-store" } },
     );
   }
 }

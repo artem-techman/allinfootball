@@ -74,6 +74,9 @@ const SCHEMA: string[] = [
     updated_at     timestamptz not null default now()
   )`,
   `create index if not exists match_archive_kickoff_idx on match_archive (kickoff_utc desc)`,
+  // Additive: which event-mapper version wrote the row (null = v1, before the
+  // 2026-10-02 substitution fix). Rows are corrected on read, never rewritten.
+  `alter table match_archive add column if not exists mapper_version smallint`,
 ];
 
 let schemaReady: Promise<boolean> | null = null;

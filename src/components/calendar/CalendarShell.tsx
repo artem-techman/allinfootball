@@ -5,14 +5,8 @@ import { MatchCalendar } from "./MatchCalendar";
 import { provider } from "@/lib/providers";
 import { isInScope, getCompetitionBySlug } from "@/lib/constants/competitions";
 import { currentSeasonYear, pickActiveTableSlug } from "@/lib/season";
-import { formatLongDate, todayKey, shiftDateKey } from "@/lib/utils/date";
+import { formatLongDate } from "@/lib/utils/date";
 import type { Match, Standing } from "@/lib/providers/types";
-
-/** How far from today we server-fetch fixtures. Beyond this we skip the provider
- *  call so the calendar's prev/next links can't be crawled into an unbounded
- *  number of unique API requests. Real users navigating further still get data
- *  via the client's /api/fixtures refresh. */
-const FETCH_WINDOW_DAYS = 10;
 
 /** The Top Table rail defaults to the Premier League, matching home. */
 const TOP_TABLE_SLUG = "premier-league";
@@ -24,12 +18,10 @@ const TOP_TABLE_SLUG = "premier-league";
  * empty list on provider failure (CLAUDE.md section 10).
  */
 export async function CalendarShell({ dateKey }: { dateKey: string }) {
-  const today = todayKey();
-  const inWindow =
-    dateKey >= shiftDateKey(today, -FETCH_WINDOW_DAYS) && dateKey <= shiftDateKey(today, FETCH_WINDOW_DAYS);
-  const allMatches = inWindow
-    ? await provider.getFixturesByDate(dateKey).catch(() => [] as Match[])
-    : [];
+  // Any date is safe to serve now: fixtures come from our competitions' cached
+  // season lists (scope guard), so a crawler walking the calendar costs nothing.
+  // (The old ±10-day cap made 17 Oct show "No matches" with 28 games scheduled.)
+  const allMatches = await provider.getFixturesByDate(dateKey).catch(() => [] as Match[]);
   const initialMatches = allMatches.filter((m) => isInScope(m.competitionId, m.round));
 
   // Default the Top Table to whatever competition is being played on this date.

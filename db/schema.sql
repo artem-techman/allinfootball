@@ -33,7 +33,8 @@ create table if not exists match_archive (
   status         text        not null,
   kickoff_utc    timestamptz,
   competition_id integer,
-  updated_at     timestamptz not null default now()
+  updated_at     timestamptz not null default now(),
+  mapper_version smallint                   -- event mapper version (null = v1)
 );
 
 create index if not exists match_archive_kickoff_idx on match_archive (kickoff_utc desc);

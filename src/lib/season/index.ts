@@ -21,9 +21,28 @@ import type { Match } from "@/lib/providers/types";
  */
 export function seasonYearFor(comp: CompetitionConst, now: Date = new Date()): number {
   const year = now.getUTCFullYear();
-  const calendarYear = comp.country === "USA" || comp.slug === "world-cup";
-  if (calendarYear) return year;
-  return now.getUTCMonth() >= 7 ? year : year - 1; // 7 = August (0-indexed)
+  const splitYear = now.getUTCMonth() >= 7 ? year : year - 1; // 7 = August (0-indexed)
+  // The World Cup runs every four years (2026, 2030, …): show the latest edition
+  // until the next one, never an empty future year (it went blank on 2027-01-01).
+  if (comp.slug === "world-cup") return year - (((year - 2026) % 4) + 4) % 4;
+  // The Nations League starts in even years (2024, 2026, …) and runs to the
+  // following June; odd-year autumns have no new edition.
+  if (comp.slug === "nations-league") return splitYear - (((splitYear % 2) + 2) % 2);
+  if (comp.country === "USA") return year;
+  return splitYear;
+}
+
+/** The edition before the current one (last season's results, H2H context). */
+export function previousSeasonYear(comp: CompetitionConst, now: Date = new Date()): number {
+  const current = seasonYearFor(comp, now);
+  if (comp.slug === "world-cup") return current - 4;
+  if (comp.slug === "nations-league") return current - 2;
+  return current - 1;
+}
+
+/** Seasons we serve for a competition: the current one and the one before. */
+export function allowedSeasons(comp: CompetitionConst, now: Date = new Date()): number[] {
+  return [seasonYearFor(comp, now), previousSeasonYear(comp, now)];
 }
 
 /** Async wrapper so existing `await` / `.then()` call sites keep working. */

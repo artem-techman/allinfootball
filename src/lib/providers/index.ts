@@ -2,6 +2,7 @@ import "server-only";
 
 import { apiFootball } from "./apiFootball";
 import { footballDataOrg } from "./footballDataOrg";
+import { guardProvider } from "./scoped";
 import type { FootballProvider } from "./types";
 
 /**
@@ -20,4 +21,6 @@ export function getProvider(): FootballProvider {
   }
 }
 
-export const provider: FootballProvider = getProvider();
+/** Every page and route goes through the scope guard (see scoped.ts): out-of-scope
+ *  ids, leagues, seasons and dates cost zero provider calls. */
+export const provider: FootballProvider = guardProvider(getProvider());

@@ -33,12 +33,15 @@ export async function GET(request: Request) {
 
   try {
     const standings = await provider.getStandings(league, season);
-    return NextResponse.json({ standings });
+    return NextResponse.json(
+      { standings },
+      { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=120" } },
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "unknown error";
     return NextResponse.json(
       { standings: [], delayed: true, reason: message.includes("FOOTBALL_API_KEY") ? "no_key" : "provider_error" },
-      { status: 200 },
+      { status: 200, headers: { "Cache-Control": "no-store" } },
     );
   }
 }

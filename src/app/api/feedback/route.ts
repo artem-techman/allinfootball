@@ -13,7 +13,35 @@ import { isValidEmailOptional, isValidMessage, isValidRating, MESSAGE_MAX } from
  */
 export const dynamic = "force-dynamic";
 
+/** Per-instance limiter: a few submissions per visitor IP per 10 minutes. */
+const recent = new Map<string, number[]>();
+const WINDOW_MS = 10 * 60_000;
+const MAX_PER_WINDOW = 5;
+
+function rateLimited(ip: string): boolean {
+  const now = Date.now();
+  const hits = (recent.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
+  hits.push(now);
+  recent.set(ip, hits);
+  if (recent.size > 5_000) recent.clear(); // bounded memory
+  return hits.length > MAX_PER_WINDOW;
+}
+
+/** Only accept posts from our own pages (blocks drive-by cross-site spam). */
+function sameOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  try {
+    return new URL(origin).host === new URL(request.url).host;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: Request) {
+  if (!sameOrigin(request)) return NextResponse.json({ ok: false, error: "forbidden" }, { status: 403 });
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (rateLimited(ip)) return NextResponse.json({ ok: false, error: "too many" }, { status: 429 });
   if (!db()) return NextResponse.json({ ok: false, error: "no_db" }, { status: 503 });
   const sql = await readyDb(8_000); // a suspended Neon compute can take a few seconds to wake
   if (!sql) return NextResponse.json({ ok: false }, { status: 502 });
@@ -24,6 +52,8 @@ export async function POST(request: Request) {
     email?: string;
     page?: string;
     sessionId?: string;
+    /** Honeypot: a hidden field real visitors never fill. */
+    website?: string;
   };
   try {
     body = await request.json();
@@ -31,7 +61,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "invalid json" }, { status: 400 });
   }
 
-  const { message, rating, email, page, sessionId } = body;
+  const { message, rating, email, page, sessionId, website } = body;
+  // Pretend success to bots so they don't retry; store nothing.
+  if (typeof website === "string" && website.trim() !== "") return NextResponse.json({ ok: true });
   if (!isValidMessage(message) || !isValidRating(rating) || !isValidEmailOptional(email)) {
     return NextResponse.json({ ok: false, error: "invalid feedback" }, { status: 400 });
   }

@@ -67,6 +67,10 @@ export interface Match {
   minute?: number;
   /** Added-time minutes past `minute` (90+3 → minute 90, extraMinute 3). */
   extraMinute?: number;
+  /** For finished matches: decided in normal time, after extra time, or on penalties. */
+  resultType?: "ft" | "aet" | "pen";
+  /** False when this fixture is outside our scope (no match page to link to). */
+  linkable?: boolean;
   homeTeamId: number;
   awayTeamId: number;
   homeScore?: number;
@@ -242,6 +246,8 @@ export interface PlayerProfile {
   weight?: string;
   teamName?: string;
   teamId?: number;
+  /** Season the stats cover (starting year), so the page can label it. */
+  season?: number;
   stats: PlayerStatLine;
 }
 
@@ -295,9 +301,10 @@ export interface FootballProvider {
   getFixturesByLeague(leagueId: number, season: number): Promise<Match[]>;
   getLiveFixtures(): Promise<Match[]>;
   getMatch(fixtureId: number): Promise<Match | undefined>;
-  getEvents(fixtureId: number): Promise<MatchEvent[]>;
-  getLineups(fixtureId: number): Promise<Lineup[]>;
-  getStatistics(fixtureId: number): Promise<MatchStats[]>;
+  /** `ttl` (seconds) overrides the default cache lifetime, e.g. for a live fallback. */
+  getEvents(fixtureId: number, ttl?: number): Promise<MatchEvent[]>;
+  getLineups(fixtureId: number, ttl?: number): Promise<Lineup[]>;
+  getStatistics(fixtureId: number, ttl?: number): Promise<MatchStats[]>;
   getStandings(leagueId: number, season: number): Promise<Standing[]>;
   getTopScorers(leagueId: number, season: number): Promise<TopScorer[]>;
   getHeadToHead(team1Id: number, team2Id: number, limit?: number): Promise<Match[]>;

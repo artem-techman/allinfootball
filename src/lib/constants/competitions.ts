@@ -84,12 +84,16 @@ export function getCompetitionByLeagueId(leagueId: number): CompetitionConst | u
  * NOTE: matches only "Qualifying"/"Preliminary" round names — the UCL's
  * main-phase "Knockout Round Play-offs" must NOT be excluded.
  */
-export function isQualifyingRound(round?: string): boolean {
-  return !!round && /qualif|preliminary/i.test(round);
+export function isQualifyingRound(round?: string, leagueId?: number): boolean {
+  if (!round) return false;
+  if (/qualif|preliminary/i.test(round)) return true;
+  // The UCL/UEL pre-league "Play-offs" (Qarabağ, Shamrock Rovers …) are the last
+  // qualifying round; the main-phase "Knockout Round Play-offs" stays in scope.
+  return (leagueId === 2 || leagueId === 3) && /^play-?offs$/i.test(round.trim());
 }
 
 export function isInScope(leagueId: number, round?: string): boolean {
-  return BY_LEAGUE_ID.has(leagueId) && !isQualifyingRound(round);
+  return BY_LEAGUE_ID.has(leagueId) && !isQualifyingRound(round, leagueId);
 }
 
 export const LEAGUE_IDS: readonly number[] = COMPETITIONS.map((c) => c.leagueId);

@@ -1,6 +1,7 @@
 import "server-only";
 import { cache as reactCache } from "react";
 import { readyDb, withTimeout } from "@/lib/db/neon";
+import { EVENT_MAPPER_VERSION, fixLegacyEvents } from "@/lib/providers/apiFootball";
 import type { Lineup, Match, MatchEvent, MatchStats } from "@/lib/providers/types";
 
 /**
@@ -91,22 +92,27 @@ export const readArchivedMatch = reactCache(async (id: number): Promise<Archived
   if (!sql || !Number.isFinite(id)) return null;
   try {
     const rows = await withTimeout(
-      sql`select match, details from match_archive where id = ${id}` as unknown as Promise<
-        Array<{ match: Match; details: ArchivedDetails | null }>
+      sql`select match, details, mapper_version from match_archive where id = ${id}` as unknown as Promise<
+        Array<{ match: Match; details: ArchivedDetails | null; mapper_version: number | null }>
       >,
       REQUEST_TIMEOUT_MS,
       [],
     );
     const row = rows[0];
-    return row?.match ? { match: row.match, details: row.details ?? null } : null;
+    if (!row?.match) return null;
+    const details = row.details
+      ? { ...row.details, events: fixLegacyEvents(row.details.events ?? [], row.mapper_version) }
+      : null;
+    return { match: withResultType(row.match, details?.events ?? []), details };
   } catch {
     return null;
   }
 });
 
 /**
- * Persist a finished match with its detail bundle (write-once; upsert keeps it
- * idempotent under concurrent first views). Callers must only pass finished
+ * Persist a finished match with its detail bundle. Write-ONCE: a row that
+ * exists is never overwritten (concurrent first views just no-op), so a later
+ * bad fetch can't replace a good archive — corrections happen on read. Callers must only pass finished
  * matches with a non-empty bundle — archiving an empty bundle (e.g. fetched
  * during a provider outage) would freeze the emptiness forever.
  */
@@ -123,7 +129,7 @@ export async function archiveFinishedMatch(match: Match, details: ArchivedDetail
   try {
     await withTimeout(
       sql`
-        insert into match_archive (id, match, details, status, kickoff_utc, competition_id, updated_at)
+        insert into match_archive (id, match, details, status, kickoff_utc, competition_id, updated_at, mapper_version)
         values (
           ${match.id},
           ${JSON.stringify(match)}::jsonb,
@@ -131,13 +137,10 @@ export async function archiveFinishedMatch(match: Match, details: ArchivedDetail
           ${match.status},
           ${match.kickoffUtc},
           ${match.competitionId},
-          now()
+          now(),
+          ${EVENT_MAPPER_VERSION}
         )
-        on conflict (id) do update set
-          match = excluded.match,
-          details = excluded.details,
-          status = excluded.status,
-          updated_at = now()
+        on conflict (id) do nothing
       ` as unknown as Promise<unknown>,
       REQUEST_TIMEOUT_MS,
       undefined,
@@ -145,4 +148,16 @@ export async function archiveFinishedMatch(match: Match, details: ArchivedDetail
   } catch {
     /* best-effort */
   }
+}
+
+/**
+ * Rows archived before `resultType` existed: infer extra time from the events
+ * (an event in minutes 91–120 means extra time was played) and penalties from a
+ * recorded shootout score, so "FULL TIME" isn't shown for a 1-0 AET final.
+ */
+export function withResultType(match: Match, events: MatchEvent[]): Match {
+  if (match.status !== "finished" || match.resultType) return match;
+  if (match.homePenalty != null && match.awayPenalty != null) return { ...match, resultType: "pen" };
+  if (events.some((e) => e.minute > 90)) return { ...match, resultType: "aet" };
+  return { ...match, resultType: "ft" };
 }

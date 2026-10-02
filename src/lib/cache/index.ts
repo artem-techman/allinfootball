@@ -26,7 +26,7 @@ export interface Cache {
 class InMemoryLRUCache implements Cache {
   private store = new Map<string, CacheEntry<unknown>>();
 
-  constructor(private maxEntries = 500) {}
+  constructor(private maxEntries = 2000) {}
 
   get<T>(key: string): T | undefined {
     const entry = this.store.get(key);
@@ -77,10 +77,19 @@ export const TTL = {
   // 30s (was 15): halves the upstream live=all spend after the 2026-07-10
   // quota exhaustion; scores still feel live.
   live: 30,
+  /** The batched live-detail bundle (score, events, lineups, stats together). */
+  liveDetail: 45,
   lineups: 60,
-  standings: 120,
+  /** Events/lineups/stats for matches outside the live window. */
+  matchDetail: 60 * 60,
+  standings: 15 * 60,
   fixtures: 120,
-  topScorers: 300,
+  /** A competition's whole-season fixture list (live state is overlaid on top). */
+  seasonFixtures: 30 * 60,
+  topScorers: 30 * 60,
+  player: 6 * 60 * 60,
+  odds: 3 * 60 * 60,
+  h2h: 24 * 60 * 60,
   teams: 60 * 60 * 24,
   competitions: 60 * 60 * 24,
   news: 300,
@@ -96,7 +105,9 @@ const inflight = new Map<string, Promise<unknown>>();
  */
 export async function swr<T>(
   key: string,
-  ttlSeconds: number,
+  /** Seconds, or a function of the fetched value (e.g. a finished match keeps
+   *  for hours, a live one for 30s). */
+  ttlSeconds: number | ((value: T) => number),
   fetcher: () => Promise<T>,
 ): Promise<T> {
   const fresh = cache.get<T>(key);
@@ -107,7 +118,7 @@ export async function swr<T>(
   const p = (async () => {
     try {
       const value = await fetcher();
-      cache.set(key, value, ttlSeconds);
+      cache.set(key, value, typeof ttlSeconds === "function" ? ttlSeconds(value) : ttlSeconds);
       return value;
     } catch (err) {
       const stale = cache.getStale<T>(key);

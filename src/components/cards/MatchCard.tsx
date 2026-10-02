@@ -2,7 +2,8 @@ import Link from "next/link";
 import type { Match } from "@/lib/providers/types";
 import { Crest } from "@/components/primitives/Crest";
 import { LocalTime } from "@/components/primitives/LocalTime";
-import { matchWinner, hasShootout, liveMinuteLabel } from "@/lib/utils/match";
+import { LiveMinute } from "@/components/primitives/LiveMinute";
+import { matchWinner, hasShootout } from "@/lib/utils/match";
 
 /**
  * Compact match row used in lists/rails. Status drives the right-hand cell:
@@ -77,10 +78,12 @@ function TeamRow({
 function StatusCell({ match }: { match: Match }) {
   switch (match.status) {
     case "live":
+      // Only the clock fields cross into the client component (this card is server-rendered).
       return (
-        <span className="tabular animate-live-pulse text-meta font-bold text-live-minute">
-          {liveMinuteLabel(match)}
-        </span>
+        <LiveMinute
+          match={{ status: match.status, minute: match.minute, extraMinute: match.extraMinute }}
+          className="tabular animate-live-pulse text-meta font-bold text-live-minute"
+        />
       );
     case "ht":
       return <span className="text-meta font-bold text-live-red">HT</span>;

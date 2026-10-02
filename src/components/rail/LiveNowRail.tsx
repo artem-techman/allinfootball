@@ -9,7 +9,8 @@ import { Skeleton } from "@/components/primitives/Skeleton";
 import { ErrorBanner } from "@/components/primitives/ErrorBanner";
 import { Countdown } from "@/components/primitives/Countdown";
 import { ChevronRightIcon } from "@/components/primitives/icons";
-import { liveMinuteLabel, mergeLive } from "@/lib/utils/match";
+import { mergeLive } from "@/lib/utils/match";
+import { LiveMinute } from "@/components/primitives/LiveMinute";
 
 const LIVE_POLL_MS = 30_000; // while a match is live (matches the server's 30s live TTL)
 const NEAR_KICKOFF_POLL_MS = 20_000; // around the next kickoff, to catch it going live
@@ -280,6 +281,6 @@ function GoalCelebration() {
 function LiveStatus({ match }: { match: Match }) {
   if (match.status === "ht") return <span className="shrink-0 text-meta font-bold text-live-red">HT</span>;
   if (match.status === "live")
-    return <span className="tabular shrink-0 text-meta font-bold text-live-minute">{liveMinuteLabel(match)}</span>;
+    return <LiveMinute match={match} className="tabular shrink-0 text-meta font-bold text-live-minute" />;
   return <span className="shrink-0 text-meta text-text-secondary">FT</span>;
 }

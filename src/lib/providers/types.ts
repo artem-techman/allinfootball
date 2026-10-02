@@ -248,6 +248,8 @@ export interface PlayerProfile {
   teamId?: number;
   /** Season the stats cover (starting year), so the page can label it. */
   season?: number;
+  /** Display form of `season`: "2026/27", or "2026" for calendar-year leagues. */
+  seasonLabel?: string;
   stats: PlayerStatLine;
 }
 

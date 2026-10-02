@@ -100,7 +100,11 @@ function statusBadge(match: Match) {
     case "finished":
       return (
         <span className="text-meta font-medium text-text-on-dark-dim">
-          {hasShootout(match) ? "AFTER PENALTIES" : "FULL TIME"}
+          {hasShootout(match) || match.resultType === "pen"
+            ? "AFTER PENALTIES"
+            : match.resultType === "aet"
+              ? "AFTER EXTRA TIME"
+              : "FULL TIME"}
         </span>
       );
     case "postponed":

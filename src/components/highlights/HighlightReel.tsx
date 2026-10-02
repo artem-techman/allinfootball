@@ -41,6 +41,19 @@ export function HighlightReel({ highlights }: { highlights: Highlight[] }) {
   const [muted, setMuted] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [visible, setVisible] = useState(PAGE);
+  // Reduced motion or Data Saver: nothing plays until tapped.
+  const [autoplay, setAutoplay] = useState(true);
+  const autoplayRef = useRef(true);
+
+  useEffect(() => {
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+    if (reduce || saveData) {
+      autoplayRef.current = false;
+      setAutoplay(false);
+      setActiveId(null);
+    }
+  }, []);
 
   const listRef = useRef<HTMLDivElement>(null);
   const activeIframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -87,7 +100,7 @@ export function HighlightReel({ highlights }: { highlights: Highlight[] }) {
             bestId = id;
           }
         });
-        if (bestId) setActiveId(bestId);
+        if (bestId && autoplayRef.current) setActiveId(bestId);
       },
       { threshold: [0, 0.25, 0.5, 0.75, 1] }, // root: null = the page viewport
     );
@@ -98,7 +111,7 @@ export function HighlightReel({ highlights }: { highlights: Highlight[] }) {
   // Reset to the first page/clip when the filter changes.
   useEffect(() => {
     setVisible(PAGE);
-    setActiveId(shown[0]?.id ?? null);
+    setActiveId(autoplayRef.current ? shown[0]?.id ?? null : null);
   }, [slug, shown]);
 
   const toggleMute = useCallback(() => {
@@ -141,6 +154,8 @@ export function HighlightReel({ highlights }: { highlights: Highlight[] }) {
             key={h.id}
             highlight={h}
             active={h.id === activeId}
+            onActivate={() => setActiveId(h.id)}
+            tapToPlay={!autoplay}
             muted={muted}
             onToggleMute={toggleMute}
             registerActiveIframe={(el) => {
@@ -166,12 +181,16 @@ export function HighlightReel({ highlights }: { highlights: Highlight[] }) {
 function ReelCard({
   highlight: h,
   active,
+  onActivate,
+  tapToPlay,
   muted,
   onToggleMute,
   registerActiveIframe,
 }: {
   highlight: Highlight;
   active: boolean;
+  onActivate: () => void;
+  tapToPlay: boolean;
   muted: boolean;
   onToggleMute: () => void;
   registerActiveIframe: (el: HTMLIFrameElement | null) => void;
@@ -211,9 +230,12 @@ function ReelCard({
               aria-label={canEmbed ? h.title : `Watch on YouTube: ${h.title}`}
               className="group absolute inset-0 block"
               onClick={(ev) => {
-                // Embeddable but not yet active: let the scroll/observer activate it
-                // rather than leaving the page.
-                if (canEmbed) ev.preventDefault();
+                // Embeddable but not yet active: play it here rather than leaving
+                // the page (with autoplay off, a tap is the only way to start it).
+                if (canEmbed) {
+                  ev.preventDefault();
+                  if (tapToPlay) onActivate();
+                }
               }}
             >
               <Image src={h.thumbnailUrl} alt="" fill sizes="520px" className="object-cover" />

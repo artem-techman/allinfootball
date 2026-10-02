@@ -47,7 +47,9 @@ export function PlayerProfileView({ profile }: { profile: PlayerProfile }) {
       </header>
 
       <section className="rounded-card border border-hairline bg-card p-card">
-        <h3 className="mb-3 text-cardtitle text-text-primary">Season stats</h3>
+        <h3 className="mb-3 text-cardtitle text-text-primary">
+          {profile.seasonLabel ? `${profile.seasonLabel} season stats` : "Season stats"}
+        </h3>
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">
           {tiles.map((t) => (
             <div key={t.label} className="rounded-tile border border-hairline bg-card-2 p-3 text-center">

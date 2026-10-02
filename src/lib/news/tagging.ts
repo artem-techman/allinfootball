@@ -7,11 +7,24 @@ const NAME_TERMS = new Set<string>([
   "premier league", "epl", "la liga", "laliga", "serie a", "bundesliga", "ligue 1",
   "champions league", "ucl", "uefa champions league", "europa league", "uel",
   "uefa europa league", "mls", "major league soccer", "world cup", "fifa world cup",
+  "nations league", "uefa nations league",
 ]);
+
+/** Whole-word, case-insensitive matcher for a term ("inter" must not match "interview"). */
+const matchers = new Map<string, RegExp>();
+export function hasTerm(haystack: string, term: string): boolean {
+  let re = matchers.get(term);
+  if (!re) {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    re = new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, "iu");
+    matchers.set(term, re);
+  }
+  return re.test(haystack);
+}
 
 export function isTransfer(a: { title: string; dek: string }): boolean {
   const hay = `${a.title} ${a.dek}`.toLowerCase();
-  return TRANSFER_TERMS.some((t) => hay.includes(t));
+  return TRANSFER_TERMS.some((t) => hasTerm(hay, t));
 }
 
 /** Tag a raw item to competitions/clubs and shape it into our Article (no body). */
@@ -21,7 +34,7 @@ export function tagItem(raw: RawNewsItem): Article {
   const teamTags = new Set<string>();
   for (const comp of COMPETITION_KEYWORDS) {
     for (const term of comp.terms) {
-      if (hay.includes(term)) {
+      if (hasTerm(hay, term) && !(term === "inter" && !hasTerm(hay.replace(/inter miami/g, ""), "inter"))) {
         competitionTags.add(comp.slug);
         if (!NAME_TERMS.has(term)) teamTags.add(term);
       }
@@ -59,6 +72,7 @@ export function aggregate(rawItems: RawNewsItem[]): Article[] {
     if (article.competitionTags.length === 0) continue; // relevance filter
     out.push(article);
   }
-  out.sort((a, b) => b.publishedAtUtc.localeCompare(a.publishedAtUtc));
+  // Newest first; undated items ("") last.
+  out.sort((a, b) => (b.publishedAtUtc || "0").localeCompare(a.publishedAtUtc || "0"));
   return out;
 }

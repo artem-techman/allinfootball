@@ -40,7 +40,9 @@ export function HeadToHead({ fixtures, match }: { fixtures: Match[]; match: Matc
       <ul className="divide-y divide-hairline">
         {fixtures.map((f) => (
           <li key={f.id}>
-            <Link href={`/match/${f.slug}`} className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2">
+            {/* Meetings outside our competitions have no match page: plain text, not a dead link. */}
+            {f.linkable === false ? (
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2">
               <span className="flex items-center justify-end gap-2 truncate text-body text-text-primary">
                 <span className="truncate">{f.homeTeam?.name}</span>
                 <Crest src={f.homeTeam?.crest} name={f.homeTeam?.name ?? "Home"} size={18} />
@@ -52,7 +54,22 @@ export function HeadToHead({ fixtures, match }: { fixtures: Match[]; match: Matc
                 <Crest src={f.awayTeam?.crest} name={f.awayTeam?.name ?? "Away"} size={18} />
                 <span className="truncate">{f.awayTeam?.name}</span>
               </span>
-            </Link>
+              </div>
+            ) : (
+              <Link href={`/match/${f.slug}`} className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 py-2">
+              <span className="flex items-center justify-end gap-2 truncate text-body text-text-primary">
+                <span className="truncate">{f.homeTeam?.name}</span>
+                <Crest src={f.homeTeam?.crest} name={f.homeTeam?.name ?? "Home"} size={18} />
+              </span>
+              <span className="tabular rounded-tile bg-white/5 px-2 py-0.5 text-meta font-bold text-text-primary">
+                {f.homeScore ?? "-"}–{f.awayScore ?? "-"}
+              </span>
+              <span className="flex items-center gap-2 truncate text-body text-text-primary">
+                <Crest src={f.awayTeam?.crest} name={f.awayTeam?.name ?? "Away"} size={18} />
+                <span className="truncate">{f.awayTeam?.name}</span>
+              </span>
+              </Link>
+            )}
             <p className="pb-1 text-center text-[11px] text-text-muted">
               <LocalTime iso={f.kickoffUtc} mode="date" />
             </p>

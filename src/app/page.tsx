@@ -51,7 +51,17 @@ export default async function HomePage() {
   const standingsToShow =
     standings && standings.length > 0 ? standings : demo ? PREVIEW_STANDINGS : [];
 
-  const heroArticles = news.filter((a) => a.image).slice(0, 5);
+  // Hero: dated items with an image, at most two per source so one outlet
+  // can't own the carousel.
+  const perSource = new Map<string, number>();
+  const heroArticles = news
+    .filter((a) => a.image && a.publishedAtUtc)
+    .filter((a) => {
+      const n = perSource.get(a.sourceName) ?? 0;
+      perSource.set(a.sourceName, n + 1);
+      return n < 2;
+    })
+    .slice(0, 5);
   const storyPool = news.filter((a) => !heroArticles.includes(a));
   const stories =
     storyPool.length >= 3

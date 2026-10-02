@@ -69,10 +69,24 @@ function attr(block: string, name: string, attribute: string): string | undefine
   return block.match(re)?.[1];
 }
 
-function toIso(raw: string | undefined): string {
-  if (!raw) return new Date().toISOString();
-  const d = new Date(raw.trim());
-  return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+/** Named zones some feeds use that JS Date can't parse (Sky Sports sends "BST"). */
+const ZONE_OFFSETS: Record<string, string> = {
+  BST: "+0100", GMT: "+0000", UTC: "+0000", UT: "+0000", IST: "+0100",
+  CET: "+0100", CEST: "+0200", EET: "+0200", EEST: "+0300",
+  EST: "-0500", EDT: "-0400", CST: "-0600", CDT: "-0500", PST: "-0800", PDT: "-0700",
+};
+
+/**
+ * Publish time as ISO, or "" when the feed gives none we can read. NEVER falls
+ * back to "now": that stamped every Sky Sports item (their "BST" dates didn't
+ * parse) as published this second, so Sky owned the home hero all day. Undated
+ * items sort last and are kept out of the hero.
+ */
+export function toIso(raw: string | undefined): string {
+  if (!raw) return "";
+  const text = raw.trim().replace(/\b([A-Z]{2,4})$/, (z) => ZONE_OFFSETS[z] ?? z);
+  const d = new Date(text);
+  return Number.isNaN(d.getTime()) ? "" : d.toISOString();
 }
 
 function extractImage(block: string): string | undefined {
@@ -95,7 +109,8 @@ export function parseFeed(xml: string, sourceName: string): RawNewsItem[] {
     if (!title || !link) continue;
     const descRaw = tag(block, "description") ?? tag(block, "summary") ?? tag(block, "content:encoded");
     const dek = clean(descRaw).slice(0, 220);
-    const dateRaw = tag(block, "pubDate") ?? tag(block, "dc:date") ?? tag(block, "published") ?? tag(block, "updated");
+    const dateRaw =
+      tag(block, "pubDate") ?? tag(block, "dc:date") ?? tag(block, "published") ?? tag(block, "updated") ?? tag(block, "isoDate");
     items.push({
       title,
       dek,

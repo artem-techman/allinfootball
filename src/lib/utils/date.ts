@@ -74,7 +74,9 @@ export function formatLongDate(dateKey: string): string {
 
 /** Relative "time ago" for news meta (e.g. "3h ago"). */
 export function timeAgo(iso: string, now: Date = new Date()): string {
-  const diffMs = now.getTime() - new Date(iso).getTime();
+  const t = new Date(iso).getTime();
+  if (!iso || Number.isNaN(t)) return ""; // undated item: say nothing rather than "just now"
+  const diffMs = now.getTime() - t;
   const mins = Math.floor(diffMs / 60000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;

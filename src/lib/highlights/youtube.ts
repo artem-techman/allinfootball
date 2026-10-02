@@ -122,9 +122,34 @@ const NON_HIGHLIGHT = [
   "training",
   "documentary",
   "ceremony",
+  // Out-of-scope formats the official channels also post as "highlights".
+  "full match",
+  "partido completo",
+  "women",
+  "womens",
+  "wsl",
+  "uwcl",
+  "futsal",
+  "beach soccer",
+  "efootball",
+  "esports",
 ];
 
-function looksLikeHighlights(title: string): boolean {
+/** Youth / other-tournament markers: FIFA's channel posts ASEAN, AFC, U-17 … clips. */
+const OTHER_TOURNAMENT = /\b(asean|afc|caf|concacaf|conmebol|club world cup|olympic|u-?1\d|u-?2[0-3]|youth)\b/i;
+
+/** "2018/19", "2025-26": a season older than the current one is an archive upload. */
+function isOldSeason(title: string, now = new Date()): boolean {
+  const current = now.getUTCMonth() >= 7 ? now.getUTCFullYear() : now.getUTCFullYear() - 1;
+  for (const m of title.matchAll(/\b(20\d\d)\s*[/-]\s*(\d\d)\b/g)) {
+    const start = Number(m[1]);
+    const end = Number(m[2]);
+    if ((start + 1) % 100 === end && start < current) return true;
+  }
+  return false;
+}
+
+export function looksLikeHighlights(title: string): boolean {
   const t = title.toLowerCase();
   if (NON_HIGHLIGHT.some((w) => t.includes(w))) return false;
   // a scoreline (e.g. "3-1") or the word "highlights" marks a match reel
@@ -144,8 +169,14 @@ const OLD_MARKERS =
 const OLD_TOURNAMENT_YEAR =
   /(?:19\d\d|20[01]\d|202[0-5])[^|]{0,25}(?:world cup|euro|copa)|(?:world cup|euro|copa)[^|]{0,25}(?:19\d\d|20[01]\d|202[0-5])/i;
 
-function isCurrentContent(title: string): boolean {
-  return !OLD_MARKERS.test(title) && !OLD_TOURNAMENT_YEAR.test(title);
+export function isCurrentContent(title: string, now = new Date()): boolean {
+  return !OLD_MARKERS.test(title) && !OLD_TOURNAMENT_YEAR.test(title) && !isOldSeason(title, now) && !OTHER_TOURNAMENT.test(title);
+}
+
+/** A clip from a World Cup channel only counts if its title says World Cup. */
+export function belongsToChannelCompetition(title: string, slug: string): boolean {
+  if (slug === "world-cup") return /world cup/i.test(title) && !/club world cup/i.test(title);
+  return true;
 }
 
 /** Only clips uploaded within this many days — a "what's happening now" feed. */
@@ -176,6 +207,7 @@ async function uploadsFor(channel: ResolvedChannel): Promise<Highlight[]> {
       const id = s?.resourceId?.videoId;
       const title = s?.title;
       if (!id || !title || !looksLikeHighlights(title) || !isCurrentContent(title)) continue;
+      if (!belongsToChannelCompetition(title, channel.competitionSlug)) continue;
       out.push({
         id,
         title,
@@ -242,18 +274,63 @@ function normalize(s: string): string {
     .trim();
 }
 
-/** A title matches a fixture if a distinctive token of BOTH teams appears in it. */
-function titleMatchesTeams(title: string, home: string, away: string): boolean {
-  const t = normalize(title);
-  const present = (team: string) => {
-    const n = normalize(team);
-    if (!n) return false;
-    if (t.includes(n)) return true;
-    // fall back to the longest word (e.g. "United", "Madrid", "Bayern")
-    const longest = n.split(" ").sort((a, b) => b.length - a.length)[0];
-    return longest.length >= 4 && t.includes(longest);
-  };
-  return present(home) && present(away);
+/** Words too common across club names to identify a team on their own. */
+const GENERIC = new Set([
+  "united", "city", "real", "madrid", "manchester", "athletic", "atletico", "sporting", "club",
+  "inter", "borussia", "olympique", "racing", "deportivo", "union", "town", "county", "rovers",
+  "wanderers", "albion", "hotspur", "saint", "st", "de", "la", "le", "del", "fc",
+]);
+
+/** Common short names used in highlight titles. */
+const TEAM_ALIASES: Record<string, string[]> = {
+  "manchester united": ["man utd", "man united"],
+  "manchester city": ["man city"],
+  "tottenham": ["spurs"],
+  "paris saint germain": ["psg"],
+  "barcelona": ["barca"],
+  "atletico madrid": ["atleti"],
+  "bayern munchen": ["bayern", "bayern munich"],
+  "internazionale": ["inter"],
+  "inter": ["inter milan"],
+  "borussia dortmund": ["dortmund", "bvb"],
+  "wolverhampton wanderers": ["wolves"],
+  "nottingham forest": ["forest", "nott m forest"],
+};
+
+/** Where a team is named in a normalised title, or -1. */
+function teamPosition(t: string, team: string): number {
+  const n = normalize(team);
+  if (!n) return -1;
+  const needles = [n, ...(TEAM_ALIASES[n] ?? [])];
+  // Distinctive words only: "Madrid" alone can't tell Real from Atlético.
+  for (const w of n.split(" ")) if (w.length >= 4 && !GENERIC.has(w)) needles.push(w);
+  let best = -1;
+  for (const needle of needles) {
+    const m = new RegExp(`(?:^| )${needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?: |$)`).exec(t);
+    if (m && (best === -1 || m.index < best)) best = m.index;
+  }
+  return best;
+}
+
+/**
+ * A title matches a fixture when both teams are named, home before away (the
+ * reverse fixture is a different match), and — when we know the kickoff — the
+ * clip was uploaded between kickoff and 72 hours after it.
+ */
+export function titleMatchesFixture(
+  h: { title: string; publishedAtUtc: string },
+  q: { home: string; away: string; dateIso?: string },
+): boolean {
+  const t = normalize(h.title);
+  const hi = teamPosition(t, q.home);
+  const ai = teamPosition(t, q.away);
+  if (hi < 0 || ai < 0 || hi >= ai) return false;
+  if (q.dateIso) {
+    const ko = Date.parse(q.dateIso);
+    const up = Date.parse(h.publishedAtUtc);
+    if (Number.isFinite(ko) && Number.isFinite(up) && (up < ko || up > ko + 72 * 3_600_000)) return false;
+  }
+  return true;
 }
 
 /* --------------------------------- provider --------------------------------- */
@@ -269,8 +346,15 @@ export const youtubeHighlights: HighlightsProvider = {
         ? channels.filter((c) => c.competitionSlug === opts.competitionSlug)
         : channels;
       const lists = await Promise.all(wanted.map((c) => uploadsFor(c).catch(() => [] as Highlight[])));
+      // Dedupe by video id AND by normalised title (the same reel re-posted).
       const byId = new Map<string, Highlight>();
-      for (const h of lists.flat()) if (!byId.has(h.id)) byId.set(h.id, h);
+      const titles = new Set<string>();
+      for (const h of lists.flat()) {
+        const key = normalize(h.title);
+        if (byId.has(h.id) || titles.has(key)) continue;
+        byId.set(h.id, h);
+        titles.add(key);
+      }
       // Strict newest-first (release order), and only recent uploads — no old ones.
       const cutoff = Date.now() - MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
       const merged = [...byId.values()]
@@ -293,7 +377,7 @@ export const youtubeHighlights: HighlightsProvider = {
         limit: 100,
       });
       const candidates = pool.length ? pool : await this.getFeed({ limit: 100 });
-      return candidates.find((h) => titleMatchesTeams(h.title, query.home, query.away));
+      return candidates.find((h) => titleMatchesFixture(h, query));
     } catch {
       return undefined;
     }

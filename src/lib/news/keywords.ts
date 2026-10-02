@@ -34,7 +34,8 @@ export const COMPETITION_KEYWORDS: CompetitionKeywords[] = [
     slug: "serie-a",
     terms: [
       "serie a",
-      "juventus", "inter milan", "inter", "ac milan", "milan", "napoli", "roma", "as roma",
+      // Whole-word matching keeps "inter" out of "interview"; Inter Miami is excluded in tagging.
+      "juventus", "inter milan", "internazionale", "inter", "ac milan", "milan", "napoli", "as roma", "roma",
       "lazio", "atalanta", "fiorentina", "bologna", "torino",
     ],
   },
@@ -51,7 +52,8 @@ export const COMPETITION_KEYWORDS: CompetitionKeywords[] = [
     terms: [
       "ligue 1",
       "psg", "paris saint-germain", "paris saint germain", "marseille", "monaco", "lyon",
-      "lille", "nice", "rennes", "lens",
+      // "ogc nice" / "rc lens", not bare "nice" / "lens" (ordinary English words).
+      "lille", "ogc nice", "rennes", "rc lens",
     ],
   },
   {
@@ -70,13 +72,22 @@ export const COMPETITION_KEYWORDS: CompetitionKeywords[] = [
     ],
   },
   {
+    slug: "nations-league",
+    terms: ["nations league", "uefa nations league"],
+  },
+  {
     slug: "world-cup",
     terms: ["world cup", "fifa world cup"],
   },
 ];
 
-/** Transfer-tagged news (the /news?tag=transfers filter + home rail). */
+/**
+ * Transfer-tagged news (the /news?tag=transfers filter + home rail). Matched as
+ * whole words/phrases: bare "deal", "fee", "wants", "target" and "agree" tagged
+ * ordinary match reports as transfer talk.
+ */
 export const TRANSFER_TERMS = [
-  "transfer", "signs", "signing", "signed", "joins", "join ", "deal", "bid", "loan",
-  "fee", "agree", "agreed", "target", "linked", "swoop", "contract", "move to", "wants",
+  "transfer", "transfers", "signs", "signing", "signed", "joins", "loan", "loaned",
+  "bid for", "swoop", "contract extension", "new contract", "move to", "free agent",
+  "agreed a deal", "agree a deal", "personal terms", "medical",
 ];

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Match } from "@/lib/providers/types";
 import { Crest } from "@/components/primitives/Crest";
@@ -9,22 +8,23 @@ import { Skeleton } from "@/components/primitives/Skeleton";
 import { ErrorBanner } from "@/components/primitives/ErrorBanner";
 import { Countdown } from "@/components/primitives/Countdown";
 import { ChevronRightIcon } from "@/components/primitives/icons";
-import { mergeLive } from "@/lib/utils/match";
+import { useLiveFeed } from "./liveFeed";
 import { LiveMinute } from "@/components/primitives/LiveMinute";
 
-const LIVE_POLL_MS = 30_000; // while a match is live (matches the server's 30s live TTL)
-const NEAR_KICKOFF_POLL_MS = 20_000; // around the next kickoff, to catch it going live
-const IDLE_POLL_MS = 5 * 60_000; // nothing live and the next match is a while away
-const NEAR_KICKOFF_WINDOW_MS = 2 * 60_000; // "around kickoff" threshold
-
-/** Stable default: a fresh `[]` per render used to re-run the polling effect on
- *  EVERY render, so each response triggered another fetch — a tight loop that
- *  flashed whichever server instance answered (fresh or stale) straight onto
- *  the screen. */
+/** Stable default: a fresh `[]` per render once re-ran the polling effect on
+ *  every render — a tight fetch loop. Polling now lives in useLiveFeed. */
 const NO_PREVIEW: Match[] = [];
 
 const isInPlay = (m: Match) => m.status === "live" || m.status === "ht";
 
+/**
+ * Live Now rail. While matches are in play it lists them (score + ticking
+ * minute); when nothing is live it shows the next fixture (`nextMatch`) with a
+ * "Starts in" countdown. All mounted rails share ONE poll of /api/live
+ * (useLiveFeed) — home mounts two (desktop rail + mobile column).
+ *
+ * `previewMatches` still renders sample live fixtures in the keyless demo.
+ */
 export function LiveNowRail({
   previewMatches = NO_PREVIEW,
   nextMatch,
@@ -32,115 +32,11 @@ export function LiveNowRail({
   previewMatches?: Match[];
   nextMatch?: Match;
 }) {
-  const [matches, setMatches] = useState<Match[] | null>(null);
-  const [isPreview, setIsPreview] = useState(false);
-  const [degraded, setDegraded] = useState(false);
-  // a goal-event key (timestamp) that triggers the widget-wide celebration; null when idle
-  const [celebrate, setCelebrate] = useState<number | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevScores = useRef<Map<number, { home: number; away: number }>>(new Map());
-  const celebrateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const shown = useRef<Match[] | null>(null);
-  const lastSeen = useRef<Map<number, Match>>(new Map());
-  const ended = useRef<Set<number>>(new Set());
-  // Read through a ref so a new `nextMatch` object (same fixture) doesn't tear
-  // down and restart the polling loop.
-  const nextMatchRef = useRef(nextMatch);
-  nextMatchRef.current = nextMatch;
-  const nextKickoff = nextMatch?.kickoffUtc;
-
-  useEffect(() => {
-    let cancelled = false;
-
-    /**
-     * Compare each live match's score to the previous poll; if ANY side scored,
-     * trigger the widget-wide goal celebration (the first poll just records a
-     * baseline so existing scores don't celebrate on load).
-     */
-    function detectGoals(incoming: Match[]) {
-      const liveNow = incoming.filter((m) => m.status === "live" || m.status === "ht");
-      const next = new Map<number, { home: number; away: number }>();
-      let scored = false;
-      for (const m of liveNow) {
-        const h = m.homeScore ?? 0;
-        const a = m.awayScore ?? 0;
-        const prev = prevScores.current.get(m.id);
-        if (prev && (h > prev.home || a > prev.away)) scored = true;
-        next.set(m.id, { home: h, away: a });
-      }
-      prevScores.current = next; // also prunes matches that are no longer live
-      if (!scored) return;
-      setCelebrate(Date.now());
-      if (celebrateTimer.current) clearTimeout(celebrateTimer.current);
-      celebrateTimer.current = setTimeout(() => setCelebrate(null), 1800);
-    }
-
-    function scheduleNext(anyLive: boolean) {
-      let delay = IDLE_POLL_MS;
-      if (anyLive) {
-        delay = LIVE_POLL_MS;
-      } else if (nextMatchRef.current) {
-        const ms = new Date(nextMatchRef.current.kickoffUtc).getTime() - Date.now();
-        delay = ms <= NEAR_KICKOFF_WINDOW_MS ? NEAR_KICKOFF_POLL_MS : IDLE_POLL_MS;
-      }
-      timer.current = setTimeout(tick, delay);
-    }
-
-    async function tick() {
-      // Hidden tabs don't poll: a backgrounded tab left open all day was a big
-      // slice of the 2026-07-10 quota burn. The visibilitychange listener below
-      // resumes (with an immediate refresh) when the tab is foregrounded.
-      if (typeof document !== "undefined" && document.hidden) return;
-      try {
-        const res = await fetch("/api/live", { cache: "no-store" });
-        if (!res.ok) throw new Error(String(res.status));
-        const data = (await res.json()) as { matches: Match[]; delayed?: boolean; reason?: string };
-        if (cancelled) return;
-        setDegraded(Boolean(data.delayed) && data.reason !== "no_key");
-        if (data.reason === "no_key" && previewMatches.length) {
-          setMatches(previewMatches);
-          setIsPreview(true);
-        } else {
-          const merged = mergeLive(
-            shown.current,
-            (data.matches ?? []).filter(isInPlay),
-            lastSeen.current,
-            ended.current,
-            // A degraded response (provider error / stale snapshot) can't prove a
-            // match has ended, so it may only add or advance, never remove.
-            !data.delayed,
-          );
-          shown.current = merged;
-          setMatches(merged);
-          setIsPreview(false);
-          detectGoals(merged);
-        }
-        const anyLive = (shown.current ?? []).length > 0;
-        scheduleNext(anyLive);
-      } catch {
-        if (cancelled) return;
-        setDegraded(true);
-        setMatches((prev) => prev ?? []); // keep last-good real data; never fake it
-        setIsPreview(false);
-        scheduleNext(false);
-      }
-    }
-
-    function onVisibilityChange() {
-      if (document.hidden) return;
-      if (timer.current) clearTimeout(timer.current);
-      tick();
-    }
-
-    tick();
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => {
-      cancelled = true;
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      if (timer.current) clearTimeout(timer.current);
-      if (celebrateTimer.current) clearTimeout(celebrateTimer.current);
-    };
-  }, [previewMatches, nextKickoff]);
+  const feed = useLiveFeed(nextMatch?.kickoffUtc);
+  const isPreview = feed.noKey && previewMatches.length > 0;
+  const matches = isPreview ? previewMatches : feed.matches;
+  const degraded = feed.degraded;
+  const celebrate = feed.celebrate;
 
   const live = (matches ?? []).filter(isInPlay);
   const hasLive = live.length > 0;

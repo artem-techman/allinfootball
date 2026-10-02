@@ -88,7 +88,11 @@ function StatusCell({ match }: { match: Match }) {
     case "ht":
       return <span className="text-meta font-bold text-live-red">HT</span>;
     case "finished":
-      return <span className="text-meta font-medium text-text-secondary">FT</span>;
+      return (
+        <span className="text-meta font-medium text-text-secondary">
+          {match.resultType === "pen" ? "PENS" : match.resultType === "aet" ? "AET" : "FT"}
+        </span>
+      );
     case "postponed":
       return <span className="text-meta font-medium text-text-secondary">Postponed</span>;
     case "cancelled":

@@ -890,6 +890,13 @@ export function mapPlayerProfile(raw: RawPlayerEnvelope): PlayerProfile {
     teamName: main?.team?.name,
     teamId: main?.team?.id,
     season: main?.league?.season ?? undefined,
+    // MLS runs on the calendar year ("2026"); the European game spans two ("2026/27").
+    seasonLabel:
+      main?.league?.season == null
+        ? undefined
+        : main.league.id === 253
+          ? String(main.league.season)
+          : `${main.league.season}/${String((main.league.season + 1) % 100).padStart(2, "0")}`,
     stats: {
       appearances: sum((s) => s.games?.appearences) || undefined,
       minutes: sum((s) => s.games?.minutes) || undefined,

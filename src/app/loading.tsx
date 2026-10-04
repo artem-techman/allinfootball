@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AppShell } from "@/components/shell/AppShell";
 import { Skeleton } from "@/components/primitives/Skeleton";
 
@@ -7,19 +8,29 @@ import { Skeleton } from "@/components/primitives/Skeleton";
  * this shell for every link and swaps it in immediately: same sidebar, with
  * placeholder blocks where the content is loading.
  */
-export default function Loading() {
+function Placeholder() {
   return (
-    <AppShell>
-      <div aria-busy="true" aria-label="Loading" className="space-y-5 pt-2">
-        <Skeleton className="h-8 w-56" />
-        <Skeleton className="h-44 w-full" />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Skeleton className="h-28 w-full" />
-          <Skeleton className="h-28 w-full" />
-          <Skeleton className="h-28 w-full" />
-        </div>
-        <Skeleton className="h-64 w-full" />
+    <div aria-busy="true" aria-label="Loading" className="space-y-5 pt-2">
+      <Skeleton className="h-8 w-56" />
+      <Skeleton className="h-44 w-full" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Skeleton className="h-28 w-full" />
+        <Skeleton className="h-28 w-full" />
+        <Skeleton className="h-28 w-full" />
       </div>
-    </AppShell>
+      <Skeleton className="h-64 w-full" />
+    </div>
+  );
+}
+
+export default function Loading() {
+  // The sidebar reads useSearchParams(), which needs its own Suspense boundary
+  // wherever this shell is prerendered (it broke the static /_not-found build).
+  return (
+    <Suspense fallback={<Placeholder />}>
+      <AppShell>
+        <Placeholder />
+      </AppShell>
+    </Suspense>
   );
 }

@@ -47,6 +47,13 @@ interface ScopeIndex {
   teams: Map<number, TeamEntry>;
   /** league id → season → fixtures (in scope only). */
   byLeague: Map<number, Map<number, Match[]>>;
+  /** UK date key → fixtures that day, kickoff order. Built ONCE per index:
+   *  bucketing on every lookup cost ~460 ms (5,000 date formats) per call. */
+  byDate: Map<string, Match[]>;
+  /** team id → that team's fixtures. */
+  byTeam: Map<number, Match[]>;
+  /** Fixtures sorted by kickoff time, for fast live-window scans. */
+  byKickoff: { ko: number; m: Match }[];
 }
 
 async function buildIndex(inner: FootballProvider): Promise<ScopeIndex> {
@@ -78,18 +85,38 @@ async function buildIndex(inner: FootballProvider): Promise<ScopeIndex> {
       }
     }
   }
-  return { fixtures, teams, byLeague };
+  const byDate = new Map<string, Match[]>();
+  const byTeam = new Map<number, Match[]>();
+  const byKickoff: { ko: number; m: Match }[] = [];
+  for (const m of fixtures.values()) {
+    const ko = Date.parse(m.kickoffUtc);
+    if (!Number.isFinite(ko)) continue;
+    byKickoff.push({ ko, m });
+    const day = toDateKey(new Date(ko));
+    (byDate.get(day) ?? byDate.set(day, []).get(day)!).push(m);
+    for (const t of [m.homeTeamId, m.awayTeamId]) (byTeam.get(t) ?? byTeam.set(t, []).get(t)!).push(m);
+  }
+  byKickoff.sort((a, b) => a.ko - b.ko);
+  for (const list of byDate.values()) list.sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc));
+  return { fixtures, teams, byLeague, byDate, byTeam, byKickoff };
 }
 
 /** In-scope fixtures inside their live window right now (by kickoff time). */
 function windowFixtures(index: ScopeIndex, now = Date.now()): Match[] {
+  // byKickoff is sorted: binary-search the first kickoff that can still be in
+  // its window, then walk forward until kickoffs are too far ahead.
+  const list = index.byKickoff;
+  let lo = 0;
+  let hi = list.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (list[mid].ko < now - WINDOW_AFTER_MS) lo = mid + 1;
+    else hi = mid;
+  }
   const out: Match[] = [];
-  for (const m of index.fixtures.values()) {
-    const ko = Date.parse(m.kickoffUtc);
-    if (!Number.isFinite(ko)) continue;
-    if (ko - WINDOW_BEFORE_MS <= now && now <= ko + WINDOW_AFTER_MS && m.status !== "postponed" && m.status !== "cancelled") {
-      out.push(m);
-    }
+  for (let i = lo; i < list.length && list[i].ko - WINDOW_BEFORE_MS <= now; i += 1) {
+    const m = list[i].m;
+    if (m.status !== "postponed" && m.status !== "cancelled") out.push(m);
   }
   return out;
 }
@@ -169,10 +196,7 @@ export function guardProvider(inner: FootballProvider): FootballProvider {
 
     async getFixturesByDate(dateIso) {
       const idx = await index();
-      const day = [...idx.fixtures.values()]
-        .filter((m) => toDateKey(new Date(m.kickoffUtc)) === dateIso)
-        .sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc));
-      return overlay(idx, day);
+      return overlay(idx, idx.byDate.get(dateIso) ?? []);
     },
 
     async getFixturesByLeague(leagueId, season) {
@@ -259,7 +283,7 @@ export function guardProvider(inner: FootballProvider): FootballProvider {
       const idx = await index();
       if (!idx.teams.has(teamId)) return [];
       const now = Date.now();
-      const mine = [...idx.fixtures.values()].filter((m) => m.homeTeamId === teamId || m.awayTeamId === teamId);
+      const mine = idx.byTeam.get(teamId) ?? [];
       if (opts.last) {
         const past = mine
           .filter((m) => Date.parse(m.kickoffUtc) <= now && (isOver(m) || isLive(m)))

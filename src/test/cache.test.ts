@@ -59,3 +59,46 @@ describe("swr (stale-while-revalidate, single-flight)", () => {
     expect(calls).toBe(1);
   });
 });
+
+describe("swr background refresh", () => {
+  it("serves a recently-expired slow key instantly and refreshes behind it", async () => {
+    vi.useFakeTimers();
+    try {
+      await swr("bg:news", 300, async () => "v1");
+      vi.advanceTimersByTime(301_000); // expired 1s ago
+      let calls = 0;
+      const got = await swr("bg:news", 300, async () => {
+        calls += 1;
+        return "v2";
+      });
+      expect(got).toBe("v1"); // no waiting
+      await vi.runAllTimersAsync();
+      expect(calls).toBe(1);
+      expect(await swr("bg:news", 300, async () => "v3")).toBe("v2");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("never serves an expired LIVE key — waits for fresh", async () => {
+    vi.useFakeTimers();
+    try {
+      await swr("bg:live", 30, async () => "old-score");
+      vi.advanceTimersByTime(31_000);
+      expect(await swr("bg:live", 30, async () => "new-score")).toBe("new-score");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("waits for fresh when a slow key has been stale longer than its TTL", async () => {
+    vi.useFakeTimers();
+    try {
+      await swr("bg:table", 300, async () => "old");
+      vi.advanceTimersByTime(700_000);
+      expect(await swr("bg:table", 300, async () => "new")).toBe("new");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

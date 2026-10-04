@@ -1,6 +1,7 @@
 import "server-only";
 import { cache as reactCache } from "react";
 import { readyDb, withTimeout } from "@/lib/db/neon";
+import { cache } from "@/lib/cache";
 import { EVENT_MAPPER_VERSION, fixLegacyEvents } from "@/lib/providers/apiFootball";
 import type { Lineup, Match, MatchEvent, MatchStats } from "@/lib/providers/types";
 
@@ -88,6 +89,18 @@ export async function writeLiveSnapshot(matches: Match[]): Promise<void> {
  * body share ONE DB round-trip per request.
  */
 export const readArchivedMatch = reactCache(async (id: number): Promise<ArchivedMatch | null> => {
+  // Archived rows never change, so keep hits in memory for hours; a miss is
+  // re-checked after a minute (the match may get archived meanwhile). Saves a
+  // database round-trip — up to ~1 s when Neon's idle compute is waking — on
+  // every match page view.
+  const memo = cache.get<{ hit: ArchivedMatch | null }>(`archive:${id}`);
+  if (memo) return memo.hit;
+  const hit = await readArchivedRow(id);
+  cache.set(`archive:${id}`, { hit }, hit ? 6 * 60 * 60 : 60);
+  return hit;
+});
+
+async function readArchivedRow(id: number): Promise<ArchivedMatch | null> {
   const sql = await readyDb();
   if (!sql || !Number.isFinite(id)) return null;
   try {
@@ -107,7 +120,8 @@ export const readArchivedMatch = reactCache(async (id: number): Promise<Archived
   } catch {
     return null;
   }
-});
+}
+
 
 /**
  * Persist a finished match with its detail bundle. Write-ONCE: a row that
@@ -145,6 +159,7 @@ export async function archiveFinishedMatch(match: Match, details: ArchivedDetail
       REQUEST_TIMEOUT_MS,
       undefined,
     );
+    cache.delete(`archive:${match.id}`); // next view reads the fresh row
   } catch {
     /* best-effort */
   }

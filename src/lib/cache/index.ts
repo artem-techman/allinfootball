@@ -82,6 +82,8 @@ export const TTL = {
   live: 30,
   /** The batched live-detail bundle (score, events, lineups, stats together). */
   liveDetail: 45,
+  /** The same batch for fixtures not yet kicked off (lineups appear ~1h before). */
+  preMatchDetail: 5 * 60,
   lineups: 60,
   /** Events/lineups/stats for matches outside the live window. */
   matchDetail: 60 * 60,

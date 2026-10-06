@@ -4,13 +4,21 @@ import type { FootballProvider, Match } from "@/lib/providers/types";
 
 // The live-detail batch is the only direct provider call scoped.ts makes; stub it.
 const bundleCalls: number[][] = [];
+const bundleTtls: number[] = [];
+const finishedIds = new Set<number>();
 vi.mock("@/lib/providers/apiFootball", async (orig) => {
   const real = await orig<typeof import("@/lib/providers/apiFootball")>();
   return {
     ...real,
-    getFixtureBundles: vi.fn(async (ids: number[]) => {
+    getFixtureBundles: vi.fn(async (ids: number[], ttl = 45) => {
       bundleCalls.push(ids);
-      return new Map(ids.map((id) => [id, { match: { ...fx(id, "live", 0), minute: 67 }, events: [], lineups: [], stats: [] }]));
+      bundleTtls.push(ttl);
+      return new Map(
+        ids.map((id) => [
+          id,
+          { match: { ...fx(id, finishedIds.has(id) ? "finished" : "live", 0), minute: 67 }, events: [], lineups: [], stats: [] },
+        ]),
+      );
     }),
   };
 });
@@ -57,6 +65,8 @@ describe("scope guard", () => {
   beforeEach(() => {
     cache.clear();
     bundleCalls.length = 0;
+    bundleTtls.length = 0;
+    finishedIds.clear();
   });
 
   it("out-of-scope fixture, team, league and season cost zero upstream calls", async () => {
@@ -86,15 +96,31 @@ describe("scope guard", () => {
     expect(upstream()).toEqual([]);
   });
 
-  it("live-window matches all come from ONE shared batch", async () => {
+  it("in-play matches share one fast batch; upcoming ones a slow batch; nothing per fixture", async () => {
     const { inner, upstream } = fakeInner([fx(3, "live", -60 * 60_000), fx(4, "scheduled", 30 * 60_000), fx(5, "scheduled", 6 * HOUR)]);
     const p = guardProvider(inner);
     expect((await p.getMatch(3))?.minute).toBe(67);
     await p.getEvents(3);
     await p.getLineups(4);
     await p.getStatistics(3);
-    expect(bundleCalls.every((ids) => ids.join() === "3,4")).toBe(true);
-    expect(upstream()).toEqual([]); // nothing per-fixture
+    const fast = bundleCalls.filter((_, i) => bundleTtls[i] === 45).map((ids) => ids.join());
+    const slow = bundleCalls.filter((_, i) => bundleTtls[i] === 300).map((ids) => ids.join());
+    expect(new Set(fast)).toEqual(new Set(["3"]));
+    expect(new Set(slow)).toEqual(new Set(["4"]));
+    expect(upstream()).toEqual([]); // no per-fixture calls, and no live=all poll
+  });
+
+  it("stops refreshing a match once a batch shows it finished", async () => {
+    const { inner } = fakeInner([fx(6, "live", -100 * 60_000)]);
+    const p = guardProvider(inner);
+    finishedIds.add(6);
+    await p.getLiveFixtures();
+    const before = bundleCalls.length;
+    cache.delete("bundles:45:6"); // even with the batch expired …
+    await p.getLiveFixtures();
+    await p.getMatch(6);
+    expect(bundleCalls.length).toBe(before); // … it isn't fetched again
+    expect((await p.getMatch(6))?.status).toBe("finished");
   });
 
   it("doesn't poll the live feed when nothing of ours is in its window", async () => {

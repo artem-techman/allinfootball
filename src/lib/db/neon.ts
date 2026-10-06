@@ -77,6 +77,13 @@ const SCHEMA: string[] = [
   // Additive: which event-mapper version wrote the row (null = v1, before the
   // 2026-10-02 substitution fix). Rows are corrected on read, never rewritten.
   `alter table match_archive add column if not exists mapper_version smallint`,
+  // Last-good provider data (season fixture lists, tables, scorers) so any
+  // instance can still render when the provider is shed or down.
+  `create table if not exists provider_cache (
+    key        text        primary key,
+    body       jsonb       not null,
+    fetched_at timestamptz not null default now()
+  )`,
 ];
 
 let schemaReady: Promise<boolean> | null = null;

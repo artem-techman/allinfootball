@@ -172,11 +172,40 @@ export function guardProvider(inner: FootballProvider): FootballProvider {
   const index = () =>
     swr("scope:index", 5 * 60, () => buildIndex(inner));
 
-  /** Fresh bundles for every fixture in its live window (one shared call). */
+  /**
+   * Final bundles of matches we've seen end (per instance). Once a match is over
+   * its record can't change, so it drops out of the refresh set entirely.
+   */
+  const settled = new Map<number, FixtureBundle>();
+  const SETTLED_STATUSES = new Set<Match["status"]>(["finished", "postponed", "cancelled", "abandoned"]);
+
+  /**
+   * Fresh bundles for the live window, refreshed by need rather than all at
+   * once (the 2026-10-06 quota drain: every window fixture — finished ones and
+   * ones hours from kickoff included — was refreshed every 45s, next to a
+   * separate live=all poll every 30s, for 12+ hours a day):
+   *  - kicked off (or about to): one batch every 45s — the live clock and score
+   *  - upcoming (lineups not settled yet): one batch every 5 min
+   *  - over: never again (kept from the last bundle that showed it ending)
+   * `inPlayMissing` = there are in-play fixtures but their batch failed.
+   */
+  async function windowState(idx: ScopeIndex): Promise<{ bundles: Map<number, FixtureBundle>; inPlay: number; inPlayMissing: boolean }> {
+    const now = Date.now();
+    const open = windowFixtures(idx, now).filter((m) => !settled.has(m.id) && !SETTLED_STATUSES.has(m.status));
+    const inPlayIds = open.filter((m) => Date.parse(m.kickoffUtc) <= now + 5 * 60_000).map((m) => m.id);
+    const upcomingIds = open.filter((m) => Date.parse(m.kickoffUtc) > now + 5 * 60_000).map((m) => m.id);
+    const [live, upcoming] = await Promise.all([
+      inPlayIds.length ? getFixtureBundles(inPlayIds, TTL.liveDetail).catch(() => null) : new Map<number, FixtureBundle>(),
+      upcomingIds.length ? getFixtureBundles(upcomingIds, TTL.preMatchDetail).catch(() => null) : new Map<number, FixtureBundle>(),
+    ]);
+    for (const [id, b] of live ?? []) if (SETTLED_STATUSES.has(b.match.status)) settled.set(id, b);
+    if (settled.size > 1_000) settled.clear(); // bounded memory; lists cover old matches
+    const bundles = new Map<number, FixtureBundle>([...settled, ...(upcoming ?? []), ...(live ?? [])]);
+    return { bundles, inPlay: inPlayIds.length, inPlayMissing: inPlayIds.length > 0 && live == null };
+  }
+
   async function windowBundles(idx: ScopeIndex): Promise<Map<number, FixtureBundle>> {
-    const ids = windowFixtures(idx).map((m) => m.id);
-    if (ids.length === 0) return new Map();
-    return getFixtureBundles(ids).catch(() => new Map<number, FixtureBundle>());
+    return (await windowState(idx)).bundles;
   }
 
   /** Replace list records with fresher ones from the live window, when there are any. */
@@ -207,14 +236,14 @@ export function guardProvider(inner: FootballProvider): FootballProvider {
     },
 
     async getLiveFixtures() {
+      // Every in-scope match that can be live is in the in-play batch, which is
+      // fresher than the provider's global live=all feed — so that feed (another
+      // call every 30s) is no longer polled at all.
       const idx = await index();
-      if (windowFixtures(idx).length === 0) return []; // nothing of ours can be live
-      const [liveAll, bundles] = await Promise.all([
-        inner.getLiveFixtures().catch(() => null),
-        windowBundles(idx),
-      ]);
-      if (liveAll == null && bundles.size === 0) throw new Error("live sources unavailable");
-      return mergeLiveSources(liveAll ?? [], idx.fixtures, bundles);
+      const state = await windowState(idx);
+      if (state.inPlay === 0) return []; // nothing of ours has kicked off
+      if (state.inPlayMissing) throw new Error("live batch unavailable"); // /api/live serves its last snapshot
+      return mergeLiveSources([], idx.fixtures, state.bundles);
     },
 
     async getMatch(id) {

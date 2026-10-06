@@ -38,3 +38,11 @@ create table if not exists match_archive (
 );
 
 create index if not exists match_archive_kickoff_idx on match_archive (kickoff_utc desc);
+
+-- Last-good provider data (season fixture lists, standings, top scorers): any
+-- server instance falls back to it when the provider is shed or down.
+create table if not exists provider_cache (
+  key        text        primary key,
+  body       jsonb       not null,
+  fetched_at timestamptz not null default now()
+);

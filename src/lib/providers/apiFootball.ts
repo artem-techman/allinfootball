@@ -9,6 +9,7 @@ import {
 import { entitySlug } from "@/lib/utils/slug";
 import { mapStatus } from "./statusMap";
 import { seasonYearFor } from "@/lib/season";
+import { withLastGood } from "@/lib/db/lastGood";
 import type {
   Competition,
   FootballProvider,
@@ -306,7 +307,13 @@ async function apiGet<T>(
 /** Seconds past its TTL a cached provider body may be before we refetch it:
  *  half the TTL, at least 10s — so a 30s live key is never served beyond 45s,
  *  while rarely-read long-TTL keys don't pay a refetch on every stale hit. */
-const staleGraceS = (revalidateS: number) => Math.max(10, revalidateS / 2);
+/** How far past its TTL a cached body may be before we refetch it ourselves.
+ *  Below this, Next's own background revalidation refreshes it (one call); our
+ *  bypass adds a SECOND call, so it's reserved for genuinely old bodies — the
+ *  hours-old pre-kickoff copy that caused the empty-match-page bug — not every
+ *  entry that's a few seconds past its TTL (that doubling helped drain the
+ *  quota on 2026-10-06). */
+const staleGraceS = (revalidateS: number) => Math.max(60, revalidateS * 2);
 
 /**
  * True when a cached response (by its provider `Date` header) is older than its
@@ -1046,10 +1053,12 @@ export const apiFootball: FootballProvider = {
     const comp = getCompetitionByLeagueId(leagueId);
     const past = comp != null && season < seasonYearFor(comp);
     const ttl = past ? 24 * 60 * 60 : TTL.seasonFixtures;
-    return swr(`fixtures:league:${leagueId}:${season}`, ttl, async () => {
-      const env = await apiGet<RawFixture>("/fixtures", { league: leagueId, season }, { revalidate: ttl });
-      return mapFixtures(env.response);
-    });
+    return swr(`fixtures:league:${leagueId}:${season}`, ttl, () =>
+      withLastGood(`fixtures:league:${leagueId}:${season}`, async () => {
+        const env = await apiGet<RawFixture>("/fixtures", { league: leagueId, season }, { revalidate: ttl });
+        return mapFixtures(env.response);
+      }),
+    );
   },
 
   async getLiveFixtures(): Promise<Match[]> {
@@ -1102,22 +1111,26 @@ export const apiFootball: FootballProvider = {
 
 
   async getStandings(leagueId: number, season: number): Promise<Standing[]> {
-    return swr(`standings:${leagueId}:${season}`, TTL.standings, async () => {
-      const env = await apiGet<RawStandingsEnvelope>("/standings", {
-        league: leagueId,
-        season,
-      }, { revalidate: TTL.standings });
-      const first = env.response[0];
-      return first ? mapStandings(first) : [];
-    });
+    return swr(`standings:${leagueId}:${season}`, TTL.standings, () =>
+      withLastGood(`standings:${leagueId}:${season}`, async () => {
+        const env = await apiGet<RawStandingsEnvelope>("/standings", {
+          league: leagueId,
+          season,
+        }, { revalidate: TTL.standings });
+        const first = env.response[0];
+        return first ? mapStandings(first) : [];
+      }),
+    );
   },
 
   async getTopScorers(leagueId: number, season: number): Promise<TopScorer[]> {
-    return swr(`scorers:${leagueId}:${season}`, TTL.topScorers, async () => {
-      // /players/topscorers is NOT paginated — it rejects a `page` param.
-      const env = await apiGet<RawScorer>("/players/topscorers", { league: leagueId, season }, { revalidate: TTL.topScorers, priority: "detail" });
-      return mapTopScorers(env.response, leagueId, season);
-    });
+    return swr(`scorers:${leagueId}:${season}`, TTL.topScorers, () =>
+      withLastGood(`scorers:${leagueId}:${season}`, async () => {
+        // /players/topscorers is NOT paginated — it rejects a `page` param.
+        const env = await apiGet<RawScorer>("/players/topscorers", { league: leagueId, season }, { revalidate: TTL.topScorers, priority: "detail" });
+        return mapTopScorers(env.response, leagueId, season);
+      }),
+    );
   },
 
   async getHeadToHead(team1Id: number, team2Id: number, limit = 5): Promise<Match[]> {
@@ -1156,11 +1169,13 @@ export const apiFootball: FootballProvider = {
   },
 
   async getTopAssists(leagueId: number, season: number): Promise<TopScorer[]> {
-    return swr(`assists:${leagueId}:${season}`, TTL.topScorers, async () => {
-      // /players/topassists is NOT paginated either.
-      const env = await apiGet<RawScorer>("/players/topassists", { league: leagueId, season }, { revalidate: TTL.topScorers, priority: "detail" });
-      return mapTopScorers(env.response, leagueId, season).map((t, i) => ({ ...t, rank: i + 1 }));
-    });
+    return swr(`assists:${leagueId}:${season}`, TTL.topScorers, () =>
+      withLastGood(`assists:${leagueId}:${season}`, async () => {
+        // /players/topassists is NOT paginated either.
+        const env = await apiGet<RawScorer>("/players/topassists", { league: leagueId, season }, { revalidate: TTL.topScorers, priority: "detail" });
+        return mapTopScorers(env.response, leagueId, season).map((t, i) => ({ ...t, rank: i + 1 }));
+      }),
+    );
   },
 
   async getTeam(teamId: number): Promise<TeamProfile | undefined> {
@@ -1238,16 +1253,19 @@ export interface FixtureBundle {
  * 3–4 calls per match per refresh. Keyed by the sorted id set so every server
  * instance asking for the same window shares one cached response.
  */
-export async function getFixtureBundles(ids: number[]): Promise<Map<number, FixtureBundle>> {
+export async function getFixtureBundles(
+  ids: number[],
+  ttl: number = TTL.liveDetail,
+): Promise<Map<number, FixtureBundle>> {
   const sorted = [...new Set(ids)].sort((a, b) => a - b);
   const out = new Map<number, FixtureBundle>();
   for (let i = 0; i < sorted.length; i += 20) {
     const chunk = sorted.slice(i, i + 20);
-    const bundles = await swr(`bundles:${chunk.join("-")}`, TTL.liveDetail, async () => {
+    const bundles = await swr(`bundles:${ttl}:${chunk.join("-")}`, ttl, async () => {
       const env = await apiGet<RawFixture>(
         "/fixtures",
         { ids: chunk.join("-") },
-        { revalidate: TTL.liveDetail, priority: "live" },
+        { revalidate: ttl, priority: "live" },
       );
       const list: FixtureBundle[] = [];
       for (const raw of env.response) {

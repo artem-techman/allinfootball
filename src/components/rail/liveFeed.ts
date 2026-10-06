@@ -7,8 +7,8 @@ import { mergeLive } from "@/lib/utils/match";
  * The home page mounts LiveNowRail twice (right rail on desktop, main column on
  * mobile, one of them CSS-hidden); each used to run its own loop, doubling the
  * load per visitor. Now every mounted widget subscribes to this module-level
- * store: the loop starts with the first subscriber and stops (and forgets
- * everything) when the last one unmounts — the same lifecycle one widget had.
+ * store: the loop starts with the first subscriber and stops when the last one
+ * unmounts, keeping its last-known state for the next page.
  *
  * Kept from the per-widget loop: the MONOTONIC merge (mergeLive — the clock and
  * score never rewind, an ended match can't bounce back), hidden tabs don't poll
@@ -26,6 +26,9 @@ const CELEBRATE_MS = 1800;
 export interface LiveFeedState {
   /** In-play matches, merged monotonically; null until the first response. */
   matches: Match[] | null;
+  /** Soonest upcoming fixture (from the server), for the "Up next" countdown on
+   *  pages that don't pass their own. */
+  next: Match | null;
   /** The server has no API key (keyless demo): widgets may show their preview data. */
   noKey: boolean;
   /** Last response was degraded or failed: show the "may be delayed" banner. */
@@ -34,7 +37,7 @@ export interface LiveFeedState {
   celebrate: number | null;
 }
 
-const INITIAL: LiveFeedState = { matches: null, noKey: false, degraded: false, celebrate: null };
+const INITIAL: LiveFeedState = { matches: null, next: null, noKey: false, degraded: false, celebrate: null };
 
 const isInPlay = (m: Match) => m.status === "live" || m.status === "ht";
 
@@ -48,8 +51,8 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 let celebrateTimer: ReturnType<typeof setTimeout> | null = null;
 // Merge memory across polls (see mergeLive); reset when the loop stops.
 let shown: Match[] | null = null;
-let lastSeen = new Map<number, Match>();
-let ended = new Set<number>();
+const lastSeen = new Map<number, Match>();
+const ended = new Set<number>();
 let prevScores = new Map<number, { home: number; away: number }>();
 
 function update(patch: Partial<LiveFeedState>) {
@@ -103,7 +106,7 @@ async function tick(gen: number) {
   try {
     const res = await fetch("/api/live", { cache: "no-store" });
     if (!res.ok) throw new Error(String(res.status));
-    const data = (await res.json()) as { matches: Match[]; delayed?: boolean; reason?: string };
+    const data = (await res.json()) as { matches: Match[]; next?: Match | null; delayed?: boolean; reason?: string };
     if (gen !== generation) return;
     const merged = mergeLive(
       shown,
@@ -117,6 +120,7 @@ async function tick(gen: number) {
     shown = merged;
     update({
       matches: merged,
+      next: data.next ?? state.next,
       noKey: data.reason === "no_key",
       degraded: Boolean(data.delayed) && data.reason !== "no_key",
     });
@@ -148,11 +152,11 @@ function stop() {
   if (timer) clearTimeout(timer);
   if (celebrateTimer) clearTimeout(celebrateTimer);
   timer = celebrateTimer = null;
-  state = INITIAL;
-  shown = null;
-  lastSeen = new Map();
-  ended = new Set();
-  prevScores = new Map();
+  // Keep what we know. Navigating between pages unmounts one widget and mounts
+  // the next; wiping the state here made every page switch start from an empty
+  // skeleton. The next start() shows the last-known list at once and refreshes
+  // it immediately (the merge memory keeps it monotonic).
+  if (state.celebrate != null) state = { ...state, celebrate: null };
 }
 
 /** Stable (module-level) subscribe, as useSyncExternalStore needs. Exported for tests. */

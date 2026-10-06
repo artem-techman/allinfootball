@@ -33,6 +33,8 @@ export function LiveNowRail({
   nextMatch?: Match;
 }) {
   const feed = useLiveFeed(nextMatch?.kickoffUtc);
+  // Pages without their own fixture list (news, transfers) use the server's.
+  nextMatch = nextMatch ?? feed.next ?? undefined;
   const isPreview = feed.noKey && previewMatches.length > 0;
   const matches = isPreview ? previewMatches : feed.matches;
   const degraded = feed.degraded;

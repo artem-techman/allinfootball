@@ -95,6 +95,7 @@ export function MobileNav() {
                   <Link
                     key={label}
                     href={href}
+                    prefetch
                     onClick={() => setOpen(false)}
                     aria-current={active ? "page" : undefined}
                     className={`flex items-center gap-3 rounded-tile px-3 py-2.5 text-body font-medium ${

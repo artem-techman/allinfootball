@@ -84,6 +84,9 @@ export function Sidebar() {
             <Link
               key={label}
               href={href}
+              // Full prefetch: the next page's content is already in the browser,
+              // so a sidebar click is instant (kept 30s, see next.config staleTimes).
+              prefetch
               aria-current={active ? "page" : undefined}
               title={collapsed ? label : undefined}
               className={`group flex items-center rounded-tile text-body font-medium transition-colors duration-200 ${

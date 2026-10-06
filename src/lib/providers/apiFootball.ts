@@ -1170,10 +1170,12 @@ export const apiFootball: FootballProvider = {
   },
 
   async getTeamTransfers(teamId: number): Promise<Transfer[]> {
-    return swr(`transfers:team:${teamId}`, TTL.transfers, async () => {
-      const env = await apiGet<RawTransfers>("/transfers", { team: teamId }, { revalidate: TTL.transfers, priority: "extra" });
-      return mapTransfers(env.response);
-    });
+    return swr(`transfers:team:${teamId}`, TTL.transfers, () =>
+      withLastGood(`transfers:team:${teamId}`, async () => {
+        const env = await apiGet<RawTransfers>("/transfers", { team: teamId }, { revalidate: TTL.transfers, priority: "detail" });
+        return mapTransfers(env.response);
+      }),
+    );
   },
 
   async getTopAssists(leagueId: number, season: number): Promise<TopScorer[]> {

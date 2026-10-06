@@ -1,6 +1,23 @@
 import { NextResponse } from "next/server";
 import { provider } from "@/lib/providers";
 import { readLiveSnapshot, writeLiveSnapshot } from "@/lib/db/matchStore";
+import { todayKey, shiftDateKey } from "@/lib/utils/date";
+import type { Match } from "@/lib/providers/types";
+
+/**
+ * The soonest upcoming in-scope fixture, for the "Up next" countdown on pages
+ * that don't render their own fixture list (news, transfers). Read from the
+ * cached season lists — no provider call.
+ */
+async function nextFixture(): Promise<Match | null> {
+  const now = Date.now();
+  for (let d = 0; d < 14; d += 1) {
+    const day = await provider.getFixturesByDate(shiftDateKey(todayKey(), d)).catch(() => [] as Match[]);
+    const next = day.find((m) => m.status === "scheduled" && Date.parse(m.kickoffUtc) > now);
+    if (next) return next;
+  }
+  return null;
+}
 
 /**
  * GET /api/live — live fixtures across the nine competitions.
@@ -25,19 +42,19 @@ const SNAPSHOT_FRESH_S = 30; // matches TTL.live
 const SNAPSHOT_STALE_MAX_S = 15 * 60; // outage window: serve last-known scores up to 15 min
 
 export async function GET() {
-  const snapshot = await readLiveSnapshot();
+  const [snapshot, next] = await Promise.all([readLiveSnapshot(), nextFixture()]);
   if (snapshot && snapshot.ageSeconds <= SNAPSHOT_FRESH_S) {
-    return NextResponse.json({ matches: snapshot.matches }, { headers: HEALTHY });
+    return NextResponse.json({ matches: snapshot.matches, next }, { headers: HEALTHY });
   }
 
   try {
     const matches = await provider.getLiveFixtures();
     await writeLiveSnapshot(matches); // best-effort; failures are swallowed
-    return NextResponse.json({ matches }, { headers: HEALTHY });
+    return NextResponse.json({ matches, next }, { headers: HEALTHY });
   } catch (err) {
     if (snapshot && snapshot.ageSeconds <= SNAPSHOT_STALE_MAX_S) {
       return NextResponse.json(
-        { matches: snapshot.matches, delayed: true, reason: "stale_snapshot" },
+        { matches: snapshot.matches, next, delayed: true, reason: "stale_snapshot" },
         { headers: NO_STORE },
       );
     }

@@ -102,7 +102,9 @@ async function tick(gen: number) {
   // Hidden tabs don't poll: a backgrounded tab left open all day was a big
   // slice of the 2026-07-10 quota burn. The visibilitychange listener resumes
   // (with an immediate refresh) when the tab is foregrounded.
-  if (typeof document !== "undefined" && document.hidden) return;
+  // The FIRST load always happens (a background-opened tab must not sit on a
+  // skeleton); only the repeat polling pauses.
+  if (typeof document !== "undefined" && document.hidden && state.matches !== null) return;
   try {
     const res = await fetch("/api/live", { cache: "no-store" });
     if (!res.ok) throw new Error(String(res.status));

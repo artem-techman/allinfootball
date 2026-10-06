@@ -301,16 +301,20 @@ describe("mergeLiveSources", () => {
 });
 
 describe("quota tiers (allowCall)", () => {
+  // Plan limit 7,500 → budget 7,350 (150 held back).
   const at = (used: number, limit: number | null = 7500) => ({ used, limit });
   it("sheds extras first, then detail, then core; live runs to the budget", () => {
-    expect(allowCall("extra", at(4000), NaN)).toBe(true);
-    expect(allowCall("extra", at(5000), NaN)).toBe(false); // 71%
-    expect(allowCall("detail", at(5000), NaN)).toBe(true);
-    expect(allowCall("detail", at(6000), NaN)).toBe(false); // 86%
-    expect(allowCall("core", at(6000), NaN)).toBe(true);
-    expect(allowCall("core", at(6700), NaN)).toBe(false); // 96%
-    expect(allowCall("live", at(6900), NaN)).toBe(true);
-    expect(allowCall("live", at(7000), NaN)).toBe(false);
+    expect(allowCall("extra", at(5000), NaN)).toBe(true);
+    expect(allowCall("extra", at(5600), NaN)).toBe(false); // 76%
+    expect(allowCall("detail", at(6500), NaN)).toBe(true);
+    expect(allowCall("detail", at(6700), NaN)).toBe(false); // 91%
+    expect(allowCall("core", at(7100), NaN)).toBe(true);
+    expect(allowCall("core", at(7150), NaN)).toBe(false); // 97.3%
+    expect(allowCall("live", at(7300), NaN)).toBe(true);
+    expect(allowCall("live", at(7350), NaN)).toBe(false);
+  });
+  it("keeps fixtures and tables running at 89% of the plan (the 2026-10-06 blank page)", () => {
+    expect(allowCall("core", at(6654), NaN)).toBe(true);
   });
   it("fails CLOSED for low priorities when usage can't be read", () => {
     expect(allowCall("extra", null, NaN)).toBe(false);
@@ -318,15 +322,15 @@ describe("quota tiers (allowCall)", () => {
     expect(allowCall("core", null, NaN)).toBe(true);
     expect(allowCall("live", null, NaN)).toBe(true);
   });
-  it("shrinks the budget with the plan's real limit (Free plan = 100/day)", () => {
-    expect(effectiveBudget(100)).toBe(93);
-    expect(effectiveBudget(7500)).toBe(6975);
-    expect(effectiveBudget(null)).toBe(7000);
+  it("follows the plan's real limit (Free plan = 100/day)", () => {
+    expect(effectiveBudget(100)).toBe(90);
+    expect(effectiveBudget(7500)).toBe(7350);
+    expect(effectiveBudget(null)).toBe(7350);
     expect(allowCall("core", at(90, 100), NaN)).toBe(false);
   });
   it("honours a forced brownout drill", () => {
-    expect(allowCall("detail", at(0), 0.9)).toBe(false);
-    expect(allowCall("core", at(0), 0.9)).toBe(true);
+    expect(allowCall("detail", at(0), 0.95)).toBe(false);
+    expect(allowCall("core", at(0), 0.95)).toBe(true);
   });
 });
 

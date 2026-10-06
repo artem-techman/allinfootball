@@ -106,7 +106,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * data instead — no matter what drives traffic (bots, bugs, spikes). Tune via
  * FOOTBALL_DAILY_BUDGET.
  */
-const DAILY_BUDGET = Number(process.env.FOOTBALL_DAILY_BUDGET) || 7000;
+const DAILY_BUDGET = Number(process.env.FOOTBALL_DAILY_BUDGET) || 7350;
 let budgetWarned = false;
 let budgetWarned80 = false;
 
@@ -155,11 +155,19 @@ export async function dailyUsage(): Promise<{ used: number; limit: number | null
 export type CallPriority = "live" | "core" | "detail" | "extra";
 
 /** Share of the daily budget at which each priority stops calling the provider. */
-const SHED_AT: Record<CallPriority, number> = { extra: 0.7, detail: 0.85, core: 0.95, live: 1 };
+// Tuned 2026-10-06: the old 70/85/95% of a 93%-of-plan budget shed fixtures
+// and tables at ~88% of the real limit — the home page went blank with 846
+// requests still unused. Core data now runs to 97% of (plan limit − 150).
+const SHED_AT: Record<CallPriority, number> = { extra: 0.75, detail: 0.9, core: 0.97, live: 1 };
 
-/** The budget actually in force: our soft ceiling, or 93% of the plan's limit if lower. */
+/** Requests always held back below the plan's real daily limit. */
+const PLAN_RESERVE = 150;
+
+/** The budget actually in force: our soft ceiling, or the plan's real limit minus a
+ *  small reserve if that's lower (on a 100/day Free plan: 90% of it). */
 export function effectiveBudget(limitDay: number | null): number {
-  return limitDay ? Math.min(DAILY_BUDGET, Math.floor(limitDay * 0.93)) : DAILY_BUDGET;
+  if (!limitDay) return DAILY_BUDGET;
+  return Math.min(DAILY_BUDGET, limitDay - Math.min(PLAN_RESERVE, Math.ceil(limitDay * 0.1)));
 }
 
 /**
@@ -1127,7 +1135,7 @@ export const apiFootball: FootballProvider = {
     return swr(`scorers:${leagueId}:${season}`, TTL.topScorers, () =>
       withLastGood(`scorers:${leagueId}:${season}`, async () => {
         // /players/topscorers is NOT paginated — it rejects a `page` param.
-        const env = await apiGet<RawScorer>("/players/topscorers", { league: leagueId, season }, { revalidate: TTL.topScorers, priority: "detail" });
+        const env = await apiGet<RawScorer>("/players/topscorers", { league: leagueId, season }, { revalidate: TTL.topScorers, priority: "core" });
         return mapTopScorers(env.response, leagueId, season);
       }),
     );

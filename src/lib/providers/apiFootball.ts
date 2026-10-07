@@ -1324,3 +1324,62 @@ export async function verifyLeagueIds(): Promise<
   }
   return results;
 }
+
+/* ------------------------------ worker fetchers ------------------------------ */
+/*
+ * Direct provider reads for the ingest worker (src/lib/ingest). No in-memory
+ * cache, no Next data cache: the worker runs on a fixed schedule and is the one
+ * place that decides when to spend a request, so every call here is a real,
+ * fresh request. Quota tiers (apiGet) still apply as a backstop.
+ */
+
+export const ingestFetch = {
+  async seasonFixtures(leagueId: number, season: number): Promise<Match[]> {
+    const env = await apiGet<RawFixture>("/fixtures", { league: leagueId, season }, { priority: "core" });
+    return mapFixtures(env.response);
+  },
+
+  async fixturesOnDate(dateIso: string): Promise<Match[]> {
+    const env = await apiGet<RawFixture>("/fixtures", { date: dateIso }, { priority: "core" });
+    return mapFixtures(env.response);
+  },
+
+  /** Full bundles (match + events + lineups + stats), ≤ 20 ids per request. */
+  async bundles(ids: number[]): Promise<FixtureBundle[]> {
+    const out: FixtureBundle[] = [];
+    const sorted = [...new Set(ids)].sort((a, b) => a - b);
+    for (let i = 0; i < sorted.length; i += 20) {
+      const chunk = sorted.slice(i, i + 20);
+      const env = await apiGet<RawFixture>("/fixtures", { ids: chunk.join("-") }, { priority: "live" });
+      for (const raw of env.response) {
+        try {
+          const id = raw.fixture.id;
+          out.push({
+            match: mapFixture(raw),
+            events: Array.isArray(raw.events) ? raw.events.map((e, n) => mapEvent(e, id, n)) : undefined,
+            lineups: Array.isArray(raw.lineups) ? raw.lineups.map((l) => mapLineup(l, id)) : undefined,
+            stats: Array.isArray(raw.statistics) ? raw.statistics.map((st) => mapStatistics(st, id)) : undefined,
+          });
+        } catch {
+          /* skip one malformed record */
+        }
+      }
+    }
+    return out;
+  },
+
+  async standings(leagueId: number, season: number): Promise<Standing[]> {
+    const env = await apiGet<RawStandingsEnvelope>("/standings", { league: leagueId, season }, { priority: "core" });
+    return env.response[0] ? mapStandings(env.response[0]) : [];
+  },
+
+  async topScorers(leagueId: number, season: number): Promise<TopScorer[]> {
+    const env = await apiGet<RawScorer>("/players/topscorers", { league: leagueId, season }, { priority: "core" });
+    return mapTopScorers(env.response, leagueId, season);
+  },
+
+  async topAssists(leagueId: number, season: number): Promise<TopScorer[]> {
+    const env = await apiGet<RawScorer>("/players/topassists", { league: leagueId, season }, { priority: "detail" });
+    return mapTopScorers(env.response, leagueId, season).map((t, i) => ({ ...t, rank: i + 1 }));
+  },
+};

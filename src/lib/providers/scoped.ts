@@ -122,7 +122,7 @@ function windowFixtures(index: ScopeIndex, now = Date.now()): Match[] {
 }
 
 /** Simple per-instance token bucket for lookups we can't allow-list (players). */
-function tokenBucket(perHour: number) {
+export function tokenBucket(perHour: number) {
   let tokens = perHour;
   let last = Date.now();
   return () => {
@@ -135,7 +135,7 @@ function tokenBucket(perHour: number) {
   };
 }
 
-const TEAM_ALIASES: Record<string, string[]> = {
+export const TEAM_ALIASES: Record<string, string[]> = {
   spurs: ["tottenham"],
   "man utd": ["manchester united"],
   "man united": ["manchester united"],

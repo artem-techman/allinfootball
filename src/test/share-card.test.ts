@@ -183,3 +183,13 @@ describe("share copy and links", () => {
     expect(teamInitials("Borussia Mönchengladbach")).toBe("BM");
   });
 });
+
+describe("crest format sniffing (GIF served as image/png)", async () => {
+  const { imageKind } = await import("@/lib/seo/ogImage");
+  it("recognises formats by their bytes", () => {
+    expect(imageKind(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))).toBe("png");
+    expect(imageKind(Buffer.from("GIF87a\x01\x00", "binary"))).toBe("gif");
+    expect(imageKind(Buffer.from([0xff, 0xd8, 0xff, 0xe0]))).toBe("jpeg");
+    expect(imageKind(Buffer.from("hello"))).toBe("unknown");
+  });
+});

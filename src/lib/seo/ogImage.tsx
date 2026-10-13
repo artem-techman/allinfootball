@@ -22,9 +22,38 @@ export async function crestDataUri(url: string | undefined): Promise<string | un
     const res = await fetch(url, { signal: AbortSignal.timeout(2500), next: { revalidate: 86_400 } });
     const type = res.headers.get("content-type") ?? "";
     if (!res.ok || !/^image\/(png|jpeg|gif|webp)/.test(type)) return undefined;
-    const buf = Buffer.from(await res.arrayBuffer());
+    let buf = Buffer.from(await res.arrayBuffer());
     if (buf.byteLength === 0 || buf.byteLength > 512_000) return undefined;
-    return `data:${type.split(";")[0]};base64,${buf.toString("base64")}`;
+    // Trust the bytes, not the header: the provider serves some national flags
+    // as GIF labelled image/png, and the card renderer can't draw GIF/WebP — it
+    // silently left Cyprus's crest blank. Convert anything that isn't PNG/JPEG.
+    const kind = imageKind(buf);
+    if (kind === "unknown") return undefined;
+    if (kind === "gif" || kind === "webp") {
+      const converted = await toPng(buf);
+      if (!converted) return undefined;
+      buf = converted;
+    }
+    const mime = kind === "jpeg" ? "image/jpeg" : "image/png";
+    return `data:${mime};base64,${buf.toString("base64")}`;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Sniff the real image format from its first bytes. Exported for tests. */
+export function imageKind(buf: Buffer): "png" | "jpeg" | "gif" | "webp" | "unknown" {
+  if (buf.length >= 8 && buf.readUInt32BE(0) === 0x89504e47) return "png";
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "jpeg";
+  if (buf.length >= 6 && buf.subarray(0, 3).toString("ascii") === "GIF") return "gif";
+  if (buf.length >= 12 && buf.subarray(0, 4).toString("ascii") === "RIFF" && buf.subarray(8, 12).toString("ascii") === "WEBP") return "webp";
+  return "unknown";
+}
+
+async function toPng(buf: Buffer): Promise<Buffer | undefined> {
+  try {
+    const sharp = (await import("sharp")).default;
+    return await sharp(buf).png().toBuffer();
   } catch {
     return undefined;
   }

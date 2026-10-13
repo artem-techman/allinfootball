@@ -15,6 +15,21 @@ const PIN = `<svg width="240" height="240" viewBox="0 0 100 100" xmlns="http://w
 /** The BallMark pin as a data URI (no network fetch at render time). */
 export const PIN_DATA_URI = `data:image/svg+xml;base64,${Buffer.from(PIN).toString("base64")}`;
 
+/** Fetch a crest and inline it; undefined on any problem (card renders without it). */
+export async function crestDataUri(url: string | undefined): Promise<string | undefined> {
+  if (!url || !/^https:\/\//.test(url)) return undefined;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(2500), next: { revalidate: 86_400 } });
+    const type = res.headers.get("content-type") ?? "";
+    if (!res.ok || !/^image\/(png|jpeg|gif|webp)/.test(type)) return undefined;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.byteLength === 0 || buf.byteLength > 512_000) return undefined;
+    return `data:${type.split(";")[0]};base64,${buf.toString("base64")}`;
+  } catch {
+    return undefined;
+  }
+}
+
 export const OG_BACKGROUND = "radial-gradient(900px 600px at 78% 30%, #14361f 0%, #08090c 60%)";
 
 /** The site-wide share card (brand, tagline, competition strap). */

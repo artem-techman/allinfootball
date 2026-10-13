@@ -3,7 +3,7 @@ import { provider } from "@/lib/providers";
 import { readArchivedMatch } from "@/lib/db/matchStore";
 import { idFromSlug } from "@/lib/utils/slug";
 import { matchShareText } from "@/lib/seo/matchShare";
-import { OG_BACKGROUND, OG_SIZE, PIN_DATA_URI, siteImageResponse } from "@/lib/seo/ogImage";
+import { OG_BACKGROUND, OG_SIZE, PIN_DATA_URI, crestDataUri, siteImageResponse } from "@/lib/seo/ogImage";
 import { SITE_NAME } from "@/lib/seo/metadata";
 import type { Match } from "@/lib/providers/types";
 
@@ -47,21 +47,6 @@ export default async function MatchOpengraphImage({
     });
   } catch {
     return siteImageResponse();
-  }
-}
-
-/** Fetch a crest and inline it; undefined on any problem (card renders without it). */
-async function crestDataUri(url: string | undefined): Promise<string | undefined> {
-  if (!url || !/^https:\/\//.test(url)) return undefined;
-  try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(2500), next: { revalidate: 86_400 } });
-    const type = res.headers.get("content-type") ?? "";
-    if (!res.ok || !/^image\/(png|jpeg|gif|webp)/.test(type)) return undefined;
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.byteLength === 0 || buf.byteLength > 512_000) return undefined;
-    return `data:${type.split(";")[0]};base64,${buf.toString("base64")}`;
-  } catch {
-    return undefined;
   }
 }
 

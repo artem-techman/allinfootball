@@ -131,7 +131,15 @@ async function goals(sql: Sql, fixtures: Match[], report: RunReport) {
       continue;
     }
     const events = await provider.getEvents(m.id).catch(() => []);
-    const lastGoal = [...events].reverse().find((e) => e.type === "goal" || e.type === "penalty" || e.type === "own_goal");
+    const goalEvents = events.filter((e) => e.type === "goal" || e.type === "penalty" || e.type === "own_goal");
+    // The score often updates before the provider names the scorer: wait up to
+    // ~3 minutes for the goal event, then post without a name rather than not at all.
+    const waitedMs = Date.now() - Date.parse(seen[0]!.posted_at);
+    if (goalEvents.length < total && waitedMs < 3 * 60_000) {
+      report.skipped.push(`goal ${m.id} ${score}: waiting for the scorer`);
+      continue;
+    }
+    const lastGoal = goalEvents[goalEvents.length - 1];
     await post(sql, `goal:${m.id}:${score}`, "goal", report, () => postText(goalMessage(m, lastGoal)));
   }
 }

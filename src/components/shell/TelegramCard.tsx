@@ -38,17 +38,17 @@ export function TelegramCard({ compact = false }: { compact?: boolean }) {
       rel="noopener noreferrer"
       className="group block overflow-hidden rounded-card border border-hairline bg-card transition-colors hover:border-accent-lime"
     >
-      <div className="relative aspect-[16/9] w-full overflow-hidden">
+      <div className="relative aspect-[32/9] w-full overflow-hidden">
         <Image
           src="/brand/telegram-banner.webp"
           alt=""
           fill
           sizes="(max-width: 820px) 360px, 240px"
           // frame the phone + paper plane (lower half of the artwork)
-          className="scale-[1.35] object-cover object-[55%_78%] transition-transform duration-500 group-hover:scale-[1.42] motion-reduce:transition-none"
+          className="object-cover object-[55%_72%] transition-transform duration-500 group-hover:scale-[1.05] motion-reduce:transition-none"
         />
-        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-card to-transparent" />
-        <span className="absolute left-2.5 top-2.5 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-lime backdrop-blur-sm">
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-card to-transparent" />
+        <span className="absolute left-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-lime backdrop-blur-sm">
           Telegram
         </span>
       </div>

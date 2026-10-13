@@ -13,6 +13,7 @@ import { HeadToHead } from "./HeadToHead";
 import { MatchInfo } from "./MatchInfo";
 import { OddsView } from "./OddsView";
 import { PotmVote } from "./PotmVote";
+import { ShareSheet } from "./ShareSheet";
 import { StandingsTable } from "@/components/tables/StandingsTable";
 import { ErrorBanner } from "@/components/primitives/ErrorBanner";
 import { HighlightThumb } from "@/components/highlights/HighlightThumb";
@@ -150,14 +151,18 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
 
   return (
     <div className="space-y-5">
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="inline-flex items-center gap-1.5 text-meta font-semibold text-text-secondary transition-colors hover:text-text-primary"
-      >
-        <ChevronLeftIcon size={16} />
-        Back
-      </button>
+      {/* Top bar: Back on the left, Share (finished matches) on the right. */}
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="inline-flex items-center gap-1.5 text-meta font-semibold text-text-secondary transition-colors hover:text-text-primary"
+        >
+          <ChevronLeftIcon size={16} />
+          Back
+        </button>
+        {match.status === "finished" && <ShareSheet match={match} />}
+      </div>
       {degraded && <ErrorBanner />}
       <MatchHeader match={match} events={events} />
 

@@ -4,7 +4,6 @@ import { Crest } from "@/components/primitives/Crest";
 import { LocalTime } from "@/components/primitives/LocalTime";
 import { LiveMinute } from "@/components/primitives/LiveMinute";
 import { hasShootout } from "@/lib/utils/match";
-import { ShareSheet } from "./ShareSheet";
 
 /**
  * Match center header (CLAUDE.md section 8): competition/round breadcrumb, both
@@ -50,11 +49,6 @@ export function MatchHeader({ match, events }: { match: Match; events: MatchEven
         </div>
       )}
 
-      {match.status === "finished" && (
-        <div className="mt-5 flex justify-center">
-          <ShareSheet match={match} />
-        </div>
-      )}
     </section>
   );
 }

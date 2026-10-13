@@ -117,3 +117,24 @@ export function newsScore(a: Article, now = Date.now()): number {
 export function newsMessage(a: Article): string {
   return `📰 <b>${esc(a.title)}</b>\n\n<a href="${a.sourceUrl}">Read at ${esc(a.sourceName)}</a>`;
 }
+
+/** Key words of a headline (or slug), for "same story, different outlet" checks. */
+export function storyWords(text: string): Set<string> {
+  const stop = new Set(["with", "from", "that", "this", "have", "after", "over", "into", "their", "they", "will", "been", "what", "when", "about", "says", "said", "boss", "news", "live"]);
+  return new Set(
+    text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .split(/[^a-z0-9]+/)
+      .filter((w) => w.length > 3 && !stop.has(w)),
+  );
+}
+
+/** Two headlines are the same story when most of their key words overlap. */
+export function sameStory(a: Set<string>, b: Set<string>): boolean {
+  if (!a.size || !b.size) return false;
+  let shared = 0;
+  for (const w of a) if (b.has(w)) shared += 1;
+  return shared / Math.min(a.size, b.size) >= 0.6;
+}

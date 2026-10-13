@@ -44,3 +44,13 @@ describe("telegram curation", () => {
     expect(newsScore(a("Untagged", 1, []), now)).toBe(0);
   });
 });
+
+describe("same story, different outlet", async () => {
+  const { sameStory, storyWords } = await import("@/lib/telegram/curation");
+  it("catches the BBC/Sky pair from 13 Oct", () => {
+    expect(sameStory(storyWords("PSG boss Enrique hopes Man City are not stripped of titles"), storyWords("psg-s-luis-enrique-hopes-man-city-avoid-sanctions"))).toBe(true);
+  });
+  it("keeps genuinely different stories", () => {
+    expect(sameStory(storyWords("Arsenal agree deal for winger"), storyWords("Chelsea sack manager after defeat"))).toBe(false);
+  });
+});

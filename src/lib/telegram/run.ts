@@ -15,6 +15,8 @@ import {
   newsMessage,
   newsScore,
   resultCaption,
+  sameStory,
+  storyWords,
   todayMessage,
 } from "./curation";
 
@@ -95,8 +97,13 @@ export async function runTelegram(): Promise<RunReport> {
     if ((todayNews[0]?.n ?? 0) >= 5) return;
     const stories = (await getNews({ limit: 30 }).catch(() => [])).map((a) => ({ a, score: newsScore(a) })).filter((x) => x.score >= 3);
     stories.sort((x, y) => y.score - x.score);
+    // Skip the same story from another outlet (e.g. BBC and Sky on one press conference).
+    const recent = (await sql`select key from telegram_posts where kind = 'news' and posted_at > now() - interval '24 hours'`) as { key: string }[];
+    const recentWords = recent.map((r) => storyWords(r.key.slice("news:".length)));
     for (const { a } of stories) {
       if (await alreadyPosted(sql, `news:${a.slug}`)) continue;
+      const words = storyWords(a.title);
+      if (recentWords.some((w) => sameStory(words, w))) continue;
       await post(sql, `news:${a.slug}`, "news", report, () => postText(newsMessage(a), true));
       break; // one story per run keeps the channel paced
     }

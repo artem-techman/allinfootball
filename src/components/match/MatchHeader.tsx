@@ -79,7 +79,7 @@ function ScoreCol({ match }: { match: Match }) {
   const pens = hasShootout(match);
   return (
     <div className="px-4 text-center">
-      <div className="tabular text-[40px] font-bold leading-none">
+      <div className="tabular whitespace-nowrap text-[32px] font-bold leading-none min-[420px]:text-[40px]">
         {hasScore ? `${match.homeScore} - ${match.awayScore}` : "-"}
       </div>
       {pens && (

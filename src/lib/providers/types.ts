@@ -134,6 +134,15 @@ export interface Lineup {
   starters: LineupPlayer[];
   bench: LineupPlayer[];
   coachName?: string;
+  /** Kit colours from the provider ("#rrggbb"): outfield and goalkeeper. */
+  kit?: KitColors;
+  keeperKit?: KitColors;
+}
+
+export interface KitColors {
+  primary: string;
+  number: string;
+  border: string;
 }
 
 export interface MatchStats {

@@ -553,8 +553,13 @@ export function decodeName(name: string | null | undefined): string | undefined 
     .replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(Number(n)));
 }
 
+interface RawKit {
+  primary?: string | null;
+  number?: string | null;
+  border?: string | null;
+}
 interface RawLineup {
-  team: { id: number };
+  team: { id: number; colors?: { player?: RawKit | null; goalkeeper?: RawKit | null } | null };
   formation?: string | null;
   startXI: { player: RawLineupPlayer }[];
   substitutes: { player: RawLineupPlayer }[];
@@ -588,7 +593,16 @@ export function mapLineup(raw: RawLineup, matchId: number): Lineup {
     starters: raw.startXI.map((s) => mapLineupPlayer(s.player)),
     bench: raw.substitutes.map((s) => mapLineupPlayer(s.player)),
     coachName: raw.coach?.name,
+    kit: mapKit(raw.team.colors?.player),
+    keeperKit: mapKit(raw.team.colors?.goalkeeper),
   };
+}
+
+/** Kit colours as "#rrggbb" (the provider sends bare hex); undefined if missing/invalid. */
+function mapKit(k: RawKit | null | undefined): Lineup["kit"] {
+  const hex = (v?: string | null) => (v && /^[0-9a-f]{6}$/i.test(v) ? `#${v}` : undefined);
+  const primary = hex(k?.primary);
+  return primary ? { primary, number: hex(k?.number) ?? "#ffffff", border: hex(k?.border) ?? primary } : undefined;
 }
 
 interface RawStatistics {

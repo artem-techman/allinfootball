@@ -195,7 +195,7 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
           </>
         )}
         {tab === "live" && <CommentaryFeed events={events} match={match} />}
-        {tab === "lineups" && <LineupsView lineups={lineups} match={match} />}
+        {tab === "lineups" && <LineupsView lineups={lineups} match={match} events={events} />}
         {tab === "stats" && <StatsView home={homeStats} away={awayStats} />}
         {tab === "highlights" && <HighlightsTab highlight={bundle.highlight} status={match.status} />}
         {tab === "h2h" && <HeadToHead fixtures={bundle.h2h} match={match} />}

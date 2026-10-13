@@ -147,7 +147,7 @@ interface Scale {
 const SCALE: Record<ShareCardFormat, Scale> = {
   story: {
     pad: 80,
-    padTop: 200,
+    padTop: 250,
     padBottom: 190,
     comp: 40,
     round: 32,
@@ -281,8 +281,40 @@ export function renderShareCard({ match, events, format, homeCrest, awayCrest, f
             padding: `${s.padTop}px ${s.pad}px ${s.padBottom}px`,
           }}
         >
+          {/* The brand lockup exactly as in the site header: pin, thin divider,
+              "MY / FOOTBALL / TRACKER" stacked in Inter ExtraBold — top of the card. */}
+          <div style={{ display: "flex", alignItems: "center" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={PIN_DATA_URI} width={s.pin} height={s.pin} alt="" />
+            <div
+              style={{
+                display: "flex",
+                width: 2,
+                height: Math.round(s.pin * 0.82),
+                marginLeft: Math.round(s.pin * 0.3),
+                marginRight: Math.round(s.pin * 0.3),
+                background: "rgba(255,255,255,0.18)",
+              }}
+            />
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                fontSize: s.brand,
+                fontWeight: 800,
+                lineHeight: 1.12,
+                letterSpacing: 0.4,
+                color: C.white,
+              }}
+            >
+              <div style={{ display: "flex" }}>MY</div>
+              <div style={{ display: "flex" }}>FOOTBALL</div>
+              <div style={{ display: "flex" }}>TRACKER</div>
+            </div>
+          </div>
+
           {/* competition + round */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: format === "story" ? 56 : 26 }}>
             <div style={{ display: "flex", fontSize: s.comp, fontWeight: 700, letterSpacing: 4, color: C.lime, textAlign: "center" }}>
               {clip(competition, format === "story" ? 34 : 44)}
             </div>
@@ -307,45 +339,12 @@ export function renderShareCard({ match, events, format, homeCrest, awayCrest, f
             {hasScorers && <Scorers sides={scorers} s={s} />}
           </div>
 
-          {/* date + venue, then the brand lockup */}
+          {/* date + venue, then the address */}
           {meta && (
             <div style={{ display: "flex", fontSize: s.meta, color: C.muted, textAlign: "center" }}>{meta}</div>
           )}
-          {/* The brand lockup exactly as in the site header: pin, thin divider,
-              "MY / FOOTBALL / TRACKER" stacked in Inter ExtraBold. */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: format === "story" ? 40 : 22 }}>
-            <div style={{ display: "flex", alignItems: "center" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={PIN_DATA_URI} width={s.pin} height={s.pin} alt="" />
-              <div
-                style={{
-                  display: "flex",
-                  width: 2,
-                  height: Math.round(s.pin * 0.82),
-                  marginLeft: Math.round(s.pin * 0.3),
-                  marginRight: Math.round(s.pin * 0.3),
-                  background: "rgba(255,255,255,0.18)",
-                }}
-              />
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  fontSize: s.brand,
-                  fontWeight: 800,
-                  lineHeight: 1.12,
-                  letterSpacing: 0.4,
-                  color: C.white,
-                }}
-              >
-                <div style={{ display: "flex" }}>MY</div>
-                <div style={{ display: "flex" }}>FOOTBALL</div>
-                <div style={{ display: "flex" }}>TRACKER</div>
-              </div>
-            </div>
-            <div style={{ display: "flex", marginTop: Math.round(s.pin * 0.28), fontSize: s.domain, color: C.lime }}>
-              {SITE_URL.replace(/^https?:\/\//, "")}
-            </div>
+          <div style={{ display: "flex", marginTop: format === "story" ? 16 : 10, fontSize: s.domain, color: C.lime }}>
+            {SITE_URL.replace(/^https?:\/\//, "")}
           </div>
         </div>
       </div>

@@ -315,7 +315,7 @@ export function renderShareCard({ match, events, format, homeCrest, awayCrest, f
 
           {/* competition + round */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: format === "story" ? 56 : 26 }}>
-            <div style={{ display: "flex", fontSize: s.comp, fontWeight: 700, letterSpacing: 4, color: C.lime, textAlign: "center" }}>
+            <div style={{ display: "flex", fontSize: s.comp, fontWeight: 700, letterSpacing: 4, color: C.white, textAlign: "center" }}>
               {clip(competition, format === "story" ? 34 : 44)}
             </div>
             {match.round && (

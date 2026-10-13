@@ -123,6 +123,16 @@ const SCHEMA: string[] = [
     sent_at   timestamptz not null default now(),
     primary key (user_id, match_id, kind)
   )`,
+  // Telegram channel posts: one row per post key, claimed before sending.
+  `create table if not exists telegram_posts (
+    key         text        primary key,
+    kind        text        not null,
+    status      text        not null default 'claimed',
+    attempts    smallint    not null default 1,
+    message_id  bigint,
+    detail      text,
+    posted_at   timestamptz not null default now()
+  )`,
   `create table if not exists provider_cache (
     key        text        primary key,
     body       jsonb       not null,

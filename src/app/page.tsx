@@ -9,6 +9,8 @@ import type { StoryItem } from "@/components/cards/TopStoriesCard";
 import { TopScorersCard } from "@/components/cards/TopScorersCard";
 import type { ScorerItem } from "@/components/cards/TopScorersCard";
 import { LiveNowRail } from "@/components/rail/LiveNowRail";
+import { MyClubCard } from "@/components/club/MyClubCard";
+import { clubFromCookie, clubOverview, type ClubOverview } from "@/lib/club";
 import { TopTableRail } from "@/components/rail/TopTableRail";
 import { LatestResultsRail } from "@/components/rail/LatestResultsRail";
 import { TransferRumoursRail } from "@/components/rail/TransferRumoursRail";
@@ -39,7 +41,10 @@ const TOP_TABLE_SLUG = "premier-league";
 const TOP_SCORERS_SLUG = "premier-league";
 
 export default async function HomePage() {
-  const { upcoming, results, standings, tableSlug, scorers, news, transferNews, demo } = await loadHomeData();
+  const [{ upcoming, results, standings, tableSlug, scorers, news, transferNews, demo }, myClub] = await Promise.all([
+    loadHomeData(),
+    loadMyClub(),
+  ]);
 
   // Sample data renders ONLY in the keyless demo. With a real key, a failed or
   // empty provider call must show nothing — never invented fixtures, results or
@@ -90,7 +95,8 @@ export default async function HomePage() {
         <>
           {/* On the right rail for desktop only — on mobile Live Now is surfaced
               above Upcoming Matches in the main column (see below). */}
-          <div className="hidden min-[1201px]:block">
+          <div className="hidden space-y-4 min-[1201px]:block">
+            <MyClubCard overview={myClub} />
             <LiveNowRail nextMatch={nextUpcoming} />
           </div>
           <LatestResultsRail matches={resultsToShow} />
@@ -130,7 +136,8 @@ export default async function HomePage() {
 
       {/* Live Now — surfaced above Upcoming on mobile so live games come first
           while scrolling; hidden on desktop where it lives in the right rail. */}
-      <div className="mt-7 min-[1201px]:hidden">
+      <div className="mt-7 space-y-4 min-[1201px]:hidden">
+        <MyClubCard overview={myClub} />
         <LiveNowRail nextMatch={nextUpcoming} />
       </div>
 
@@ -158,6 +165,12 @@ export default async function HomePage() {
 }
 
 /* --------------------------------- helpers --------------------------------- */
+
+/** The visitor's club (from its cookie) for the My Club widget; null when none picked. */
+async function loadMyClub(): Promise<ClubOverview | null> {
+  const club = await clubFromCookie();
+  return club ? clubOverview(club).catch(() => null) : null;
+}
 
 function heroTag(a: Article): string {
   const comp = a.competitionTags[0] ? getCompetitionBySlug(a.competitionTags[0]) : undefined;

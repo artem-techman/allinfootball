@@ -79,6 +79,50 @@ const SCHEMA: string[] = [
   `alter table match_archive add column if not exists mapper_version smallint`,
   // Last-good provider data (season fixture lists, tables, scorers) so any
   // instance can still render when the provider is shed or down.
+  // ---- accounts (email + one-time code), My Club, votes, matchday emails ----
+  `create table if not exists users (
+    id                 bigint generated always as identity primary key,
+    email              text        not null unique,
+    club_team_id       integer,
+    club_team_name     text,
+    club_crest         text,
+    matchday_email     boolean     not null default true,
+    unsubscribe_token  text        not null unique,
+    created_at         timestamptz not null default now(),
+    last_login_at      timestamptz
+  )`,
+  `create table if not exists login_codes (
+    id           bigint generated always as identity primary key,
+    email        text        not null,
+    code_hash    text        not null,
+    attempts     smallint    not null default 0,
+    expires_at   timestamptz not null,
+    consumed_at  timestamptz,
+    created_at   timestamptz not null default now()
+  )`,
+  `create index if not exists login_codes_email_idx on login_codes (email, created_at desc)`,
+  `create table if not exists sessions (
+    token_hash  text        primary key,
+    user_id     bigint      not null references users(id),
+    created_at  timestamptz not null default now(),
+    expires_at  timestamptz not null
+  )`,
+  `create table if not exists potm_votes (
+    match_id    bigint      not null,
+    voter       text        not null,
+    player_id   integer     not null,
+    player_name text        not null,
+    team_id     integer     not null,
+    created_at  timestamptz not null default now(),
+    primary key (match_id, voter)
+  )`,
+  `create table if not exists email_log (
+    user_id   bigint      not null references users(id),
+    match_id  bigint      not null,
+    kind      text        not null,
+    sent_at   timestamptz not null default now(),
+    primary key (user_id, match_id, kind)
+  )`,
   `create table if not exists provider_cache (
     key        text        primary key,
     body       jsonb       not null,

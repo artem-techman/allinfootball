@@ -12,6 +12,7 @@ import { StatsView } from "./StatsView";
 import { HeadToHead } from "./HeadToHead";
 import { MatchInfo } from "./MatchInfo";
 import { OddsView } from "./OddsView";
+import { PotmVote } from "./PotmVote";
 import { StandingsTable } from "@/components/tables/StandingsTable";
 import { ErrorBanner } from "@/components/primitives/ErrorBanner";
 import { HighlightThumb } from "@/components/highlights/HighlightThumb";
@@ -182,7 +183,12 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
       </div>
 
       <div>
-        {tab === "summary" && <EventTimeline events={events} match={match} />}
+        {tab === "summary" && (
+          <>
+            {match.status === "finished" && <PotmVote match={match} />}
+            <EventTimeline events={events} match={match} />
+          </>
+        )}
         {tab === "live" && <CommentaryFeed events={events} match={match} />}
         {tab === "lineups" && <LineupsView lineups={lineups} match={match} />}
         {tab === "stats" && <StatsView home={homeStats} away={awayStats} />}

@@ -60,6 +60,32 @@ export default function PrivacyPage() {
         </p>
       </LegalSection>
 
+      <LegalSection heading="Accounts and My Club">
+        <p>
+          Accounts are optional. If you sign in, we store your email address, the club you follow,
+          whether you want matchday emails, and when you last signed in. Sign-in uses a one-time code
+          we email to you; we keep only a scrambled form of each code, and it expires after 10
+          minutes. Your session is kept in a secure cookie.
+        </p>
+        <p>
+          Matchday emails go only to signed-in fans who leave them switched on. Every email has a
+          one-click unsubscribe link, and you can turn them off on the My Club page. We never sell or
+          share your email address. Emails are sent through our email provider, Resend.
+        </p>
+        <p>
+          The club you pick is also kept in a small cookie on your device, so the site can show it
+          without you signing in.
+        </p>
+      </LegalSection>
+
+      <LegalSection heading="Player of the Match votes">
+        <p>
+          When you vote, we store the match, the player you chose and either your account (if signed
+          in) or a random device id in a cookie, so each fan votes once per match. Results are only
+          ever shown as totals.
+        </p>
+      </LegalSection>
+
       <LegalSection heading="Stored in your browser">
         <p>
           A few display preferences stay on your device in local storage: whether the sidebar is

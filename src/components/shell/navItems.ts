@@ -6,6 +6,7 @@ import {
   TransferIcon,
   NewsIcon,
   VideoIcon,
+  ShieldIcon,
 } from "@/components/primitives/icons";
 
 export interface NavItem {
@@ -21,6 +22,7 @@ export interface NavItem {
  */
 export const NAV: NavItem[] = [
   { label: "Home", href: "/", Icon: HomeIcon },
+  { label: "My Club", href: "/my-club", Icon: ShieldIcon },
   { label: "Matches", href: "/matches", Icon: MatchesIcon },
   { label: "Competitions", href: "/competition/premier-league/table", Icon: TrophyIcon },
   { label: "Feed", href: "/feed", Icon: VideoIcon },

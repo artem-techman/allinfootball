@@ -187,3 +187,27 @@ export const PlayIcon = (p: IconProps) => (
     <path d="M7 4.5v15l12-7.5z" />
   </Svg>
 );
+
+export const ShareIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="18" cy="5" r="3" />
+    <circle cx="6" cy="12" r="3" />
+    <circle cx="18" cy="19" r="3" />
+    <path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" />
+  </Svg>
+);
+
+export const DownloadIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 3v12" />
+    <path d="m7 10 5 5 5-5" />
+    <path d="M5 21h14" />
+  </Svg>
+);
+
+export const LinkIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+  </Svg>
+);

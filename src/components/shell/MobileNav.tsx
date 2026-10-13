@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { TelegramCard } from "./TelegramCard";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Logo } from "@/components/primitives/Logo";
 import { NAV, isNavActive } from "./navItems";
@@ -110,6 +111,9 @@ export function MobileNav() {
                 );
               })}
             </nav>
+            <div className="mt-5" onClick={() => setOpen(false)}>
+              <TelegramCard />
+            </div>
           </div>
         </div>
       )}

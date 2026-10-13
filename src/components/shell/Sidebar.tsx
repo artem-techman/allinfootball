@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Logo } from "@/components/primitives/Logo";
 import { FeedbackCard } from "./FeedbackCard";
+import { TelegramCard } from "./TelegramCard";
 import { NAV, isNavActive } from "./navItems";
 import { PanelLeftIcon } from "@/components/primitives/icons";
 
@@ -59,7 +60,7 @@ export function Sidebar() {
   return (
     <aside
       data-collapsed={collapsed}
-      className={`flex h-full flex-col border-r border-hairline bg-page py-5 transition-[width] duration-200 ease-out ${
+      className={`flex h-full flex-col overflow-y-auto overflow-x-hidden border-r border-hairline bg-page py-5 transition-[width] duration-200 ease-out ${
         collapsed ? "w-[76px] px-3" : "w-sidebar px-4"
       }`}
     >
@@ -104,8 +105,9 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="mt-auto pt-4">
-        {/* Feedback widget — shown only when the sidebar is expanded. */}
+      <div className="mt-auto space-y-3 pt-4">
+        {/* Telegram channel invite (plane icon when collapsed), then feedback. */}
+        <TelegramCard compact={collapsed} />
         {!collapsed && <FeedbackCard />}
       </div>
     </aside>

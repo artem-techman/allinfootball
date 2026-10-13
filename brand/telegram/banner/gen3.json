@@ -1,0 +1,23 @@
+[
+  {
+    "created_at": "2026-10-13T19:53:20.959928Z",
+    "display_name": "Nano Banana Pro",
+    "id": "f25caf8e-bcb4-4afc-891b-a61a17199f9e",
+    "job_type": "nano_banana_pro",
+    "min_result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3FtY5nMxkk3lomwIrYJWes0F0e9/hf_20261013_195320_f25caf8e-bcb4-4afc-891b-a61a17199f9e_min.webp",
+    "params": {
+      "application": null,
+      "aspect_ratio": "16:9",
+      "batch_size": 1,
+      "height": 1536,
+      "input_image": null,
+      "input_images": [],
+      "prompt": "Abstract premium sports background: a football rocketing through the frame, morphing into a glowing white paper plane, motion streaks of emerald to lime-green light, dark stadium floodlight haze behind, near-black background, energetic yet minimal, high-end brand campaign aesthetic, lots of dark negative space, no text, no letters, no logos, no watermark",
+      "resolution": "2k",
+      "surface": null,
+      "width": 2752
+    },
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3FtY5nMxkk3lomwIrYJWes0F0e9/hf_20261013_195320_f25caf8e-bcb4-4afc-891b-a61a17199f9e.png",
+    "status": "completed"
+  }
+]

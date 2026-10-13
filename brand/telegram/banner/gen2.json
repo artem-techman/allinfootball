@@ -1,0 +1,23 @@
+[
+  {
+    "created_at": "2026-10-13T19:53:21.11607Z",
+    "display_name": "Nano Banana Pro",
+    "id": "8b4b1f1c-3ea7-4196-8d51-c247ffae0e8a",
+    "job_type": "nano_banana_pro",
+    "min_result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3FtY5nMxkk3lomwIrYJWes0F0e9/hf_20261013_195321_8b4b1f1c-3ea7-4196-8d51-c247ffae0e8a_min.webp",
+    "params": {
+      "application": null,
+      "aspect_ratio": "16:9",
+      "batch_size": 1,
+      "height": 1536,
+      "input_image": null,
+      "input_images": [],
+      "prompt": "Premium dark product shot: a modern smartphone lying on a dark football pitch at night, its screen glowing with an abstract green notification card and a football icon, a luminous white paper plane hovering just above the phone with a lime-green light trail, stadium floodlights bokeh in the background, emerald and lime colour palette on near-black, cinematic lighting, shallow depth of field, no readable text, no letters, no logos, no watermark",
+      "resolution": "2k",
+      "surface": null,
+      "width": 2752
+    },
+    "result_url": "https://d8j0ntlcm91z4.cloudfront.net/user_3FtY5nMxkk3lomwIrYJWes0F0e9/hf_20261013_195321_8b4b1f1c-3ea7-4196-8d51-c247ffae0e8a.png",
+    "status": "completed"
+  }
+]

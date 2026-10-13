@@ -2,6 +2,11 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // The share-card routes read the Inter font files from disk at runtime.
+  outputFileTracingIncludes: {
+    "/match/[slug]/card/story": ["./src/lib/seo/fonts/*.ttf"],
+    "/match/[slug]/card/square": ["./src/lib/seo/fonts/*.ttf"],
+  },
   experimental: {
     // Fully prefetched pages (the sidebar links) are reused for 30s, not the
     // default 5 min, so a prefetched page never shows minutes-old scores.

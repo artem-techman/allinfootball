@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { provider } from "@/lib/providers";
 import { readArchivedMatch } from "@/lib/db/matchStore";
@@ -48,6 +50,24 @@ function notFound(): Response {
  * OG image — no new provider call patterns) and render its share card. 404 for
  * an unknown id or a match that hasn't finished.
  */
+/** Inter, the site's typeface, so the card's wordmark and numbers match the site
+ *  (the renderer's built-in font has no bold weight). Read once per instance;
+ *  bundled via outputFileTracingIncludes in next.config. */
+type CardFont = { name: string; data: ArrayBuffer; weight: 400 | 700 | 800; style: "normal" };
+let fontsPromise: Promise<CardFont[]> | null = null;
+export function loadCardFonts(): Promise<CardFont[]> {
+  fontsPromise ??= Promise.all(
+    ([400, 700, 800] as const).map(async (weight) => {
+      const buf = await readFile(join(process.cwd(), "src/lib/seo/fonts", `Inter-${weight}.ttf`));
+      return { name: "Inter", data: buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer, weight, style: "normal" as const };
+    }),
+  ).catch(() => {
+    fontsPromise = null; // retry next time; the card falls back to the default font
+    return [];
+  });
+  return fontsPromise;
+}
+
 export async function shareCardResponse(slug: string, format: ShareCardFormat): Promise<Response> {
   const id = idFromSlug(slug);
   if (!id) return notFound();
@@ -72,11 +92,11 @@ export async function shareCardResponse(slug: string, format: ShareCardFormat): 
   try {
     // Render eagerly so a Satori failure is caught here (ImageResponse renders
     // lazily inside the response stream, where it can't be caught).
-    png = await renderShareCard({ match, events, format, homeCrest, awayCrest }).arrayBuffer();
+    png = await renderShareCard({ match, events, format, homeCrest, awayCrest, fonts: await loadCardFonts() }).arrayBuffer();
   } catch {
     try {
       // A crest Satori can't decode is the likeliest culprit — retry with discs.
-      png = await renderShareCard({ match, events, format }).arrayBuffer();
+      png = await renderShareCard({ match, events, format, fonts: await loadCardFonts() }).arrayBuffer();
     } catch {
       return new Response("Card unavailable", { status: 500, headers: { "cache-control": "no-store" } });
     }
@@ -140,9 +160,9 @@ const SCALE: Record<ShareCardFormat, Scale> = {
     scorerCol: 430,
     scorerGap: 14,
     meta: 30,
-    pin: 76,
-    brand: 34,
-    domain: 28,
+    pin: 100,
+    brand: 29,
+    domain: 26,
     maxScorers: 6,
   },
   square: {
@@ -160,9 +180,9 @@ const SCALE: Record<ShareCardFormat, Scale> = {
     scorerCol: 440,
     scorerGap: 6,
     meta: 22,
-    pin: 52,
-    brand: 24,
-    domain: 20,
+    pin: 64,
+    brand: 19,
+    domain: 18,
     maxScorers: 5,
   },
 };
@@ -173,9 +193,10 @@ export interface ShareCardInput {
   format: ShareCardFormat;
   homeCrest?: string;
   awayCrest?: string;
+  fonts?: CardFont[];
 }
 
-export function renderShareCard({ match, events, format, homeCrest, awayCrest }: ShareCardInput): ImageResponse {
+export function renderShareCard({ match, events, format, homeCrest, awayCrest, fonts = [] }: ShareCardInput): ImageResponse {
   const size = SHARE_CARD_SIZES[format];
   const s = SCALE[format];
   const home = match.homeTeam?.name ?? "Home";
@@ -218,7 +239,7 @@ export function renderShareCard({ match, events, format, homeCrest, awayCrest }:
           position: "relative",
           background: "#08090c",
           color: C.white,
-          fontFamily: "sans-serif",
+          fontFamily: fonts.length ? "Inter" : "sans-serif",
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -290,20 +311,46 @@ export function renderShareCard({ match, events, format, homeCrest, awayCrest }:
           {meta && (
             <div style={{ display: "flex", fontSize: s.meta, color: C.muted, textAlign: "center" }}>{meta}</div>
           )}
-          <div style={{ display: "flex", alignItems: "center", marginTop: format === "story" ? 36 : 20 }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={PIN_DATA_URI} width={s.pin} height={s.pin} alt="" />
-            <div style={{ display: "flex", flexDirection: "column", marginLeft: 18 }}>
-              <div style={{ display: "flex", fontSize: s.brand, fontWeight: 800, letterSpacing: 3 }}>MY FOOTBALL TRACKER</div>
-              <div style={{ display: "flex", fontSize: s.domain, color: C.lime, marginTop: 2 }}>
-                {SITE_URL.replace(/^https?:\/\//, "")}
+          {/* The brand lockup exactly as in the site header: pin, thin divider,
+              "MY / FOOTBALL / TRACKER" stacked in Inter ExtraBold. */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: format === "story" ? 40 : 22 }}>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={PIN_DATA_URI} width={s.pin} height={s.pin} alt="" />
+              <div
+                style={{
+                  display: "flex",
+                  width: 2,
+                  height: Math.round(s.pin * 0.82),
+                  marginLeft: Math.round(s.pin * 0.3),
+                  marginRight: Math.round(s.pin * 0.3),
+                  background: "rgba(255,255,255,0.18)",
+                }}
+              />
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  fontSize: s.brand,
+                  fontWeight: 800,
+                  lineHeight: 1.12,
+                  letterSpacing: 0.4,
+                  color: C.white,
+                }}
+              >
+                <div style={{ display: "flex" }}>MY</div>
+                <div style={{ display: "flex" }}>FOOTBALL</div>
+                <div style={{ display: "flex" }}>TRACKER</div>
               </div>
+            </div>
+            <div style={{ display: "flex", marginTop: Math.round(s.pin * 0.28), fontSize: s.domain, color: C.lime }}>
+              {SITE_URL.replace(/^https?:\/\//, "")}
             </div>
           </div>
         </div>
       </div>
     ),
-    size,
+    { ...size, fonts: fonts.length ? fonts : undefined },
   );
 }
 

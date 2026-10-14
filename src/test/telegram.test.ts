@@ -54,3 +54,14 @@ describe("same story, different outlet", async () => {
     expect(sameStory(storyWords("Arsenal agree deal for winger"), storyWords("Chelsea sack manager after defeat"))).toBe(false);
   });
 });
+
+describe("highlight post", async () => {
+  const { highlightMessage } = await import("@/lib/telegram/curation");
+  it("captions the official video with score, scorers and a match link", () => {
+    const ev = [{ id: "a", matchId: 7, minute: 23, type: "goal", teamId: 42, playerName: "Saka" }] as MatchEvent[];
+    const t = highlightMessage(m(), "https://www.youtube.com/watch?v=abc", ev);
+    expect(t).toContain("Highlights: Arsenal 2–1 Chelsea");
+    expect(t).toContain("⚽ Saka 23'");
+    expect(t).toContain('href="https://www.youtube.com/watch?v=abc"');
+  });
+});

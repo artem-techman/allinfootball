@@ -5,7 +5,7 @@ import { getNews } from "@/lib/news";
 import { highlights } from "@/lib/highlights";
 import { todayKey, shiftDateKey } from "@/lib/utils/date";
 import type { Match } from "@/lib/providers/types";
-import { postPhoto, postText } from "./index";
+import { postPhoto, postText, postVideoLink } from "./index";
 import {
   SITE,
   disallowedMessage,
@@ -88,7 +88,9 @@ export async function runTelegram(): Promise<RunReport> {
       const h = await highlights
         .getMatchHighlight({ home: m.homeTeam?.name ?? "", away: m.awayTeam?.name ?? "", dateIso: m.kickoffUtc, competitionSlug: m.competition?.slug })
         .catch(() => undefined);
-      if (h) await post(sql, `highlight:${m.id}`, "highlight", report, () => postText(highlightMessage(m, h.watchUrl), true));
+      if (!h) continue;
+      const events = await provider.getEvents(m.id).catch(() => []);
+      await post(sql, `highlight:${m.id}`, "highlight", report, () => postVideoLink(h.watchUrl, highlightMessage(m, h.watchUrl, events)));
     }
   });
 

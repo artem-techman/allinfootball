@@ -101,9 +101,18 @@ export function todayMessage(matches: Match[]): string {
   return `📅 <b>Today's big games</b> (UK time)\n\n${lines.join("\n")}\n\n🔔 <a href="${SITE}/matches/today?utm_source=telegram&amp;utm_medium=today">All of today's matches</a>`;
 }
 
-export function highlightMessage(m: Match, url: string): string {
+export function highlightMessage(m: Match, url: string, events: MatchEvent[] = []): string {
   const { home, away } = names(m);
-  return `🎬 <b>Highlights: ${esc(home)} ${m.homeScore ?? 0}–${m.awayScore ?? 0} ${esc(away)}</b>\n${url}`;
+  const s = scorerLines(m, events);
+  const scorers = [...s.home.map((x) => `⚽ ${esc(x)}`), ...s.away.map((x) => `⚽ ${esc(x)}`)];
+  return [
+    `🎬 <b>Highlights: ${esc(home)} ${m.homeScore ?? 0}–${m.awayScore ?? 0} ${esc(away)}</b>`,
+    `<i>${esc(m.competition?.name ?? "")}</i>`,
+    scorers.length ? `\n${scorers.join("\n")}` : "",
+    `\n▶️ <a href="${url}">Watch the official highlights</a> · 📊 <a href="${link(m, "highlights")}">Match report</a>`,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /** Rank news: big clubs and competitions first; only fresh, tagged stories. */

@@ -43,3 +43,19 @@ export async function postPhoto(url: string, captionHtml: string): Promise<numbe
   });
   return r.message_id;
 }
+
+/**
+ * A video post without hosting the video: the official YouTube link is the
+ * message's preview, shown large ABOVE the caption, and plays inside Telegram on
+ * phones. (We never download or re-upload footage — rights holders' content
+ * stays on their channels; see CLAUDE.md section 17.)
+ */
+export async function postVideoLink(url: string, captionHtml: string): Promise<number> {
+  const r = await call<{ message_id: number }>("sendMessage", {
+    chat_id: chat(),
+    text: captionHtml,
+    parse_mode: "HTML",
+    link_preview_options: { url, prefer_large_media: true, show_above_text: true },
+  });
+  return r.message_id;
+}

@@ -6,6 +6,7 @@ import { AccountPanel } from "@/components/club/AccountPanel";
 import { clubFromCookie, clubOverview } from "@/lib/club";
 import { currentUser } from "@/lib/auth";
 import { buildMetadata } from "@/lib/seo/metadata";
+import { emailEnabled } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -25,14 +26,14 @@ export default async function MyClubPage() {
     return (
       <AppShell>
         <h1 className="mb-5 text-greeting text-text-primary">My Club</h1>
-        <MyClubOnboarding signedIn={user != null} />
+        <MyClubOnboarding signedIn={user != null} canSignIn={emailEnabled()} />
       </AppShell>
     );
   }
   const overview = await clubOverview(club);
   return (
     <AppShell
-      rail={<AccountPanel email={user?.email ?? null} matchdayEmail={user?.matchdayEmail ?? true} clubName={club.name} />}
+      rail={<AccountPanel email={user?.email ?? null} matchdayEmail={user?.matchdayEmail ?? true} clubName={club.name} canSignIn={emailEnabled()} />}
     >
       <ClubDashboard overview={overview} />
     </AppShell>

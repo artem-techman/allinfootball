@@ -5,7 +5,17 @@ import { useRouter } from "next/navigation";
 import { EmailSignIn } from "./EmailSignIn";
 
 /** Account box on My Club: sign in, matchday email switch, change club, sign out. */
-export function AccountPanel({ email, matchdayEmail, clubName }: { email: string | null; matchdayEmail: boolean; clubName: string }) {
+export function AccountPanel({
+  email,
+  matchdayEmail,
+  clubName,
+  canSignIn,
+}: {
+  email: string | null;
+  matchdayEmail: boolean;
+  clubName: string;
+  canSignIn: boolean;
+}) {
   const router = useRouter();
   const [on, setOn] = useState(matchdayEmail);
   const [busy, setBusy] = useState(false);
@@ -41,13 +51,17 @@ export function AccountPanel({ email, matchdayEmail, clubName }: { email: string
             </span>
           </label>
         </>
-      ) : (
+      ) : canSignIn ? (
         <>
           <p className="mb-4 mt-1 text-meta text-text-secondary">
             Sign in to keep {clubName} on every device and get the matchday email. No password, just a code.
           </p>
           <EmailSignIn compact onDone={() => router.refresh()} />
         </>
+      ) : (
+        <p className="mt-1 text-meta text-text-secondary">
+          {clubName} is saved on this device. Accounts and the matchday email are coming soon.
+        </p>
       )}
       <div className="mt-5 flex flex-wrap gap-4 border-t border-hairline pt-4 text-meta">
         <button

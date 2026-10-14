@@ -11,7 +11,7 @@ import { EmailSignIn } from "./EmailSignIn";
  * follows you to any device and unlocks the matchday email. Step 2 can be
  * skipped — the club is already saved on this device.
  */
-export function MyClubOnboarding({ signedIn }: { signedIn: boolean }) {
+export function MyClubOnboarding({ signedIn, canSignIn }: { signedIn: boolean; canSignIn: boolean }) {
   const router = useRouter();
   const [club, setClub] = useState<PickedClub | null>(null);
   const [busy, setBusy] = useState(false);
@@ -26,7 +26,8 @@ export function MyClubOnboarding({ signedIn }: { signedIn: boolean }) {
       setError("We couldn't save that club. Try again.");
       return;
     }
-    if (signedIn) router.refresh();
+    // No sign-in step when it can't work (email not configured) or isn't needed.
+    if (signedIn || !canSignIn) router.refresh();
     else setClub(c);
   }
 
@@ -34,7 +35,7 @@ export function MyClubOnboarding({ signedIn }: { signedIn: boolean }) {
     <section className="rounded-card border border-hairline bg-card p-card">
       {!club ? (
         <>
-          <p className="text-[11px] font-bold uppercase tracking-wide text-accent-lime">Step 1 of 2</p>
+          {canSignIn && <p className="text-[11px] font-bold uppercase tracking-wide text-accent-lime">Step 1 of 2</p>}
           <h2 className="mt-1 text-section text-text-primary">Which club do you follow?</h2>
           <p className="mb-5 mt-1 text-meta text-text-secondary">Its next match, results and table, front and centre.</p>
           <ClubPicker onPick={pick} busy={busy} />

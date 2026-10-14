@@ -1,26 +1,13 @@
 import Link from "next/link";
 import { Crest } from "@/components/primitives/Crest";
 import { Countdown } from "@/components/primitives/Countdown";
-import { ShieldIcon, ChevronRightIcon } from "@/components/primitives/icons";
 import { liveMinuteLabel } from "@/lib/utils/match";
+import { ClubPromo } from "./ClubPromo";
 import type { ClubOverview } from "@/lib/club";
 
 /** Home widget: your club's live / next match and last result, or a prompt to pick one. */
 export function MyClubCard({ overview }: { overview: ClubOverview | null }) {
-  if (!overview) {
-    return (
-      <Link href="/my-club" className="flex items-center gap-3 rounded-card border border-dashed border-hairline bg-card p-card transition-colors hover:border-accent-lime">
-        <span className="grid h-10 w-10 place-items-center rounded-full bg-card-2 text-accent-lime">
-          <ShieldIcon size={20} />
-        </span>
-        <span className="flex-1">
-          <span className="block text-cardtitle text-text-primary">Follow your club</span>
-          <span className="block text-meta text-text-secondary">Next match, results and table in one place.</span>
-        </span>
-        <ChevronRightIcon size={16} className="text-text-muted" />
-      </Link>
-    );
-  }
+  if (!overview) return <ClubPromo />;
   const { club, live, next, recent } = overview;
   const last = recent[0];
   const focus = live ?? next;

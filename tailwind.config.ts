@@ -94,6 +94,14 @@ const config: Config = {
           "0%, 100%": { transform: "scale(1)", boxShadow: "0 0 0 0 rgba(35,164,85,0)" },
           "30%": { transform: "scale(1.03)", boxShadow: "0 0 0 3px rgba(35,164,85,0.45)" },
         },
+        "crest-in": {
+          "0%": { opacity: "0", transform: "translateY(10px) scale(0.85)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "word-in": {
+          "0%": { opacity: "0", transform: "translateY(5px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
         "football-fall": {
           "0%": { top: "-12%", opacity: "0", transform: "rotate(0deg)" },
           "12%": { opacity: "1" },
@@ -106,6 +114,8 @@ const config: Config = {
         "page-in": "page-in 0.32s cubic-bezier(0.16, 1, 0.3, 1) both",
         "goal-react": "goal-react 0.55s cubic-bezier(0.16, 1, 0.3, 1)",
         "football-fall": "football-fall 1.3s cubic-bezier(0.45, 0, 1, 1) both",
+        "crest-in": "crest-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both",
+        "word-in": "word-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both",
       },
     },
   },

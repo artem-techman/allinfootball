@@ -32,6 +32,9 @@ const EVERY_MS = 2000;
 export function ClubPromo() {
   const [i, setI] = useState(0);
   useEffect(() => {
+    // Fetch every crest up front so each swap is instant (lazy loading made the
+    // fade-in play before the image had arrived — an empty ring).
+    for (const c of CLUBS) new window.Image().src = crest(c.id);
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     const t = setInterval(() => {
       if (!document.hidden) setI((n) => (n + 1) % CLUBS.length);
@@ -44,16 +47,16 @@ export function ClubPromo() {
 
   return (
     <Link href="/my-club" className="group block rounded-card mft-gradient-border p-[1.5px] shadow-soft">
-      <div className="relative flex items-center gap-4 overflow-hidden rounded-[15px] bg-card px-4 py-4">
+      <div className="relative flex items-center gap-3 overflow-hidden rounded-[15px] bg-card py-4 pl-3 pr-3.5">
         {/* soft brand glow behind the crest */}
         <div aria-hidden className="pointer-events-none absolute -left-10 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(91,200,80,0.22),transparent_65%)]" />
 
         {/* crest carousel */}
-        <div aria-hidden className="relative h-[68px] w-[92px] shrink-0">
+        <div aria-hidden className="relative h-[64px] w-[84px] shrink-0">
           <Ghost id={prev.id} side="left" />
           <Ghost id={next.id} side="right" />
-          <div className="absolute left-1/2 top-1/2 grid h-[60px] w-[60px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-card-2 shadow-[0_0_0_1.5px_rgba(205,242,74,0.55),0_6px_18px_rgba(0,0,0,0.45)]">
-            <Image key={club.id} src={crest(club.id)} alt="" width={38} height={38} className="h-[38px] w-[38px] animate-crest-in object-contain motion-reduce:animate-none" />
+          <div className="absolute left-1/2 top-1/2 grid h-[56px] w-[56px] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-card-2 shadow-[0_0_0_1.5px_rgba(205,242,74,0.55),0_6px_18px_rgba(0,0,0,0.45)]">
+            <Image key={club.id} src={crest(club.id)} alt="" width={36} height={36} unoptimized loading="eager" className="h-[36px] w-[36px] animate-crest-in object-contain motion-reduce:animate-none" />
           </div>
         </div>
 
@@ -65,9 +68,8 @@ export function ClubPromo() {
           <p className="mt-0.5 text-[12px] leading-snug text-text-secondary">Next match, results and table in one place.</p>
         </div>
 
-        <span className="relative hidden shrink-0 items-center gap-1 rounded-full bg-accent-gradient px-3 py-1.5 text-[12px] font-bold text-text-on-accent transition-transform group-hover:translate-x-0.5 min-[380px]:inline-flex">
-          Pick
-          <ChevronRightIcon size={14} />
+        <span className="relative grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent-gradient text-text-on-accent transition-transform group-hover:translate-x-0.5">
+          <ChevronRightIcon size={15} />
         </span>
       </div>
     </Link>
@@ -80,9 +82,11 @@ function Ghost({ id, side }: { id: number; side: "left" | "right" }) {
       key={`${side}-${id}`}
       src={crest(id)}
       alt=""
-      width={26}
-      height={26}
-      className={`absolute top-1/2 h-[26px] w-[26px] -translate-y-1/2 animate-word-in object-contain opacity-35 grayscale-[30%] motion-reduce:animate-none ${side === "left" ? "left-0" : "right-0"}`}
+      width={22}
+      height={22}
+      unoptimized
+      loading="eager"
+      className={`absolute top-1/2 h-[22px] w-[22px] -translate-y-1/2 animate-word-in object-contain opacity-35 grayscale-[30%] motion-reduce:animate-none ${side === "left" ? "left-0" : "right-0"}`}
     />
   );
 }

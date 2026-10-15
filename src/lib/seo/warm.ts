@@ -7,7 +7,7 @@ import { archiveFinishedMatch, archivedIds } from "@/lib/db/matchStore";
 import { lastGoodSavedAt, saveLastGood, saveLastGoodMany } from "@/lib/db/lastGood";
 import { playerSeason } from "@/lib/seo/players";
 import { groupRounds, indexableRounds } from "@/lib/seo/rounds";
-import { submitToIndexNow } from "@/lib/seo/indexnow";
+import { lastIndexNowStatus, submitToIndexNow } from "@/lib/seo/indexnow";
 import sitemap from "@/app/sitemap";
 import type { Match } from "@/lib/providers/types";
 
@@ -47,6 +47,7 @@ export interface WarmReport {
   injuryFixturesWarmed: number;
   injuryFixturesPending: number;
   indexNowSubmitted: number;
+  indexNowStatus?: string[];
   calls: number;
   errors: string[];
 }
@@ -197,6 +198,7 @@ export async function warmForCrawlers(): Promise<WarmReport> {
   // 6. IndexNow. Each (page, state) is announced once: a marker per event.
   try {
     report.indexNowSubmitted = await announceChanges(all, lists, now);
+    if (lastIndexNowStatus.length) report.indexNowStatus = [...lastIndexNowStatus];
   } catch (err) {
     report.errors.push(`indexnow: ${err instanceof Error ? err.message : String(err)}`);
   }

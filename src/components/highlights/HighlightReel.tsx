@@ -238,7 +238,7 @@ function ReelCard({
                 }
               }}
             >
-              <Image src={h.thumbnailUrl} alt="" fill sizes="520px" className="object-cover" />
+              <Image src={h.thumbnailUrl} alt={h.title} fill sizes="520px" className="object-cover" />
               <span className="absolute inset-0 grid place-items-center bg-black/30 transition-colors group-hover:bg-black/40">
                 <span className="grid h-16 w-16 place-items-center rounded-full bg-accent-gradient text-text-on-accent shadow-elevated">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>

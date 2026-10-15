@@ -16,10 +16,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const id = idFromSlug(slug);
   const profile = id ? await provider.getTeam(id).catch(() => undefined) : undefined;
-  if (!profile || !id) return { title: "Team" };
+  if (!profile || !id) notFound(); // real 404 status (metadata is blocking)
   return buildMetadata({
-    title: profile.team.name,
-    description: `${profile.team.name}: fixtures, results, squad and league table on My Football Tracker.`,
+    title: `${profile.team.name} fixtures, results & squad`,
+    description: `${profile.team.name} fixtures and results for this season, upcoming kick-off times, the full squad, recent form and where they sit in the league table.`,
     path: `/team/${entitySlug(profile.team.name, id)}`,
   });
 }

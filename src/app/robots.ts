@@ -1,28 +1,19 @@
 import type { MetadataRoute } from "next";
 
 /**
- * robots. Allow the low-cardinality, cacheable pages (home, the nine competition
- * hubs, news, feed) but DISALLOW the high-cardinality / unbounded ones that each
- * trigger fresh provider calls — the dated calendar (its prev/next links are an
- * infinite crawl space), individual matches, and entity pages. Crawling those
- * enumerates thousands of unique API calls and exhausts the daily quota. They
- * can be re-opened once they're served from ISR / a durable cache.
+ * robots. Since 2026-10-15 match, matchday and team pages are open: robots get
+ * SAVED data only (apiGet refuses provider requests for crawlers; finished
+ * matches are archived, head-to-head and team profiles pre-saved by
+ * /api/cron/seo), so crawling can't touch the API quota. Still closed: player
+ * pages (one provider call per player, thousands of them), the API, and
+ * personal pages.
  */
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: [
-        "/matches/", // dated calendar — infinite prev/next crawl, one API call per date
-        "/match/", // individual fixtures — ~8 API calls each
-        "/team/",
-        "/player/",
-        "/coach/",
-        "/referee/",
-        "/stadium/",
-        "/api/",
-      ],
+      disallow: ["/player/", "/coach/", "/referee/", "/stadium/", "/api/", "/my-club", "/unsubscribe"],
     },
     sitemap: "https://myfootballtracker.com/sitemap.xml",
     host: "https://myfootballtracker.com",

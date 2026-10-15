@@ -53,7 +53,7 @@ function pollInterval(m: Match, now = Date.now()): number | null {
  * while the fixture is live/ht (or about to kick off), polls /api/match for score,
  * events, lineups and stats (stops once it can't change). Every tab degrades to its own empty state.
  */
-export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
+export function MatchCenter({ bundle, intro }: { bundle: MatchBundle; intro?: React.ReactNode }) {
   const [match, setMatch] = useState(bundle.match);
   const [events, setEvents] = useState(bundle.events);
   const [lineups, setLineups] = useState(bundle.lineups);
@@ -165,6 +165,7 @@ export function MatchCenter({ bundle }: { bundle: MatchBundle }) {
       </div>
       {degraded && <ErrorBanner />}
       <MatchHeader match={match} events={events} />
+      {intro}
 
       {/* tab bar */}
       <div role="tablist" aria-label="Match sections" className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-hairline">

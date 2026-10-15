@@ -11,7 +11,7 @@ export function ConfirmedTransfersRail({ transfers }: { transfers: Transfer[] })
   return (
     <section className="rounded-card border border-hairline bg-card p-card">
       <header className="mb-2 flex items-center justify-between">
-        <h3 className="text-cardtitle text-text-primary">Confirmed transfers</h3>
+        <p className="text-cardtitle text-text-primary">Confirmed transfers</p>
         <span className="rounded-full bg-card-2 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-text-secondary">
           This window
         </span>

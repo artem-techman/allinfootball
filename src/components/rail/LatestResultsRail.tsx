@@ -16,7 +16,7 @@ export function LatestResultsRail({ matches }: { matches: Match[] }) {
   return (
     <section className="rounded-card border border-hairline bg-card p-card">
       <header className="mb-2 flex items-center justify-between">
-        <h3 className="text-cardtitle text-text-primary">Latest Results</h3>
+        <p className="text-cardtitle text-text-primary">Latest Results</p>
         <Link href="/matches" className="flex items-center gap-1 text-[12px] font-semibold text-text-secondary hover:text-text-primary">
           See all <ChevronRightIcon size={14} />
         </Link>

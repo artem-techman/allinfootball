@@ -12,7 +12,7 @@ export function TransferRumoursRail({ articles }: { articles: Article[] }) {
   if (articles.length === 0) {
     return (
       <section className="rounded-card border border-hairline bg-card p-card">
-        <h3 className="mb-2 text-cardtitle text-text-primary">Transfer Talk</h3>
+        <p className="mb-2 text-cardtitle text-text-primary">Transfer Talk</p>
         <p className="py-3 text-center text-meta text-text-secondary">No transfer news right now</p>
       </section>
     );
@@ -22,7 +22,7 @@ export function TransferRumoursRail({ articles }: { articles: Article[] }) {
   return (
     <section className="rounded-card border border-hairline bg-card p-card">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-cardtitle text-text-primary">Transfer Talk</h3>
+        <p className="text-cardtitle text-text-primary">Transfer Talk</p>
         <Link href="/news?tag=transfers" className="text-[12px] font-semibold text-text-secondary hover:text-text-primary">
           See all
         </Link>

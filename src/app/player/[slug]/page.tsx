@@ -29,10 +29,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const id = idFromSlug(slug);
   const profile = id ? await loadProfile(id) : undefined;
-  if (!profile || !id) return { title: "Player" };
+  if (!profile || !id) notFound(); // real 404 status (metadata is blocking)
+  const season = profile.seasonLabel ? ` ${profile.seasonLabel}` : "";
   return buildMetadata({
-    title: profile.player.name,
-    description: `${profile.player.name}: season stats and profile on My Football Tracker.`,
+    title: `${profile.player.name} stats${season}: goals, assists & profile`,
+    description: `${profile.player.name}${profile.teamName ? ` (${profile.teamName})` : ""}: appearances, goals, assists, minutes and cards for the${season} season, plus position, age and nationality.`,
     path: `/player/${entitySlug(profile.player.name, id)}`,
   });
 }

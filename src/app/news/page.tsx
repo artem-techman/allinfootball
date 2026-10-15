@@ -8,13 +8,12 @@ import { getNews } from "@/lib/news";
 import { loadConfirmedTransfers } from "@/lib/transfers";
 import { getCompetitionBySlug } from "@/lib/constants/competitions";
 import { buildMetadata } from "@/lib/seo/metadata";
-import { competitionListSentence } from "@/lib/seo/copy";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = buildMetadata({
   title: "Football News",
-  description: `The latest football news across ${competitionListSentence()}: headlines from trusted sources, linked to the original publisher.`,
+  description: `The latest football news: transfers, team news, results and reaction from the Premier League, La Liga, Serie A, Bundesliga and the Champions League.`,
   path: "/news",
 });
 

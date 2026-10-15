@@ -19,7 +19,7 @@ export function TopNewsRail({ items }: { items: TopNewsItem[] }) {
   if (items.length === 0) {
     return (
       <section className="rounded-card border border-hairline bg-card p-card">
-        <h3 className="mb-2 text-cardtitle text-text-primary">Top News</h3>
+        <p className="mb-2 text-cardtitle text-text-primary">Top News</p>
         <p className="py-3 text-center text-meta text-text-secondary">No news yet</p>
       </section>
     );
@@ -27,7 +27,7 @@ export function TopNewsRail({ items }: { items: TopNewsItem[] }) {
   const [lead, ...rest] = items;
   return (
     <section className="rounded-card border border-hairline bg-card p-card">
-      <h3 className="mb-3 text-cardtitle text-text-primary">Top News</h3>
+      <p className="mb-3 text-cardtitle text-text-primary">Top News</p>
 
       <Link href={lead.href} className="block overflow-hidden rounded-tile">
         <div

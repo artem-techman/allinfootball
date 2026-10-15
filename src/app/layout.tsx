@@ -3,7 +3,6 @@ import { Inter } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { JsonLd, organization, website } from "@/components/seo/JsonLd";
 import { buildMetadata, SITE_NAME, SITE_URL } from "@/lib/seo/metadata";
-import { competitionListSentence } from "@/lib/seo/copy";
 import { COMPETITIONS } from "@/lib/constants/competitions";
 import "@/styles/globals.css";
 
@@ -43,7 +42,8 @@ export const metadata: Metadata = {
     default: DEFAULT_TITLE,
     template: `%s · ${SITE_NAME}`,
   },
-  description: `${SITE_NAME} tracks ${competitionListSentence()} — live scores, tables, lineups and stats.`,
+  // ~155 chars: the full competition list ran to 215 and was cut off in results.
+  description: `Live football scores, fixtures, results, tables and lineups for the Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League and MLS.`,
   applicationName: SITE_NAME,
   keywords: [
     "football", "soccer", "live scores", "football scores", "league tables",

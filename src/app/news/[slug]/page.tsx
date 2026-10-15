@@ -22,7 +22,7 @@ const ROBOTS = { index: false, follow: true } as const;
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const article = await getArticleBySlug(slug);
-  if (!article) return { title: "News", robots: ROBOTS };
+  if (!article) notFound(); // real 404 status (metadata is blocking)
   return buildMetadata({
     title: article.title,
     description: article.dek || `${article.title} (${article.sourceName})`,

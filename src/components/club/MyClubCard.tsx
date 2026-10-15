@@ -16,7 +16,7 @@ export function MyClubCard({ overview }: { overview: ClubOverview | null }) {
     <Link href="/my-club" className="block rounded-card border border-hairline bg-card p-card transition-colors hover:border-accent-lime">
       <header className="flex items-center gap-2.5">
         <Crest src={club.crest} name={club.name} size={26} />
-        <h3 className="flex-1 truncate text-cardtitle text-text-primary">{club.name}</h3>
+        <p className="flex-1 truncate text-cardtitle text-text-primary">{club.name}</p>
         <span className="text-[10px] font-bold uppercase tracking-wide text-accent-lime">My Club</span>
       </header>
       {focus && (

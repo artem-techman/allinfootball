@@ -28,7 +28,7 @@ export function AccountPanel({
 
   return (
     <section className="rounded-card border border-hairline bg-card p-card">
-      <h3 className="text-cardtitle text-text-primary">Your account</h3>
+      <p className="text-cardtitle text-text-primary">Your account</p>
       {email ? (
         <>
           <p className="mt-1 text-meta text-text-secondary">

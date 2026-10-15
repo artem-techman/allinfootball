@@ -56,6 +56,8 @@ export function sportsEvent(match: Match, slug: string): Record<string, unknown>
     homeTeam: home,
     awayTeam: away,
     competitor: [home, away],
+    // The result card (finished matches only — the card route 404s otherwise).
+    ...(match.status === "finished" ? { image: `${SITE}/match/${slug}/card/square` } : {}),
     ...(match.competition
       ? {
           organizer: {

@@ -60,7 +60,7 @@ export function TopTableRail({
         <div className="absolute -bottom-10 right-0 h-28 w-40 rounded-full bg-accent-lime-soft blur-2xl" />
       </div>
       <header className="relative mb-3">
-        <h3 className="text-cardtitle text-text-primary">Top Table</h3>
+        <p className="text-cardtitle text-text-primary">Top Table</p>
         <button
           type="button"
           onClick={() => setPickerOpen((v) => !v)}

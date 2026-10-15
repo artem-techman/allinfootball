@@ -51,7 +51,7 @@ export function LiveNowRail({
     >
       {celebrate != null && <GoalCelebration key={celebrate} />}
       <header className="mb-1 flex items-center justify-between">
-        <h3 className="text-cardtitle text-text-primary">Live Now</h3>
+        <p className="text-cardtitle text-text-primary">Live Now</p>
         {hasLive ? (
           <Pill tone="lime">
             <span className="mr-1 inline-block h-1.5 w-1.5 animate-live-pulse rounded-full bg-current" />

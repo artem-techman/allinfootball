@@ -136,7 +136,8 @@ export async function warmForCrawlers(): Promise<WarmReport> {
       for (const t of [m.homeTeamId, m.awayTeamId]) lastPlayed.set(t, Math.max(lastPlayed.get(t) ?? 0, end));
     }
     const clubs = [...new Set(all.flatMap((m) => [m.homeTeamId, m.awayTeamId]))].filter((t) => !national.has(t));
-    const markerOf = (t: number) => `teamplayers:${t}:${season}`;
+    // v2: profiles now carry displayName — re-save the squads stored before it.
+    const markerOf = (t: number) => `teamplayers2:${t}:${season}`;
     const saved = await lastGoodSavedAt(clubs.map(markerOf));
     const at = (t: number) => saved.get(markerOf(t)) ?? 0;
     const stale = clubs.filter((t) => now - at(t) > 7 * DAY || at(t) < (lastPlayed.get(t) ?? 0)).sort((a, b) => at(a) - at(b));

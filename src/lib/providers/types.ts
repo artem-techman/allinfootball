@@ -249,6 +249,8 @@ export interface PlayerStatLine {
 
 export interface PlayerProfile {
   player: Player;
+  /** Name as fans search it ("Bukayo Saka" where the provider says "B. Saka"). */
+  displayName?: string;
   photo?: string;
   age?: number;
   height?: string;

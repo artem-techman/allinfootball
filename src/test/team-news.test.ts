@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { articlesForTeam, matchTeamNews, teamNeedles } from "@/lib/news/teamNews";
 import { absenceReason, absenceText, previewText } from "@/lib/seo/matchCopy";
-import { mapInjury } from "@/lib/providers/apiFootball";
+import { mapInjury, playerDisplayName } from "@/lib/providers/apiFootball";
 import type { Article, Injury, Match } from "@/lib/providers/types";
 
 const NOW = Date.parse("2026-10-15T12:00:00Z");
@@ -75,5 +75,19 @@ describe("injuries", () => {
     expect(previewText({ ...base, absences: [{ playerId: 1, name: "Vinícius Júnior", teamId: 541, status: "out", reason: "Red Card" }] }).join(" ")).toContain(
       "Real Madrid are without Vinícius Júnior (red card suspension).",
     );
+  });
+});
+
+describe("player names as fans search them", () => {
+  it("expands the provider's initials", () => {
+    expect(playerDisplayName("B. Saka", "Bukayo Ayoyinka Temidayo")).toBe("Bukayo Saka");
+    expect(playerDisplayName("E. Haaland", "Erling Braut")).toBe("Erling Haaland");
+    expect(playerDisplayName("É. Mitchell", "Éderson")).toBe("Éderson Mitchell");
+  });
+  it("leaves full or mismatched names alone", () => {
+    expect(playerDisplayName("Vinícius Júnior", "Vinícius")).toBe("Vinícius Júnior");
+    expect(playerDisplayName("Bruno Fernandes", "Bruno Miguel")).toBe("Bruno Fernandes");
+    expect(playerDisplayName("J. Smith", "Bob")).toBe("J. Smith");
+    expect(playerDisplayName("J. Smith", undefined)).toBe("J. Smith");
   });
 });

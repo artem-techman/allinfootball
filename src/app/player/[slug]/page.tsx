@@ -34,9 +34,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const profile = id ? await loadProfile(id) : undefined;
   if (!profile || !id) notFound(); // real 404 status (metadata is blocking)
   const season = profile.seasonLabel ? ` ${profile.seasonLabel}` : "";
+  const name = profile.displayName ?? profile.player.name;
   return buildMetadata({
-    title: `${profile.player.name} stats${season}: goals, assists & profile`,
-    description: `${profile.player.name}${profile.teamName ? ` (${profile.teamName})` : ""}: appearances, goals, assists, minutes and cards for the${season} season, plus position, age and nationality.`,
+    title: `${name} stats${season}: goals, assists & profile`,
+    description: `${name}${profile.teamName ? ` (${profile.teamName})` : ""}: appearances, goals, assists, minutes and cards for the${season} season, plus position, age and nationality.`,
     path: `/player/${entitySlug(profile.player.name, id)}`,
     // A squad player yet to feature has nothing worth a search result.
     ...(profile.stats.appearances ? {} : { robots: { index: false, follow: true } }),

@@ -25,11 +25,11 @@ export function PlayerProfileView({ profile }: { profile: PlayerProfile }) {
         <span
           className="h-20 w-20 shrink-0 rounded-full bg-card-2 bg-cover bg-center"
           style={{ backgroundImage: `url(${photo})` }}
-          aria-label={player.name}
+          aria-label={profile.displayName ?? player.name}
           role="img"
         />
         <div className="min-w-0">
-          <h1 className="text-greeting text-text-primary">{player.name}</h1>
+          <h1 className="text-greeting text-text-primary">{profile.displayName ?? player.name}</h1>
           <p className="mt-0.5 text-meta text-text-secondary">{meta}</p>
           <p className="mt-1 text-meta text-text-muted">
             {[profile.age ? `Age ${profile.age}` : null, profile.height, profile.weight].filter(Boolean).join(" · ")}

@@ -153,7 +153,8 @@ export function person(profile: PlayerProfile, slug: string): Record<string, unk
   return {
     "@context": "https://schema.org",
     "@type": "Person",
-    name: profile.player.name,
+    name: profile.displayName ?? profile.player.name,
+    ...(profile.displayName && profile.displayName !== profile.player.name ? { alternateName: profile.player.name } : {}),
     url: `${SITE}/player/${slug}`,
     ...(profile.photo ? { image: profile.photo } : {}),
     ...(profile.player.nationality ? { nationality: { "@type": "Country", name: profile.player.nationality } } : {}),

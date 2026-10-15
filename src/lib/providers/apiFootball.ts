@@ -910,6 +910,19 @@ interface RawPlayerEnvelope {
   }[];
 }
 
+/**
+ * The provider abbreviates most names ("B. Saka", "E. Haaland"), but fans search
+ * "Bukayo Saka". Expand a leading initial with the first given name when it
+ * matches; leave everything else alone ("Vinícius Júnior", "Bruno Fernandes").
+ * Pure, exported for tests.
+ */
+export function playerDisplayName(name: string, firstname?: string | null): string {
+  const m = /^(\p{Lu})\.\s+(.+)$/u.exec(name.trim());
+  const given = firstname?.trim().split(/\s+/)[0];
+  if (!m || !given || given.length < 2 || given[0].toLocaleUpperCase() !== m[1]) return name;
+  return `${given} ${m[2]}`;
+}
+
 export function mapPlayerProfile(raw: RawPlayerEnvelope): PlayerProfile {
   const stats = raw.statistics ?? [];
   const sum = (sel: (s: RawPlayerEnvelope["statistics"][number]) => number | null | undefined) =>
@@ -933,6 +946,7 @@ export function mapPlayerProfile(raw: RawPlayerEnvelope): PlayerProfile {
       nationality: raw.player.nationality,
       teamId: main?.team?.id,
     },
+    displayName: playerDisplayName(decodeName(raw.player.name) ?? raw.player.name, decodeName(raw.player.firstname)),
     photo: raw.player.photo,
     age: raw.player.age,
     height: raw.player.height,

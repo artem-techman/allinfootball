@@ -94,3 +94,20 @@ describe("tagging", () => {
     expect(out[0].publishedAtUtc >= out[1].publishedAtUtc).toBe(true);
   });
 });
+
+describe("feed images", () => {
+  it("decodes the Guardian's signed URL and takes the widest rendition", async () => {
+    const { parseFeed } = await import("@/lib/news/rss");
+    const xml = `<rss><channel><item><title>Lyon beat Palace</title><link>https://x</link>
+      <media:content width="140" url="https://i.guim.co.uk/img/media/a/b/master/1.jpg?width=140&amp;quality=85&amp;s=aaa"/>
+      <media:content width="700" url="https://i.guim.co.uk/img/media/a/b/master/1.jpg?width=700&amp;quality=85&amp;s=ccc"/>
+      <media:content width="460" url="https://i.guim.co.uk/img/media/a/b/master/1.jpg?width=460&amp;quality=85&amp;s=bbb"/>
+    </item></channel></rss>`;
+    expect(parseFeed(xml, "The Guardian")[0].image).toBe("https://i.guim.co.uk/img/media/a/b/master/1.jpg?width=700&quality=85&s=ccc");
+  });
+  it("asks the BBC for a large rendition", async () => {
+    const { upgradeImage } = await import("@/lib/news/rss");
+    expect(upgradeImage("https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/89af/live/x.jpg")).toBe("https://ichef.bbci.co.uk/ace/standard/976/cpsprodpb/89af/live/x.jpg");
+    expect(upgradeImage("https://e1.365dm.com/26/10/1920x1080/a.jpg")).toBe("https://e1.365dm.com/26/10/1920x1080/a.jpg");
+  });
+});

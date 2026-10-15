@@ -89,13 +89,38 @@ export function toIso(raw: string | undefined): string {
   return Number.isNaN(d.getTime()) ? "" : d.toISOString();
 }
 
+/**
+ * The best image a feed item offers, as a URL that actually loads:
+ *  - attribute values are XML-escaped: the Guardian's "&amp;s=<signature>" left
+ *    encoded breaks its signature (HTTP 401) — those images never showed;
+ *  - the widest media:content wins (the Guardian lists 140, 460 and 700px; we
+ *    took the 140px thumbnail, blurry on a hero card);
+ *  - BBC thumbnails are 240px: ichef serves the same picture at 976px.
+ */
 function extractImage(block: string): string | undefined {
-  return (
+  const raw =
+    widestMedia(block) ??
     attr(block, "media:thumbnail", "url") ??
-    attr(block, "media:content", "url") ??
     attr(block, "enclosure", "url") ??
-    attr(block, "img", "src")
-  );
+    attr(block, "img", "src");
+  return raw ? upgradeImage(decodeEntities(raw)) : undefined;
+}
+
+function widestMedia(block: string): string | undefined {
+  let best: { url: string; width: number } | undefined;
+  for (const tag of block.match(/<media:content\b[^>]*>/gi) ?? []) {
+    const url = /\burl\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1];
+    if (!url) continue;
+    const width = Number(/\bwidth\s*=\s*["'](\d+)["']/i.exec(tag)?.[1] ?? 0);
+    if (!best || width > best.width) best = { url, width };
+  }
+  return best?.url;
+}
+
+/** Swap a known small-thumbnail URL for a large rendition of the same image. Exported for tests. */
+export function upgradeImage(url: string): string {
+  // https://ichef.bbci.co.uk/ace/standard/240/cpsprodpb/… → …/standard/976/…
+  return url.replace(/^(https:\/\/ichef\.bbci\.co\.uk\/(?:ace\/)?(?:standard|ws))\/\d+\//, "$1/976/");
 }
 
 /** Parse one feed's XML string into raw news items (drops malformed entries). */

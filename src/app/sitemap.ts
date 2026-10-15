@@ -5,6 +5,7 @@ import { seasonYearFor } from "@/lib/season";
 import { toDateKey } from "@/lib/utils/date";
 import { entitySlug } from "@/lib/utils/slug";
 import { savedPlayers } from "@/lib/seo/players";
+import { groupRounds, indexableRounds } from "@/lib/seo/rounds";
 import type { Match } from "@/lib/providers/types";
 
 const SITE = "https://myfootballtracker.com";
@@ -54,7 +55,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Teams.
   const teams = new Map<number, string>();
   for (const m of fixtures) for (const t of [m.homeTeam, m.awayTeam]) if (t) teams.set(t.id, t.slug);
-  for (const slug of teams.values()) entries.push({ url: `${SITE}/team/${slug}`, lastModified: today, changeFrequency: "daily", priority: 0.6 });
+  for (const slug of teams.values()) {
+    entries.push({ url: `${SITE}/team/${slug}`, lastModified: today, changeFrequency: "daily", priority: 0.6 });
+    // One URL per search intent ("arsenal fixtures", "arsenal results", "arsenal squad").
+    entries.push({ url: `${SITE}/team/${slug}/fixtures`, lastModified: today, changeFrequency: "daily", priority: 0.6 });
+    entries.push({ url: `${SITE}/team/${slug}/results`, lastModified: today, changeFrequency: "daily", priority: 0.6 });
+    entries.push({ url: `${SITE}/team/${slug}/squad`, lastModified: today, changeFrequency: "weekly", priority: 0.5 });
+  }
+
+  // Round pages: every round played or in play, plus the next two.
+  COMPETITIONS.forEach((c, i) => {
+    for (const r of indexableRounds(groupRounds(c.slug, lists[i] ?? []))) {
+      const live = r.state !== "complete";
+      entries.push({
+        url: `${SITE}/competition/${c.slug}/round/${r.slug}`,
+        lastModified: live ? today : new Date(Math.min(now, Date.parse(r.endUtc) + 3 * 3600_000)),
+        changeFrequency: live ? "hourly" : "monthly",
+        priority: live ? 0.8 : 0.6,
+      });
+    }
+  });
 
   // Matchday pages with fixtures: the last week and the next month.
   const days = new Set<string>();

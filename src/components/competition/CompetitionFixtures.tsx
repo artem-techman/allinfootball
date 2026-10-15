@@ -1,4 +1,6 @@
+import Link from "next/link";
 import type { Match } from "@/lib/providers/types";
+import { roundLabel, roundSlug } from "@/lib/seo/rounds";
 import { MatchCard } from "@/components/cards/MatchCard";
 import { EmptyState } from "@/components/primitives/EmptyState";
 
@@ -7,7 +9,7 @@ import { EmptyState } from "@/components/primitives/EmptyState";
  * chronologically. Empty competitions (e.g. a tournament not yet scheduled) show
  * the empty state.
  */
-export function CompetitionFixtures({ matches }: { matches: Match[] }) {
+export function CompetitionFixtures({ matches, compSlug }: { matches: Match[]; compSlug: string }) {
   if (matches.length === 0) {
     return <EmptyState title="No fixtures scheduled yet" hint="Check back when the schedule is published." />;
   }
@@ -46,8 +48,13 @@ export function CompetitionFixtures({ matches }: { matches: Match[] }) {
     <div className="space-y-4">
       {groups.map((g) => (
         <section key={g.round} className="rounded-card border border-hairline bg-card p-card">
-          <header className="mb-2 border-b border-hairline pb-2">
-            <h3 className="text-cardtitle text-text-primary">{g.round}</h3>
+          <header className="mb-2 flex items-baseline justify-between gap-3 border-b border-hairline pb-2">
+            <h3 className="text-cardtitle text-text-primary">{g.round === "Fixtures" ? g.round : roundLabel(compSlug, g.round)}</h3>
+            {g.round !== "Fixtures" && (
+              <Link href={`/competition/${compSlug}/round/${roundSlug(compSlug, g.round)}`} className="shrink-0 text-meta font-semibold text-text-secondary hover:text-text-primary">
+                {g.upcoming ? "Round preview" : "Round-up"} →
+              </Link>
+            )}
           </header>
           <ul className="divide-y divide-hairline">
             {g.matches.map((m) => (

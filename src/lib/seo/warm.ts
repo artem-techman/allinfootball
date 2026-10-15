@@ -6,6 +6,9 @@ import { ingestFetch } from "@/lib/providers/apiFootball";
 import { archiveFinishedMatch, archivedIds } from "@/lib/db/matchStore";
 import { lastGoodSavedAt, saveLastGood, saveLastGoodMany } from "@/lib/db/lastGood";
 import { playerSeason } from "@/lib/seo/players";
+import { groupRounds, indexableRounds } from "@/lib/seo/rounds";
+import { submitToIndexNow } from "@/lib/seo/indexnow";
+import sitemap from "@/app/sitemap";
 import type { Match } from "@/lib/providers/types";
 
 /**
@@ -18,6 +21,8 @@ import type { Match } from "@/lib/providers/types";
  *             team's matches and at least weekly — ~2 requests per team
  *   injuries  missing/doubtful players for the next 7 days' fixtures, 20 per
  *             request; every 3h inside 48h of kick-off, otherwise every 12h
+ *   indexnow  pings Bing & co. when a page meaningfully changes (preview ready,
+ *             result in, round complete) — the whole sitemap once at start
  * Each run is capped, and every call here is "extra" priority: the first thing
  * shed when the quota tightens, so it never competes with live data.
  */
@@ -41,12 +46,13 @@ export interface WarmReport {
   playerTeamsPending: number;
   injuryFixturesWarmed: number;
   injuryFixturesPending: number;
+  indexNowSubmitted: number;
   calls: number;
   errors: string[];
 }
 
 export async function warmForCrawlers(): Promise<WarmReport> {
-  const report: WarmReport = { archived: 0, archivePending: 0, h2hWarmed: 0, h2hPending: 0, teamsWarmed: 0, teamsPending: 0, playerTeamsWarmed: 0, playersSaved: 0, playerTeamsPending: 0, injuryFixturesWarmed: 0, injuryFixturesPending: 0, calls: 0, errors: [] };
+  const report: WarmReport = { archived: 0, archivePending: 0, h2hWarmed: 0, h2hPending: 0, teamsWarmed: 0, teamsPending: 0, playerTeamsWarmed: 0, playersSaved: 0, playerTeamsPending: 0, injuryFixturesWarmed: 0, injuryFixturesPending: 0, indexNowSubmitted: 0, calls: 0, errors: [] };
   const now = Date.now();
   const lists = await Promise.all(
     COMPETITIONS.map((c) => provider.getFixturesByLeague(c.leagueId, seasonYearFor(c)).catch(() => [] as Match[])),
@@ -187,5 +193,51 @@ export async function warmForCrawlers(): Promise<WarmReport> {
   } catch (err) {
     report.errors.push(`injuries: ${err instanceof Error ? err.message : String(err)}`);
   }
+
+  // 6. IndexNow. Each (page, state) is announced once: a marker per event.
+  try {
+    report.indexNowSubmitted = await announceChanges(all, lists, now);
+  } catch (err) {
+    report.errors.push(`indexnow: ${err instanceof Error ? err.message : String(err)}`);
+  }
   return report;
+}
+
+const SITE = "https://myfootballtracker.com";
+
+async function announceChanges(all: Match[], lists: Match[][], now: number): Promise<number> {
+  const events: { marker: string; urls: string[] }[] = [];
+
+  // The whole sitemap, once (first run after launch).
+  const bulk = "indexnow:bulk:v1";
+  if (!(await lastGoodSavedAt([bulk])).has(bulk)) {
+    const urls = (await sitemap()).map((e) => e.url);
+    const accepted = await submitToIndexNow(urls);
+    if (accepted) await saveLastGood(bulk, 1);
+    return accepted;
+  }
+
+  for (const m of all) {
+    const ko = Date.parse(m.kickoffUtc);
+    const teams = [m.homeTeam?.slug, m.awayTeam?.slug].filter(Boolean) as string[];
+    if (m.status === "finished" && now - ko < 12 * 3600_000) {
+      events.push({ marker: `indexnow:m:${m.id}:ft`, urls: [`${SITE}/match/${m.slug}`, ...teams.map((t) => `${SITE}/team/${t}/results`)] });
+    } else if (m.status === "scheduled" && ko > now && ko - now < 7 * DAY) {
+      events.push({ marker: `indexnow:m:${m.id}:pre`, urls: [`${SITE}/match/${m.slug}`] });
+    }
+  }
+  COMPETITIONS.forEach((c, i) => {
+    for (const r of indexableRounds(groupRounds(c.slug, lists[i] ?? []))) {
+      const url = `${SITE}/competition/${c.slug}/round/${r.slug}`;
+      if (r.state === "complete" && now - Date.parse(r.endUtc) < 3 * DAY) events.push({ marker: `indexnow:r:${c.slug}:${r.slug}:done`, urls: [url, `${SITE}/competition/${c.slug}/table`] });
+      if (r.state === "upcoming") events.push({ marker: `indexnow:r:${c.slug}:${r.slug}:pre`, urls: [url] });
+    }
+  });
+
+  const seen = await lastGoodSavedAt(events.map((e) => e.marker));
+  const fresh = events.filter((e) => !seen.has(e.marker));
+  if (!fresh.length) return 0;
+  const accepted = await submitToIndexNow(fresh.flatMap((e) => e.urls));
+  if (accepted) await saveLastGoodMany(fresh.map((e) => [e.marker, 1]));
+  return accepted;
 }

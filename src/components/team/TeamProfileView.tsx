@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import type { Match, Player, Standing, TeamProfile } from "@/lib/providers/types";
 import { Crest } from "@/components/primitives/Crest";
@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/primitives/EmptyState";
 import { LocalTime } from "@/components/primitives/LocalTime";
 
 type Tab = "overview" | "fixtures" | "results" | "squad" | "table";
+const pathFor = (slug: string, tab: Tab) => (tab === "overview" ? `/team/${slug}` : `/team/${slug}/${tab}`);
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
@@ -21,22 +22,30 @@ const TABS: { id: Tab; label: string }[] = [
 
 const POS_ORDER = ["Goalkeeper", "Defender", "Midfielder", "Attacker"];
 
-/** Team profile (CLAUDE.md section 8): header + Overview/Fixtures/Results/Squad/Table tabs. */
+/**
+ * Team profile (CLAUDE.md section 8): header + Overview/Fixtures/Results/Squad/
+ * Table. Each tab is its own URL (/team/x/fixtures …) so every one can rank for
+ * its own search ("arsenal fixtures", "arsenal squad").
+ */
 export function TeamProfileView({
   profile,
+  slug,
+  tab,
   recent,
   upcoming,
   squad,
   standings,
 }: {
   profile: TeamProfile;
+  slug: string;
+  tab: Tab;
   recent: Match[];
   upcoming: Match[];
   squad: Player[];
   standings: Standing[];
 }) {
-  const [tab, setTab] = useState<Tab>("overview");
   const { team } = profile;
+  const label = TABS.find((t) => t.id === tab)?.label ?? "";
   // Results newest-first, fixtures soonest-first, whatever order the provider sent (B35).
   const results = [...recent].sort((a, b) => b.kickoffUtc.localeCompare(a.kickoffUtc));
   const fixtures = [...upcoming].sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc));
@@ -46,7 +55,7 @@ export function TeamProfileView({
       <header className="flex items-center gap-4 rounded-card border border-hairline bg-card p-card">
         <Crest src={team.crest} name={team.name} size={64} />
         <div>
-          <h1 className="text-greeting text-text-primary">{team.name}</h1>
+          <h1 className="text-greeting text-text-primary">{tab === "overview" ? team.name : `${team.name} ${label.toLowerCase()}`}</h1>
           <p className="mt-0.5 text-meta text-text-secondary">
             {[profile.country, profile.founded ? `Founded ${profile.founded}` : null, profile.venue?.name]
               .filter(Boolean)
@@ -57,27 +66,27 @@ export function TeamProfileView({
 
       <nav className="flex gap-1 overflow-x-auto overflow-y-hidden border-b border-hairline">
         {TABS.map((t) => (
-          <button
+          <Link
             key={t.id}
-            onClick={() => setTab(t.id)}
-            aria-selected={tab === t.id}
-            role="tab"
+            href={pathFor(slug, t.id)}
+            scroll={false}
+            aria-current={tab === t.id ? "page" : undefined}
             className={`relative whitespace-nowrap px-3.5 py-2.5 text-meta font-semibold transition-colors ${
               tab === t.id ? "text-text-primary" : "text-text-secondary hover:text-text-primary"
             }`}
           >
             {t.label}
             {tab === t.id && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-accent-gradient" />}
-          </button>
+          </Link>
         ))}
       </nav>
 
       {tab === "overview" && (
         <div className="grid gap-4 lg:grid-cols-2">
-          <Panel title="Next fixtures">
+          <Panel title="Next fixtures" more={fixtures.length > 4 ? { href: pathFor(slug, "fixtures"), label: "All fixtures" } : undefined}>
             <MatchList matches={fixtures.slice(0, 4)} empty="No upcoming fixtures" />
           </Panel>
-          <Panel title="Recent results">
+          <Panel title="Recent results" more={results.length > 4 ? { href: pathFor(slug, "results"), label: "All results" } : undefined}>
             <MatchList matches={results.slice(0, 4)} empty="No recent results" />
           </Panel>
         </div>
@@ -85,7 +94,7 @@ export function TeamProfileView({
 
       {tab === "fixtures" && (
         <Panel title="Upcoming">
-          <MatchList matches={fixtures} empty="No upcoming fixtures" />
+          <MatchList matches={fixtures} empty="No upcoming fixtures" withMeta />
         </Panel>
       )}
 
@@ -102,10 +111,17 @@ export function TeamProfileView({
   );
 }
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
+function Panel({ title, more, children }: { title: string; more?: { href: string; label: string }; children: ReactNode }) {
   return (
     <section className="rounded-card border border-hairline bg-card p-card">
-      <h3 className="mb-2 text-cardtitle text-text-primary">{title}</h3>
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <h2 className="text-cardtitle text-text-primary">{title}</h2>
+        {more && (
+          <Link href={more.href} className="shrink-0 text-meta font-semibold text-text-secondary hover:text-text-primary">
+            {more.label} →
+          </Link>
+        )}
+      </div>
       {children}
     </section>
   );
@@ -148,7 +164,7 @@ function Squad({ squad }: { squad: Player[] }) {
     <div className="space-y-4">
       {groups.map((g) => (
         <section key={g.pos} className="rounded-card border border-hairline bg-card p-card">
-          <h3 className="mb-2 text-cardtitle text-text-primary">{g.pos}</h3>
+          <h2 className="mb-2 text-cardtitle text-text-primary">{g.pos}</h2>
           <ul className="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
             {g.players.map((p) => (
               <li key={p.id}>

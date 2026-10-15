@@ -5,6 +5,9 @@ import { getNews } from "@/lib/news";
 import { highlights } from "@/lib/highlights";
 import { todayKey, shiftDateKey } from "@/lib/utils/date";
 import type { Match } from "@/lib/providers/types";
+import { getCompetitionBySlug } from "@/lib/constants/competitions";
+import { seasonYearFor } from "@/lib/season";
+import { groupRounds } from "@/lib/seo/rounds";
 import { postPhoto, postText, postVideoLink } from "./index";
 import {
   SITE,
@@ -15,6 +18,7 @@ import {
   newsMessage,
   newsScore,
   resultCaption,
+  roundMessage,
   sameStory,
   storyWords,
   todayMessage,
@@ -28,12 +32,16 @@ import {
  *   results   full time for important matches: the square share card + scorers
  *   today     07:00–11:00 UK, once a day: today's important fixtures
  *   highlights official clip for important finished matches (≤48h)
+ *   rounds    a big competition's round just finished: every score + round-up link
  *   news      the single best fresh story per run, at most 5 a day
  * Every post is claimed in telegram_posts BEFORE sending (at most once; a
  * failed send may be retried up to 3 times).
  */
 
 type Sql = NonNullable<Awaited<ReturnType<typeof readyDb>>>;
+
+/** Competitions whose completed rounds get a results post. */
+const ROUND_COMPS = ["premier-league", "la-liga", "serie-a", "bundesliga", "ligue-1", "champions-league", "europa-league"];
 
 export interface RunReport {
   posted: string[];
@@ -91,6 +99,22 @@ export async function runTelegram(): Promise<RunReport> {
       if (!h) continue;
       const events = await provider.getEvents(m.id).catch(() => []);
       await post(sql, `highlight:${m.id}`, "highlight", report, () => postVideoLink(h.watchUrl, highlightMessage(m, h.watchUrl, events)));
+    }
+  });
+
+  await step("rounds", async () => {
+    for (const slug of ROUND_COMPS) {
+      const comp = getCompetitionBySlug(slug);
+      if (!comp) continue;
+      // The saved season list (cached for 30 min): no extra provider cost per run.
+      const season = await provider.getFixturesByLeague(comp.leagueId, seasonYearFor(comp)).catch(() => [] as Match[]);
+      for (const r of groupRounds(slug, season)) {
+        if (r.state !== "complete" || now - Date.parse(r.endUtc) > 24 * 3600_000) continue;
+        // Last kick-off + ~2h15: the final whistle of the round's last game has gone.
+        if (now - Date.parse(r.endUtc) < 135 * 60_000) continue;
+        const url = `${SITE}/competition/${slug}/round/${r.slug}`;
+        await post(sql, `round:${slug}:${r.slug}:${seasonYearFor(comp)}`, "round", report, () => postText(roundMessage(comp.name, r.label, r.matches, url)));
+      }
     }
   });
 

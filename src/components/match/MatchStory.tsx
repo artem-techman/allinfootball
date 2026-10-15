@@ -1,5 +1,7 @@
 import type { Injury, Match, MatchEvent, Standing } from "@/lib/providers/types";
+import Link from "next/link";
 import { previewText, reportText, resultFor } from "@/lib/seo/matchCopy";
+import { roundLabel, roundSlug } from "@/lib/seo/rounds";
 
 /**
  * Written match preview (upcoming) or report (finished), built from our data.
@@ -43,6 +45,14 @@ export function MatchStory({
           <p key={i}>{p}</p>
         ))}
       </div>
+      {match.round && match.competition?.slug && (
+        <Link
+          href={`/competition/${match.competition.slug}/round/${roundSlug(match.competition.slug, match.round)}`}
+          className="mt-3 inline-block text-meta font-semibold text-text-secondary hover:text-text-primary"
+        >
+          {match.competition.name} {roundLabel(match.competition.slug, match.round).replace(/^./, (c) => c.toLowerCase())}: {upcoming ? "all fixtures" : "all results"} →
+        </Link>
+      )}
     </section>
   );
 }

@@ -24,7 +24,7 @@ export default async function CompetitionFixturesPage({ params }: { params: Prom
 
   return (
     <CompetitionLayout slug={slug} active="fixtures">
-      <CompetitionFixtures matches={matches} />
+      <CompetitionFixtures matches={matches} compSlug={comp.slug} />
     </CompetitionLayout>
   );
 }

@@ -52,7 +52,13 @@ export const metadata: Metadata = {
   category: "sports",
   openGraph: rootShare.openGraph,
   twitter: rootShare.twitter,
-  robots: { index: true, follow: true },
+  // Large image previews make match cards eligible for Google Discover's big
+  // tiles (the phone feed is a major traffic source for sport); no snippet cap.
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
+  },
 };
 
 export default function RootLayout({

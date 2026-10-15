@@ -33,10 +33,15 @@ const SWITCHER_ORDER = [
 export async function CompetitionLayout({
   slug,
   active,
+  title,
+  subtitle,
   children,
 }: {
   slug: string;
   active: CompetitionTab;
+  /** Page-specific H1 (round pages: "Premier League gameweek 8"); defaults to the competition name. */
+  title?: string;
+  subtitle?: string;
   children: ReactNode;
 }) {
   const comp = getCompetitionBySlug(slug);
@@ -80,9 +85,9 @@ export async function CompetitionLayout({
       <header className="mb-5 flex items-center gap-4">
         <Crest src={LEAGUE_LOGO(comp.leagueId)} name={comp.name} size={52} />
         <div>
-          <h1 className="text-greeting text-text-primary">{comp.name}</h1>
+          <h1 className="text-greeting text-text-primary">{title ?? comp.name}</h1>
           <p className="mt-0.5 text-meta text-text-secondary">
-            {comp.country} · Season {seasonLabel}
+            {subtitle ?? `${comp.country} · Season ${seasonLabel}`}
           </p>
         </div>
       </header>

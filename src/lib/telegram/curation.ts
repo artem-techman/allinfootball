@@ -1,5 +1,6 @@
 import type { Match, MatchEvent } from "@/lib/providers/types";
 import type { Article } from "@/lib/providers/types";
+import { getCompetitionBySlug } from "@/lib/constants/competitions";
 
 /**
  * What the Telegram channel posts, and how it reads. Pure (no I/O) and unit
@@ -124,7 +125,18 @@ export function newsScore(a: Article, now = Date.now()): number {
 }
 
 export function newsMessage(a: Article): string {
-  return `📰 <b>${esc(a.title)}</b>\n\n<a href="${a.sourceUrl}">Read at ${esc(a.sourceName)}</a>`;
+  // Also point readers at our own page for that competition (table, fixtures, live scores).
+  const comp = a.competitionTags[0] ? getCompetitionBySlug(a.competitionTags[0]) : undefined;
+  const ours = comp ? ` · 📊 <a href="${SITE}/competition/${comp.slug}/table?utm_source=telegram&amp;utm_medium=news">${esc(comp.name)} table</a>` : "";
+  return `📰 <b>${esc(a.title)}</b>\n\n<a href="${a.sourceUrl}">Read at ${esc(a.sourceName)}</a>${ours}`;
+}
+
+/** A completed round: every score, then a link to the round-up page. */
+export function roundMessage(compName: string, label: string, matches: Match[], url: string): string {
+  const lines = matches
+    .filter((m) => m.status === "finished")
+    .map((m) => `${esc(m.homeTeam?.name ?? "")} <b>${m.homeScore ?? 0}–${m.awayScore ?? 0}</b> ${esc(m.awayTeam?.name ?? "")}`);
+  return `🏁 <b>${esc(compName)}: ${esc(label)} results</b>\n\n${lines.join("\n")}\n\n📊 <a href="${url}?utm_source=telegram&amp;utm_medium=round">Round-up, scorers &amp; table</a>`;
 }
 
 /** Key words of a headline (or slug), for "same story, different outlet" checks. */

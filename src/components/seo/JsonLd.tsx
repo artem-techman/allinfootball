@@ -1,4 +1,4 @@
-import type { Match, PlayerProfile, TeamProfile } from "@/lib/providers/types";
+import type { Match, MatchEvent, PlayerProfile, TeamProfile } from "@/lib/providers/types";
 import { getCompetitionBySlug } from "@/lib/constants/competitions";
 import { SITE_URL as SITE, SITE_NAME } from "@/lib/seo/metadata";
 
@@ -160,5 +160,48 @@ export function person(profile: PlayerProfile, slug: string): Record<string, unk
     ...(profile.player.nationality ? { nationality: { "@type": "Country", name: profile.player.nationality } } : {}),
     ...(profile.teamName ? { affiliation: { "@type": "SportsTeam", name: profile.teamName } } : {}),
     ...(profile.player.position ? { jobTitle: `Professional footballer (${profile.player.position})` } : { jobTitle: "Professional footballer" }),
+  };
+}
+
+
+const EVENT_HEADLINE: Partial<Record<MatchEvent["type"], string>> = {
+  goal: "GOAL",
+  penalty: "GOAL (penalty)",
+  own_goal: "OWN GOAL",
+  red: "RED CARD",
+  missed_penalty: "PENALTY MISSED",
+};
+
+/**
+ * LiveBlogPosting for a match in play: makes the page eligible for Google's
+ * red "LIVE" badge. Each goal / red card is an update; its time is estimated
+ * from the kick-off and match minute (+15 for half-time after the 45th).
+ */
+export function liveBlog(match: Match, slug: string, events: MatchEvent[]): Record<string, unknown> {
+  const ko = Date.parse(match.kickoffUtc);
+  const at = (e: MatchEvent) => new Date(ko + ((e.minute ?? 0) + (e.extraMinute ?? 0) + ((e.minute ?? 0) > 45 ? 15 : 0)) * 60_000).toISOString();
+  const name = (id: number) => (id === match.homeTeamId ? match.homeTeam?.name : match.awayTeam?.name);
+  const updates = events
+    .filter((e) => EVENT_HEADLINE[e.type])
+    .sort((a, b) => b.minute - a.minute || (b.extraMinute ?? 0) - (a.extraMinute ?? 0))
+    .map((e) => ({
+      "@type": "BlogPosting",
+      headline: `${EVENT_HEADLINE[e.type]} ${e.minute}${e.extraMinute ? `+${e.extraMinute}` : ""}': ${e.playerName ?? ""}${e.teamId ? ` (${name(e.teamId)})` : ""}`.trim(),
+      datePublished: at(e),
+    }));
+  const title = `${match.homeTeam?.name} vs ${match.awayTeam?.name} live`;
+  return {
+    "@context": "https://schema.org",
+    "@type": "LiveBlogPosting",
+    headline: `${title}: score & updates`,
+    url: `${SITE}/match/${slug}`,
+    datePublished: match.kickoffUtc,
+    dateModified: new Date().toISOString(),
+    coverageStartTime: match.kickoffUtc,
+    coverageEndTime: new Date(ko + 135 * 60_000).toISOString(),
+    author: { "@type": "Organization", name: SITE_NAME, url: SITE },
+    publisher: { "@type": "Organization", name: SITE_NAME, logo: { "@type": "ImageObject", url: `${SITE}/icon-512.png` } },
+    about: { "@type": "SportsEvent", name: `${match.homeTeam?.name} vs ${match.awayTeam?.name}`, startDate: match.kickoffUtc },
+    liveBlogUpdate: updates,
   };
 }

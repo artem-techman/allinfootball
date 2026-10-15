@@ -6,7 +6,7 @@ import { MatchStory } from "@/components/match/MatchStory";
 import { TeamNews } from "@/components/match/TeamNews";
 import { readLastGood } from "@/lib/db/lastGood";
 import { seoMatchDescription, seoMatchTitle } from "@/lib/seo/matchCopy";
-import { JsonLd, sportsEvent, breadcrumb, competitionTableCrumb } from "@/components/seo/JsonLd";
+import { JsonLd, sportsEvent, breadcrumb, competitionTableCrumb, liveBlog } from "@/components/seo/JsonLd";
 import { provider } from "@/lib/providers";
 import { highlights } from "@/lib/highlights";
 import { archiveFinishedMatch, readArchivedMatch } from "@/lib/db/matchStore";
@@ -132,6 +132,7 @@ export default async function MatchPage({
   return (
     <AppShell>
       <JsonLd data={sportsEvent(match, slug)} />
+      {(match.status === "live" || match.status === "ht") && <JsonLd data={liveBlog(match, slug, events)} />}
       <JsonLd
         data={breadcrumb([
           { name: "Matches", path: "/matches" },

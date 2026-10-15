@@ -176,3 +176,18 @@ export function withResultType(match: Match, events: MatchEvent[]): Match {
   if (events.some((e) => e.minute > 90)) return { ...match, resultType: "aet" };
   return { ...match, resultType: "ft" };
 }
+
+/** Which of these fixture ids are already archived (one query). */
+export async function archivedIds(ids: number[]): Promise<Set<number>> {
+  const out = new Set<number>();
+  if (!ids.length) return out;
+  const sql = await readyDb();
+  if (!sql) return out;
+  try {
+    const rows = (await sql`select id from match_archive where id = any(${ids})`) as { id: string | number }[];
+    for (const r of rows) out.add(Number(r.id));
+  } catch {
+    /* treat as none archived */
+  }
+  return out;
+}

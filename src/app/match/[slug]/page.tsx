@@ -78,7 +78,13 @@ export default async function MatchPage({
       ]);
       return { events, lineups, stats, h2h };
     })());
-  const { events, lineups, stats, h2h } = details;
+  const { events, lineups, stats } = details;
+  // Matches archived in bulk (for crawlers) carry no head-to-head: fetch it —
+  // from the saved copy for robots, live (cached a day) for fans.
+  const h2h =
+    details.h2h.length > 0
+      ? details.h2h
+      : await provider.getHeadToHead(match.homeTeamId, match.awayTeamId, 5).catch(() => [] as Match[]);
 
   const [standings, odds, highlight] = await Promise.all([
     provider.getStandings(match.competitionId, match.seasonYear).catch(() => [] as Standing[]),

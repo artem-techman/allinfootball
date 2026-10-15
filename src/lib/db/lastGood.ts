@@ -68,3 +68,24 @@ async function load<T>(key: string): Promise<T | undefined> {
     return undefined;
   }
 }
+
+/** When each key was last saved (ms epoch), for the warm-up job's "is it fresh?" check. */
+export async function lastGoodSavedAt(keys: string[]): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  if (!keys.length) return out;
+  const sql = await readyDb(TIMEOUT_MS);
+  if (!sql) return out;
+  try {
+    const rows = (await sql`select key, fetched_at from provider_cache where key = any(${keys})`) as { key: string; fetched_at: string }[];
+    for (const r of rows) out.set(r.key, Date.parse(r.fetched_at));
+  } catch {
+    /* treat as nothing saved */
+  }
+  return out;
+}
+
+/** Force a save regardless of the per-instance throttle (the warm-up job). */
+export async function saveLastGood(key: string, value: unknown): Promise<void> {
+  lastWrite.delete(key);
+  await save(key, value);
+}

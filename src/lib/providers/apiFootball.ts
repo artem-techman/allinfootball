@@ -1,4 +1,5 @@
 import "server-only";
+import { headers } from "next/headers";
 
 import { swr, TTL } from "@/lib/cache";
 import {
@@ -203,6 +204,24 @@ let lastLimitDay: number | null = null;
  * Throws on exhausted retries; the swr() layer serves last-good cache on throw.
  * Refuses to call the provider once the daily budget is reached (circuit breaker).
  */
+/**
+ * Search-engine and link-preview robots. They never cause a provider request:
+ * pages they open are built from saved data only (season lists, the match
+ * archive, last-good copies), so no amount of crawling can touch the daily
+ * quota. Humans are unaffected. Exported for tests.
+ */
+export const CRAWLER_UA =
+  /bot\b|bot\/|crawl|spider|slurp|bingpreview|facebookexternalhit|embedly|whatsapp|telegrambot|semrush|ahrefs|mj12|dotbot|petalbot|yandex|baidu|duckduck|applebot|inspectiontool|lighthouse|headlesschrome|python-requests|curl\//i;
+
+async function isCrawlerRequest(): Promise<boolean> {
+  try {
+    const ua = (await headers()).get("user-agent") ?? "";
+    return CRAWLER_UA.test(ua);
+  } catch {
+    return false; // outside a request (cron jobs, the worker): not a crawler
+  }
+}
+
 async function apiGet<T>(
   path: string,
   params: Record<string, string | number> = {},
@@ -213,6 +232,7 @@ async function apiGet<T>(
   // retry is enough; the swr() layer serves last-good cache on a hard failure.
   const { revalidate, maxRetries = 1, priority = "core" } = opts;
   const key = requireKey();
+  if (await isCrawlerRequest()) throw new Error(`API-Football ${path}: skipped for a crawler (saved data only)`);
 
   // Circuit breaker + brownout: shed low-priority calls first as usage climbs,
   // and stop entirely at the budget. Before 2026-10-02 this failed OPEN when
@@ -1156,13 +1176,15 @@ export const apiFootball: FootballProvider = {
   },
 
   async getHeadToHead(team1Id: number, team2Id: number, limit = 5): Promise<Match[]> {
-    return swr(`h2h:${team1Id}:${team2Id}:${limit}`, TTL.h2h, async () => {
-      const env = await apiGet<RawFixture>("/fixtures/headtohead", {
-        h2h: `${team1Id}-${team2Id}`,
-        last: limit,
-      }, { revalidate: TTL.h2h, priority: "extra" });
-      return mapFixtures(env.response);
-    });
+    return swr(`h2h:${team1Id}:${team2Id}:${limit}`, TTL.h2h, () =>
+      withLastGood(`h2h:${team1Id}:${team2Id}:${limit}`, async () => {
+        const env = await apiGet<RawFixture>("/fixtures/headtohead", {
+          h2h: `${team1Id}-${team2Id}`,
+          last: limit,
+        }, { revalidate: TTL.h2h, priority: "extra" });
+        return mapFixtures(env.response);
+      }),
+    );
   },
 
   async getTeamFixtures(teamId: number, opts: TeamFixturesOptions): Promise<Match[]> {
@@ -1203,17 +1225,21 @@ export const apiFootball: FootballProvider = {
   },
 
   async getTeam(teamId: number): Promise<TeamProfile | undefined> {
-    return swr(`team:${teamId}`, TTL.teams, async () => {
-      const env = await apiGet<RawTeamEnvelope>("/teams", { id: teamId }, { revalidate: TTL.teams, priority: "detail" });
-      return env.response[0] ? mapTeamProfile(env.response[0]) : undefined;
-    });
+    return swr(`team:${teamId}`, TTL.teams, () =>
+      withLastGood(`team:${teamId}`, async () => {
+        const env = await apiGet<RawTeamEnvelope>("/teams", { id: teamId }, { revalidate: TTL.teams, priority: "detail" });
+        return env.response[0] ? mapTeamProfile(env.response[0]) : undefined;
+      }),
+    );
   },
 
   async getSquad(teamId: number): Promise<Player[]> {
-    return swr(`squad:${teamId}`, TTL.teams, async () => {
-      const env = await apiGet<RawSquad>("/players/squads", { team: teamId }, { revalidate: TTL.teams, priority: "detail" });
-      return mapSquad(env.response[0], teamId);
-    });
+    return swr(`squad:${teamId}`, TTL.teams, () =>
+      withLastGood(`squad:${teamId}`, async () => {
+        const env = await apiGet<RawSquad>("/players/squads", { team: teamId }, { revalidate: TTL.teams, priority: "detail" });
+        return mapSquad(env.response[0], teamId);
+      }),
+    );
   },
 
   async getPlayer(playerId: number, season: number): Promise<PlayerProfile | undefined> {

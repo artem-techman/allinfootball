@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Put <title>, description, canonical and social tags in <head> for EVERY
+  // visitor. Next 15 otherwise streams them into <body> for most user agents
+  // (Googlebot copes after rendering; Bing and simpler crawlers may not).
+  htmlLimitedBots: /.*/,
   // The share-card routes read the Inter font files from disk at runtime.
   outputFileTracingIncludes: {
     "/match/[slug]/card/story": ["./src/lib/seo/fonts/*.ttf"],

@@ -423,3 +423,22 @@ describe("isTooStale (Next data-cache stale-while-revalidate guard)", () => {
     expect(isTooStale("not a date", 30, now)).toBe(false);
   });
 });
+
+describe("crawler detection (robots never cause provider requests)", () => {
+  it("recognises search and preview robots, not browsers or our own cron", async () => {
+    const { CRAWLER_UA } = await import("@/lib/providers/apiFootball");
+    for (const ua of [
+      "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+      "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+      "facebookexternalhit/1.1",
+      "TelegramBot (like TwitterBot)",
+      "Mozilla/5.0 (compatible; AhrefsBot/7.0)",
+      "curl/8.7.1",
+    ]) expect(CRAWLER_UA.test(ua)).toBe(true);
+    for (const ua of [
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15",
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148",
+      "vercel-cron/1.0",
+    ]) expect(CRAWLER_UA.test(ua)).toBe(false);
+  });
+});

@@ -3,6 +3,11 @@ import { AppShell } from "@/components/shell/AppShell";
 import { Skeleton } from "@/components/primitives/Skeleton";
 
 /**
+ * Instant navigation feedback — scoped to home (and re-exported by /feed,
+ * /news, /my-club). NOT at the app root: a root boundary sends the response
+ * (status 200) before a page can call notFound(), turning every unknown match,
+ * team or date into a "soft 404".
+ *
  * Instant navigation feedback. Pages are rendered on demand, so without this a
  * sidebar click showed nothing until the whole next page arrived. Next prefetches
  * this shell for every link and swaps it in immediately: same sidebar, with

@@ -54,6 +54,12 @@ async function save(key: string, value: unknown): Promise<void> {
   }
 }
 
+/** The saved copy for a key, without ever calling the provider (pages that are
+ *  built only from what the warm-up job stored: injuries, player profiles). */
+export async function readLastGood<T>(key: string): Promise<T | undefined> {
+  return load<T>(key);
+}
+
 async function load<T>(key: string): Promise<T | undefined> {
   const sql = await readyDb(TIMEOUT_MS);
   if (!sql) return undefined;
@@ -88,4 +94,23 @@ export async function lastGoodSavedAt(keys: string[]): Promise<Map<string, numbe
 export async function saveLastGood(key: string, value: unknown): Promise<void> {
   lastWrite.delete(key);
   await save(key, value);
+}
+
+/** Save many keys in ONE statement (a whole squad of player profiles). */
+export async function saveLastGoodMany(entries: [key: string, value: unknown][]): Promise<void> {
+  const rows = entries.filter(([, v]) => v != null && !(Array.isArray(v) && v.length === 0));
+  if (!rows.length) return;
+  const sql = await readyDb(TIMEOUT_MS);
+  if (!sql) return;
+  const keys = rows.map(([k]) => k);
+  const bodies = rows.map(([, v]) => JSON.stringify(v));
+  try {
+    await sql`
+      insert into provider_cache (key, body, fetched_at)
+      select k, b::jsonb, now() from unnest(${keys}::text[], ${bodies}::text[]) as t(k, b)
+      on conflict (key) do update set body = excluded.body, fetched_at = excluded.fetched_at
+    `;
+  } catch (err) {
+    console.warn(`[lastGood] bulk save failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }

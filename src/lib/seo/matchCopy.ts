@@ -1,4 +1,4 @@
-import type { Match, MatchEvent, Standing } from "@/lib/providers/types";
+import type { Injury, Match, MatchEvent, Standing } from "@/lib/providers/types";
 
 /**
  * Search-shaped copy for match pages. Pure (data in → strings out), unit tested.
@@ -62,6 +62,8 @@ export interface PreviewInput {
   awayForm: Match[];
   h2h: Match[];
   table: Standing[];
+  /** Missing/doubtful players, when the provider reports them (undefined = unknown). */
+  absences?: Injury[];
 }
 
 /** "W", "D" or "L" for a team in a finished match. */
@@ -74,7 +76,7 @@ export function resultFor(m: Match, teamId: number): "W" | "D" | "L" | null {
 
 const ord = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
 
-export function previewText({ match: m, homeForm, awayForm, h2h, table }: PreviewInput): string[] {
+export function previewText({ match: m, homeForm, awayForm, h2h, table, absences }: PreviewInput): string[] {
   const { home, away } = names(m);
   const comp = m.competition?.name ?? "";
   const round = m.round ? ` (${m.round})` : "";
@@ -111,8 +113,40 @@ export function previewText({ match: m, homeForm, awayForm, h2h, table }: Previe
   } else {
     out.push(`This will be the first competitive meeting between the two sides in our records.`);
   }
+  if (absences) {
+    const lines = [absenceText(home, absences.filter((x) => x.teamId === m.homeTeamId)), absenceText(away, absences.filter((x) => x.teamId === m.awayTeamId))].filter(Boolean);
+    out.push(lines.length ? lines.join(" ") : `Neither side has reported any injuries or suspensions.`);
+  }
   out.push(`Confirmed lineups usually appear about an hour before kick-off and will show here as soon as they are announced.`);
   return out;
+}
+
+/* ------------------------------ team news --------------------------------- */
+
+/** Provider reason → readable phrase ("Red Card" → "red card suspension"). */
+export function absenceReason(reason: string | undefined): string {
+  const r = (reason ?? "").trim();
+  if (!r) return "unavailable";
+  if (/^red card$/i.test(r)) return "red card suspension";
+  if (/^yellow cards?$/i.test(r)) return "yellow card suspension";
+  if (/suspen/i.test(r)) return "suspended";
+  if (/^inactive$/i.test(r)) return "unavailable";
+  return r.toLowerCase();
+}
+
+/** "Real Madrid are without Vinícius Júnior (red card suspension) and Carvajal (knee injury); Rodrygo is a doubt." */
+export function absenceText(team: string, rows: Injury[]): string {
+  const out = rows.filter((x) => x.status === "out");
+  const doubt = rows.filter((x) => x.status === "doubt");
+  const parts: string[] = [];
+  const shown = out.slice(0, 4).map((x) => `${x.name} (${absenceReason(x.reason)})`);
+  if (out.length > 4) shown.push(`${out.length - 4} other${out.length - 4 === 1 ? "" : "s"}`);
+  if (shown.length) parts.push(`${team} are without ${list(shown)}`);
+  if (doubt.length) {
+    const names = doubt.slice(0, 3).map((x) => x.name);
+    parts.push(`${list(names)} ${doubt.length === 1 ? "is a doubt" : "are doubts"}${shown.length ? "" : ` for ${team}`}`);
+  }
+  return parts.length ? `${parts.join("; ")}.` : "";
 }
 
 /* -------------------------------- report ---------------------------------- */

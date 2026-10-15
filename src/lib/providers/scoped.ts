@@ -3,8 +3,9 @@ import { cache, swr, TTL } from "@/lib/cache";
 import { COMPETITIONS, getCompetitionByLeagueId, isInScope } from "@/lib/constants/competitions";
 import { allowedSeasons, seasonYearFor } from "@/lib/season";
 import { toDateKey } from "@/lib/utils/date";
-import { getFixtureBundles, mergeLiveSources, type FixtureBundle } from "./apiFootball";
-import type { FootballProvider, Match, Team, TeamFixturesOptions } from "./types";
+import { getFixtureBundles, isCrawlerRequest, mergeLiveSources, type FixtureBundle } from "./apiFootball";
+import { readLastGood } from "@/lib/db/lastGood";
+import type { FootballProvider, Match, PlayerProfile, Team, TeamFixturesOptions } from "./types";
 
 /**
  * The scope guard — the ONLY way pages and routes reach the provider.
@@ -358,8 +359,12 @@ export function guardProvider(inner: FootballProvider): FootballProvider {
       const allowed = COMPETITIONS.some((c) => allowedSeasons(c).includes(season));
       if (!allowed) return undefined;
       // Only a real upstream fetch spends the rate limit, not a cache hit.
+      // Robots never reach the provider (apiGet refuses them), so they don't
+      // spend the rate limit either; when it's spent, fans get the saved copy.
       const cached = cache.getStale(`player:${playerId}:${season}`) != null;
-      if (!cached && !playerBucket()) return undefined;
+      if (!cached && !(await isCrawlerRequest()) && !playerBucket()) {
+        return readLastGood<PlayerProfile>(`player:${playerId}:${season}`);
+      }
       return inner.getPlayer(playerId, season);
     },
 

@@ -14,6 +14,7 @@ import { withLastGood } from "@/lib/db/lastGood";
 import type {
   Competition,
   FootballProvider,
+  Injury,
   Lineup,
   LineupPlayer,
   Match,
@@ -213,7 +214,7 @@ let lastLimitDay: number | null = null;
 export const CRAWLER_UA =
   /bot\b|bot\/|crawl|spider|slurp|bingpreview|facebookexternalhit|embedly|whatsapp|telegrambot|semrush|ahrefs|mj12|dotbot|petalbot|yandex|baidu|duckduck|applebot|inspectiontool|lighthouse|headlesschrome|python-requests|curl\//i;
 
-async function isCrawlerRequest(): Promise<boolean> {
+export async function isCrawlerRequest(): Promise<boolean> {
   try {
     const ua = (await headers()).get("user-agent") ?? "";
     return CRAWLER_UA.test(ua);
@@ -958,6 +959,26 @@ export function mapPlayerProfile(raw: RawPlayerEnvelope): PlayerProfile {
   };
 }
 
+interface RawInjury {
+  player?: { id?: number; name?: string; photo?: string; type?: string; reason?: string };
+  team?: { id?: number };
+  fixture?: { id?: number };
+}
+
+/** One /injuries record → Injury ("Missing Fixture" = out, "Questionable" = doubt). Exported for tests. */
+export function mapInjury(raw: RawInjury): Injury | undefined {
+  const p = raw.player;
+  if (!p?.id || !p.name || raw.team?.id == null) return undefined;
+  return {
+    playerId: p.id,
+    name: decodeName(p.name) ?? p.name,
+    photo: p.photo,
+    teamId: raw.team.id,
+    status: /question|doubt/i.test(p.type ?? "") ? "doubt" : "out",
+    reason: p.reason ?? undefined,
+  };
+}
+
 interface RawCoach {
   id: number;
   name: string;
@@ -1243,10 +1264,14 @@ export const apiFootball: FootballProvider = {
   },
 
   async getPlayer(playerId: number, season: number): Promise<PlayerProfile | undefined> {
-    return swr(`player:${playerId}:${season}`, TTL.player, async () => {
-      const env = await apiGet<RawPlayerEnvelope>("/players", { id: playerId, season }, { revalidate: TTL.player, priority: "detail" });
-      return env.response[0] ? mapPlayerProfile(env.response[0]) : undefined;
-    });
+    // Last-good backed: robots (and fans during a quota squeeze) get the copy the
+    // SEO job saved from the team's squad listing, at zero provider cost.
+    return swr(`player:${playerId}:${season}`, TTL.player, () =>
+      withLastGood(`player:${playerId}:${season}`, async () => {
+        const env = await apiGet<RawPlayerEnvelope>("/players", { id: playerId, season }, { revalidate: TTL.player, priority: "detail" });
+        return env.response[0] ? mapPlayerProfile(env.response[0]) : undefined;
+      }),
+    );
   },
 
   async getCoach(coachId: number): Promise<Coach | undefined> {
@@ -1403,6 +1428,49 @@ export const ingestFetch = {
         } catch {
           /* skip one malformed record */
         }
+      }
+    }
+    return out;
+  },
+
+  /**
+   * Every player of a team with this season's stats: 20 per page, so a whole
+   * squad costs 2–3 requests instead of one per player. Lowest priority — shed
+   * first when the quota tightens.
+   */
+  async teamPlayers(teamId: number, season: number): Promise<PlayerProfile[]> {
+    const out: PlayerProfile[] = [];
+    let total = 1;
+    for (let page = 1; page <= Math.min(total, 4); page += 1) {
+      const env = await apiGet<RawPlayerEnvelope>("/players", { team: teamId, season, page }, { priority: "extra" });
+      total = env.paging?.total ?? 1;
+      for (const raw of env.response) {
+        try {
+          out.push(mapPlayerProfile(raw));
+        } catch {
+          /* skip one malformed record */
+        }
+      }
+    }
+    return out;
+  },
+
+  /**
+   * Missing and doubtful players for up to 20 fixtures in one request
+   * (`/injuries?ids=`). Every requested fixture gets an entry, empty when
+   * nobody is reported out, so "no absences" is distinguishable from "unknown".
+   */
+  async injuries(fixtureIds: number[]): Promise<Map<number, Injury[]>> {
+    const out = new Map<number, Injury[]>(fixtureIds.map((id) => [id, []]));
+    for (let i = 0; i < fixtureIds.length; i += 20) {
+      const chunk = fixtureIds.slice(i, i + 20);
+      const env = await apiGet<RawInjury>("/injuries", { ids: chunk.join("-") }, { priority: "extra" });
+      for (const raw of env.response) {
+        const id = raw.fixture?.id;
+        const list = id != null ? out.get(id) : undefined;
+        if (!list) continue;
+        const injury = mapInjury(raw);
+        if (injury && !list.some((x) => x.playerId === injury.playerId)) list.push(injury);
       }
     }
     return out;

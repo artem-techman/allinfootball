@@ -1,10 +1,11 @@
 import "server-only";
 import { provider } from "@/lib/providers";
-import { COMPETITIONS } from "@/lib/constants/competitions";
+import { COMPETITIONS, getCompetitionByLeagueId } from "@/lib/constants/competitions";
 import { seasonYearFor } from "@/lib/season";
 import { ingestFetch } from "@/lib/providers/apiFootball";
 import { archiveFinishedMatch, archivedIds } from "@/lib/db/matchStore";
-import { lastGoodSavedAt, saveLastGood } from "@/lib/db/lastGood";
+import { lastGoodSavedAt, saveLastGood, saveLastGoodMany } from "@/lib/db/lastGood";
+import { playerSeason } from "@/lib/seo/players";
 import type { Match } from "@/lib/providers/types";
 
 /**
@@ -13,13 +14,20 @@ import type { Match } from "@/lib/providers/types";
  *   archive   finished current-season matches, 20 per request (bundles)
  *   h2h       head-to-head for every fixture in the next 14 days, refreshed daily
  *   teams     team profile + squad, refreshed weekly
- * Each run is capped so it never competes with live data for the quota.
+ *   players   every club squad's season stats (player pages), after each of the
+ *             team's matches and at least weekly — ~2 requests per team
+ *   injuries  missing/doubtful players for the next 7 days' fixtures, 20 per
+ *             request; every 3h inside 48h of kick-off, otherwise every 12h
+ * Each run is capped, and every call here is "extra" priority: the first thing
+ * shed when the quota tightens, so it never competes with live data.
  */
 
 const DAY = 24 * 3600_000;
 const ARCHIVE_BATCHES_PER_RUN = 5; // ≤ 100 matches
 const H2H_PER_RUN = 12;
 const TEAMS_PER_RUN = 8; // 2 requests each
+const PLAYER_TEAMS_PER_RUN = 6; // ~2 requests each
+const INJURY_REQUESTS_PER_RUN = 3; // 20 fixtures each
 
 export interface WarmReport {
   archived: number;
@@ -28,12 +36,17 @@ export interface WarmReport {
   h2hPending: number;
   teamsWarmed: number;
   teamsPending: number;
+  playerTeamsWarmed: number;
+  playersSaved: number;
+  playerTeamsPending: number;
+  injuryFixturesWarmed: number;
+  injuryFixturesPending: number;
   calls: number;
   errors: string[];
 }
 
 export async function warmForCrawlers(): Promise<WarmReport> {
-  const report: WarmReport = { archived: 0, archivePending: 0, h2hWarmed: 0, h2hPending: 0, teamsWarmed: 0, teamsPending: 0, calls: 0, errors: [] };
+  const report: WarmReport = { archived: 0, archivePending: 0, h2hWarmed: 0, h2hPending: 0, teamsWarmed: 0, teamsPending: 0, playerTeamsWarmed: 0, playersSaved: 0, playerTeamsPending: 0, injuryFixturesWarmed: 0, injuryFixturesPending: 0, calls: 0, errors: [] };
   const now = Date.now();
   const lists = await Promise.all(
     COMPETITIONS.map((c) => provider.getFixturesByLeague(c.leagueId, seasonYearFor(c)).catch(() => [] as Match[])),
@@ -104,6 +117,74 @@ export async function warmForCrawlers(): Promise<WarmReport> {
     }
   } catch (err) {
     report.errors.push(`teams: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  // 4. Player profiles, a whole club squad per ~2 requests. National teams are
+  //    skipped: their listing carries international stats only and would
+  //    overwrite a player's club season.
+  try {
+    const season = playerSeason();
+    const national = new Set<number>();
+    const lastPlayed = new Map<number, number>();
+    for (const m of all) {
+      if (getCompetitionByLeagueId(m.competitionId)?.type === "international") {
+        national.add(m.homeTeamId);
+        national.add(m.awayTeamId);
+      }
+      if (m.status !== "finished") continue;
+      const end = Date.parse(m.kickoffUtc) + 2.5 * 3600_000; // stats settle after the whistle
+      for (const t of [m.homeTeamId, m.awayTeamId]) lastPlayed.set(t, Math.max(lastPlayed.get(t) ?? 0, end));
+    }
+    const clubs = [...new Set(all.flatMap((m) => [m.homeTeamId, m.awayTeamId]))].filter((t) => !national.has(t));
+    const markerOf = (t: number) => `teamplayers:${t}:${season}`;
+    const saved = await lastGoodSavedAt(clubs.map(markerOf));
+    const at = (t: number) => saved.get(markerOf(t)) ?? 0;
+    const stale = clubs.filter((t) => now - at(t) > 7 * DAY || at(t) < (lastPlayed.get(t) ?? 0)).sort((a, b) => at(a) - at(b));
+    report.playerTeamsPending = stale.length;
+    await Promise.all(
+      stale.slice(0, PLAYER_TEAMS_PER_RUN).map(async (t) => {
+        const profiles = await ingestFetch.teamPlayers(t, season).catch(() => null);
+        report.calls += profiles ? Math.max(1, Math.ceil(profiles.length / 20)) : 1;
+        if (!profiles) return; // shed or failed: next run
+        await saveLastGoodMany(profiles.map((p) => [`player:${p.player.id}:${season}`, p]));
+        await saveLastGood(markerOf(t), 1);
+        report.playerTeamsWarmed += 1;
+        report.playersSaved += profiles.length;
+      }),
+    );
+    report.playerTeamsPending = Math.max(0, report.playerTeamsPending - report.playerTeamsWarmed);
+  } catch (err) {
+    report.errors.push(`players: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  // 5. Injuries & suspensions for the next 7 days (team news on match previews).
+  //    Saved as { rows } so "nobody missing" is stored too (bare [] never is).
+  try {
+    const soon = all.filter((m) => m.status === "scheduled" && Date.parse(m.kickoffUtc) > now && Date.parse(m.kickoffUtc) - now < 7 * DAY);
+    const keyOf = (id: number) => `injuries:${id}`;
+    const saved = await lastGoodSavedAt(soon.map((m) => keyOf(m.id)));
+    const stale = soon
+      .filter((m) => {
+        const age = now - (saved.get(keyOf(m.id)) ?? 0);
+        return Date.parse(m.kickoffUtc) - now < 2 * DAY ? age > 3 * 3600_000 : age > 12 * 3600_000;
+      })
+      .sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc))
+      .map((m) => m.id);
+    report.injuryFixturesPending = stale.length;
+    for (let i = 0; i < INJURY_REQUESTS_PER_RUN && i * 20 < stale.length; i += 1) {
+      const chunk = stale.slice(i * 20, i * 20 + 20);
+      report.calls += 1;
+      const byFixture = await ingestFetch.injuries(chunk).catch((err) => {
+        report.errors.push(`injuries: ${err instanceof Error ? err.message : String(err)}`);
+        return null;
+      });
+      if (!byFixture) break; // shed or failed: next run
+      await saveLastGoodMany([...byFixture].map(([id, rows]) => [keyOf(id), { rows }]));
+      report.injuryFixturesWarmed += byFixture.size;
+    }
+    report.injuryFixturesPending = Math.max(0, report.injuryFixturesPending - report.injuryFixturesWarmed);
+  } catch (err) {
+    report.errors.push(`injuries: ${err instanceof Error ? err.message : String(err)}`);
   }
   return report;
 }

@@ -1,4 +1,4 @@
-import type { Match, MatchEvent, Standing } from "@/lib/providers/types";
+import type { Injury, Match, MatchEvent, Standing } from "@/lib/providers/types";
 import { previewText, reportText, resultFor } from "@/lib/seo/matchCopy";
 
 /**
@@ -13,6 +13,7 @@ export function MatchStory({
   table,
   homeForm,
   awayForm,
+  absences,
 }: {
   match: Match;
   events: MatchEvent[];
@@ -20,11 +21,12 @@ export function MatchStory({
   table: Standing[];
   homeForm: Match[];
   awayForm: Match[];
+  absences?: Injury[];
 }) {
   const upcoming = match.status === "scheduled";
   const finished = match.status === "finished";
   if (!upcoming && !finished) return null;
-  const paragraphs = upcoming ? previewText({ match, homeForm, awayForm, h2h, table }) : reportText(match, events);
+  const paragraphs = upcoming ? previewText({ match, homeForm, awayForm, h2h, table, absences }) : reportText(match, events);
   return (
     <section className="rounded-card border border-hairline bg-card p-card" aria-labelledby="match-story">
       <h2 id="match-story" className="text-cardtitle text-text-primary">

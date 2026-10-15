@@ -13,7 +13,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/player/", "/coach/", "/referee/", "/stadium/", "/api/", "/my-club", "/unsubscribe"],
+      disallow: ["/coach/", "/referee/", "/stadium/", "/api/", "/my-club", "/unsubscribe"],
     },
     sitemap: "https://myfootballtracker.com/sitemap.xml",
     host: "https://myfootballtracker.com",

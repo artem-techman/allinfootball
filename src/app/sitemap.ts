@@ -3,6 +3,8 @@ import { COMPETITIONS } from "@/lib/constants/competitions";
 import { provider } from "@/lib/providers";
 import { seasonYearFor } from "@/lib/season";
 import { toDateKey } from "@/lib/utils/date";
+import { entitySlug } from "@/lib/utils/slug";
+import { savedPlayers } from "@/lib/seo/players";
 import type { Match } from "@/lib/providers/types";
 
 const SITE = "https://myfootballtracker.com";
@@ -11,8 +13,8 @@ const DAY = 24 * 3600_000;
 /**
  * Sitemap: current-season match pages (next 3 weeks first — search demand for a
  * fixture peaks in the days before kick-off, and Google needs those days to find
- * it), every team, matchday pages (last week → next month), competitions and
- * the static pages. Built from the saved season fixture lists: when a crawler
+ * it), every team, matchday pages (last week → next month), competitions, the
+ * static pages, and every saved player who has played this season. Built from the saved season fixture lists: when a crawler
  * fetches this, no provider request is made (robots get saved data only).
  */
 export const dynamic = "force-dynamic";
@@ -58,6 +60,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const days = new Set<string>();
   for (const m of fixtures) if (ko(m) >= now - 7 * DAY && ko(m) <= now + 30 * DAY) days.add(toDateKey(new Date(m.kickoffUtc)));
   for (const d of [...days].sort()) entries.push({ url: `${SITE}/matches/${d}`, lastModified: today, changeFrequency: "daily", priority: 0.5 });
+
+  // Players who have played this season (saved by the SEO job), most goals + assists first.
+  for (const p of await savedPlayers()) {
+    entries.push({ url: `${SITE}/player/${entitySlug(p.name, p.id)}`, lastModified: today, changeFrequency: "weekly", priority: p.contributions > 0 ? 0.6 : 0.4 });
+  }
 
   return entries;
 }

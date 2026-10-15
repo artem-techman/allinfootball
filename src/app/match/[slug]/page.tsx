@@ -3,6 +3,8 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { AppShell } from "@/components/shell/AppShell";
 import { MatchCenter, type MatchBundle } from "@/components/match/MatchCenter";
 import { MatchStory } from "@/components/match/MatchStory";
+import { TeamNews } from "@/components/match/TeamNews";
+import { readLastGood } from "@/lib/db/lastGood";
 import { seoMatchDescription, seoMatchTitle } from "@/lib/seo/matchCopy";
 import { JsonLd, sportsEvent, breadcrumb, competitionTableCrumb } from "@/components/seo/JsonLd";
 import { provider } from "@/lib/providers";
@@ -11,7 +13,7 @@ import { archiveFinishedMatch, readArchivedMatch } from "@/lib/db/matchStore";
 import { entitySlug, idFromSlug } from "@/lib/utils/slug";
 import { buildMetadata } from "@/lib/seo/metadata";
 import { canonicalMatchSlug } from "@/lib/seo/matchShare";
-import type { Lineup, Match, MatchEvent, MatchStats, Odds, Standing } from "@/lib/providers/types";
+import type { Injury, Lineup, Match, MatchEvent, MatchStats, Odds, Standing } from "@/lib/providers/types";
 
 export const dynamic = "force-dynamic";
 
@@ -91,10 +93,15 @@ export default async function MatchPage({
       ? details.h2h
       : await provider.getHeadToHead(match.homeTeamId, match.awayTeamId, 5).catch(() => [] as Match[]);
 
-  const [homeForm, awayForm] = await Promise.all([
+  // Injuries & suspensions come only from what the SEO job saved: a page view
+  // never requests them (undefined = not reported for this competition yet).
+  const upcoming = match.status === "scheduled";
+  const [homeForm, awayForm, injuries] = await Promise.all([
     provider.getTeamFixtures(match.homeTeamId, { last: 5 }).catch(() => [] as Match[]),
     provider.getTeamFixtures(match.awayTeamId, { last: 5 }).catch(() => [] as Match[]),
+    upcoming ? readLastGood<{ rows: Injury[] }>(`injuries:${id}`).catch(() => undefined) : Promise.resolve(undefined),
   ]);
+  const absences = injuries?.rows;
   const [standings, odds, highlight] = await Promise.all([
     provider.getStandings(match.competitionId, match.seasonYear).catch(() => [] as Standing[]),
     finished
@@ -137,7 +144,12 @@ export default async function MatchPage({
       <MatchCenter
         key={match.id}
         bundle={bundle}
-        intro={<MatchStory match={match} events={events} h2h={h2h} table={standings} homeForm={homeForm} awayForm={awayForm} />}
+        intro={
+          <>
+            <MatchStory match={match} events={events} h2h={h2h} table={standings} homeForm={homeForm} awayForm={awayForm} absences={absences} />
+            {upcoming && <TeamNews match={match} absences={absences} />}
+          </>
+        }
       />
     </AppShell>
   );

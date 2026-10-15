@@ -1,4 +1,4 @@
-import type { Match, TeamProfile } from "@/lib/providers/types";
+import type { Match, PlayerProfile, TeamProfile } from "@/lib/providers/types";
 import { getCompetitionBySlug } from "@/lib/constants/competitions";
 import { SITE_URL as SITE, SITE_NAME } from "@/lib/seo/metadata";
 
@@ -145,5 +145,19 @@ export function breadcrumb(items: Crumb[]): Record<string, unknown> {
       name: it.name,
       item: `${SITE}${it.path}`,
     })),
+  };
+}
+
+/** Person for a player page: name, photo, nationality and current club. */
+export function person(profile: PlayerProfile, slug: string): Record<string, unknown> {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: profile.player.name,
+    url: `${SITE}/player/${slug}`,
+    ...(profile.photo ? { image: profile.photo } : {}),
+    ...(profile.player.nationality ? { nationality: { "@type": "Country", name: profile.player.nationality } } : {}),
+    ...(profile.teamName ? { affiliation: { "@type": "SportsTeam", name: profile.teamName } } : {}),
+    ...(profile.player.position ? { jobTitle: `Professional footballer (${profile.player.position})` } : { jobTitle: "Professional footballer" }),
   };
 }

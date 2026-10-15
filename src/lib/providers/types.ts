@@ -262,6 +262,18 @@ export interface PlayerProfile {
   stats: PlayerStatLine;
 }
 
+/** A player reported missing (or doubtful) for a fixture: injury, suspension, illness. */
+export interface Injury {
+  playerId: number;
+  name: string;
+  photo?: string;
+  teamId: number;
+  /** "out" = will miss the match; "doubt" = questionable. */
+  status: "out" | "doubt";
+  /** Provider wording, e.g. "Knee Injury", "Red Card", "Suspended". */
+  reason?: string;
+}
+
 /**
  * Pre-match 1X2 odds, NEUTRAL DATA ONLY (no betting CTAs/affiliate links —
  * CLAUDE.md section 17). Decimal prices; any field may be absent.

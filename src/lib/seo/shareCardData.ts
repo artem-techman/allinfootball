@@ -17,7 +17,7 @@ export const SHARE_CARD_SIZES: Record<ShareCardFormat, { width: number; height: 
 };
 
 /** Where a share went — becomes `utm_medium` on the shared link. */
-export type ShareChannel = "instagram" | "x" | "whatsapp" | "copy" | "native" | "download";
+export type ShareChannel = "instagram" | "x" | "whatsapp" | "telegram" | "copy" | "native" | "download";
 
 const SITE_HOST = SITE_URL.replace(/^https?:\/\//, "");
 
@@ -135,10 +135,31 @@ export function resultHeadline(m: Match): string {
   return `${home} ${score} ${away}${pens}`;
 }
 
-/** Post text: "Spain 2–1 Italy · UEFA Nations League ⚽ via myfootballtracker.com". */
+const kickoffFmt = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
+
+/**
+ * Post text for the match's current state:
+ *   finished  "Spain 2–1 Italy · UEFA Nations League ⚽ via myfootballtracker.com"
+ *   live      "🔴 LIVE: Juventus 1–0 Celta Vigo (63') · UEFA Europa League ⚽ follow it on myfootballtracker.com"
+ *   upcoming  "Juventus vs Celta Vigo · Thu 15 Oct, 20:00 UK · UEFA Europa League ⚽ via myfootballtracker.com"
+ */
 export function shareText(m: Match): string {
   const comp = m.competition?.name ? ` · ${m.competition.name}` : "";
+  if (m.status === "live" || m.status === "ht") {
+    const clock = m.status === "ht" ? "HT" : m.minute != null ? `${m.minute}${m.extraMinute ? `+${m.extraMinute}` : ""}'` : "";
+    return `🔴 LIVE: ${resultHeadline({ ...m, homeScore: m.homeScore ?? 0, awayScore: m.awayScore ?? 0 })}${clock ? ` (${clock})` : ""}${comp} ⚽ follow it on ${SITE_HOST}`;
+  }
+  if (m.status === "scheduled") {
+    const when = kickoffFmt.format(new Date(m.kickoffUtc)).replace(/^(\w+) (\d+ \w+),? /, "$1 $2, ");
+    return `${m.homeTeam?.name ?? "Home"} vs ${m.awayTeam?.name ?? "Away"} · ${when} UK${comp} ⚽ via ${SITE_HOST}`;
+  }
   return `${resultHeadline(m)}${comp} ⚽ via ${SITE_HOST}`;
+}
+
+/** Telegram share link with the text + link prefilled. */
+export function telegramShareUrl(m: Match): string {
+  const params = new URLSearchParams({ url: shareUrl(m, "telegram"), text: shareText(m) });
+  return `https://t.me/share/url?${params.toString()}`;
 }
 
 /* ------------------------------------- urls ------------------------------------- */

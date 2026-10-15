@@ -161,7 +161,8 @@ export function MatchCenter({ bundle, intro }: { bundle: MatchBundle; intro?: Re
           <ChevronLeftIcon size={16} />
           Back
         </button>
-        {match.status === "finished" && <ShareSheet match={match} />}
+        {/* Every match: live and upcoming ones share the link, finished ones the result card too. */}
+        <ShareSheet match={match} />
       </div>
       {degraded && <ErrorBanner />}
       <MatchHeader match={match} events={events} />

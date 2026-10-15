@@ -10,13 +10,17 @@ import {
   resultHeadline,
   shareText,
   shareUrl,
+  telegramShareUrl,
   whatsappUrl,
   xIntentUrl,
   type ShareCardFormat,
 } from "@/lib/seo/shareCardData";
 
 /**
- * "Share" on a finished match: a small dialog (bottom sheet on phones, popover
+ * "Share" on any match. Live and upcoming matches share the link (WhatsApp,
+ * Telegram, X, the phone's share sheet, copy) with text that fits the moment
+ * ("🔴 LIVE: Juventus 1–0 Celta Vigo (63')"); a finished match also gets its
+ * result card. A small dialog (bottom sheet on phones, popover
  * on desktop) with a preview of the story card and the places to post it.
  *
  *  - Instagram Story: hands the 1080x1920 card to the OS share sheet where files
@@ -37,6 +41,8 @@ const DESKTOP_QUERY = "(min-width: 640px)";
 type Busy = "instagram" | "story" | "square" | null;
 
 export function ShareSheet({ match }: { match: Match }) {
+  // The image card exists only once there's a result (its route 404s before).
+  const withCard = match.status === "finished";
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [show, setShow] = useState(false);
@@ -94,7 +100,7 @@ export function ShareSheet({ match }: { match: Match }) {
   // Instagram option shares, so the share call can run straight from the tap
   // (Safari drops the user gesture if we fetch first).
   useEffect(() => {
-    if (!open || preview) return;
+    if (!open || preview || !withCard) return;
     let cancelled = false;
     setPreviewFailed(false);
     fetchCard(match, "story")
@@ -107,7 +113,7 @@ export function ShareSheet({ match }: { match: Match }) {
     return () => {
       cancelled = true;
     };
-  }, [open, preview, match]);
+  }, [open, preview, match, withCard]);
   useEffect(() => () => {
     if (preview) URL.revokeObjectURL(preview.url);
   }, [preview]);
@@ -240,7 +246,7 @@ export function ShareSheet({ match }: { match: Match }) {
 
   async function shareLinkNative() {
     try {
-      await navigator.share({ title: resultHeadline(match), text: shareText(match), url: shareUrl(match, "native") });
+      await navigator.share({ title: withCard ? resultHeadline(match) : `${match.homeTeam?.name} vs ${match.awayTeam?.name}`, text: shareText(match), url: shareUrl(match, "native") });
       close();
     } catch {
       /* dismissed */
@@ -296,7 +302,7 @@ export function ShareSheet({ match }: { match: Match }) {
               {!desktop && <span aria-hidden className="mx-auto mt-2.5 h-1 w-10 shrink-0 rounded-full bg-white/20" />}
               <div className="flex items-center justify-between px-4 pb-2 pt-3">
                 <h2 id="share-sheet-title" className="text-cardtitle font-semibold">
-                  Share result
+                  {withCard ? "Share result" : match.status === "scheduled" ? "Share match" : "Share live match"}
                 </h2>
                 <button
                   type="button"
@@ -309,6 +315,7 @@ export function ShareSheet({ match }: { match: Match }) {
               </div>
 
               <div className="flex gap-4 px-4 pb-4">
+                {withCard && (
                 <div className="w-[112px] shrink-0">
                   <div className="relative aspect-[9/16] w-full overflow-hidden rounded-tile border border-hairline bg-surface-dark-2">
                     {preview ? (
@@ -329,32 +336,40 @@ export function ShareSheet({ match }: { match: Match }) {
                     )}
                   </div>
                 </div>
+                )}
 
                 <ul className="flex min-w-0 flex-1 flex-col gap-1">
-                  <Option
-                    icon={<InstagramGlyph />}
-                    label="Instagram Story"
-                    hint={canShareFiles ? "Also TikTok, WhatsApp status…" : "Downloads the story image"}
-                    onClick={shareStory}
-                    busy={busy === "instagram"}
-                  />
-                  <OptionLink icon={<XGlyph />} label="X" href={xIntentUrl(match)} onNavigate={close} />
+                  {withCard && (
+                    <Option
+                      icon={<InstagramGlyph />}
+                      label="Instagram Story"
+                      hint={canShareFiles ? "Also TikTok, WhatsApp status…" : "Downloads the story image"}
+                      onClick={shareStory}
+                      busy={busy === "instagram"}
+                    />
+                  )}
                   <OptionLink icon={<WhatsAppGlyph />} label="WhatsApp" href={whatsappUrl(match)} onNavigate={close} />
+                  <OptionLink icon={<TelegramGlyph />} label="Telegram" href={telegramShareUrl(match)} onNavigate={close} />
+                  <OptionLink icon={<XGlyph />} label="X" href={xIntentUrl(match)} onNavigate={close} />
                   {canShareLink && <Option icon={<ShareIcon size={18} />} label="More apps" onClick={shareLinkNative} />}
-                  <Option
-                    icon={<DownloadIcon size={18} />}
-                    label="Download story"
-                    hint="1080 × 1920"
-                    onClick={() => downloadCard("story")}
-                    busy={busy === "story"}
-                  />
-                  <Option
-                    icon={<DownloadIcon size={18} />}
-                    label="Download square"
-                    hint="1080 × 1080"
-                    onClick={() => downloadCard("square")}
-                    busy={busy === "square"}
-                  />
+                  {withCard && (
+                    <>
+                      <Option
+                        icon={<DownloadIcon size={18} />}
+                        label="Download story"
+                        hint="1080 × 1920"
+                        onClick={() => downloadCard("story")}
+                        busy={busy === "story"}
+                      />
+                      <Option
+                        icon={<DownloadIcon size={18} />}
+                        label="Download square"
+                        hint="1080 × 1080"
+                        onClick={() => downloadCard("square")}
+                        busy={busy === "square"}
+                      />
+                    </>
+                  )}
                   <Option icon={<LinkIcon size={18} />} label="Copy link" onClick={copyLink} />
                 </ul>
               </div>
@@ -436,6 +451,15 @@ function XGlyph() {
   return (
     <svg width={15} height={15} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
       <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+function TelegramGlyph() {
+  return (
+    <svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinejoin="round" aria-hidden>
+      <path d="M21.5 4.5 2.8 11.7c-.8.3-.8 1.4 0 1.7l4.6 1.6 1.8 5.6c.2.7 1.1.9 1.6.4l2.6-2.5 4.7 3.5c.6.4 1.4.1 1.6-.6l3-15.5c.2-.9-.6-1.6-1.4-1.3Z" />
+      <path d="m7.4 15 10.1-7.2-7.2 8.6" />
     </svg>
   );
 }

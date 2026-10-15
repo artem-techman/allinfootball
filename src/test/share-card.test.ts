@@ -193,3 +193,22 @@ describe("crest format sniffing (GIF served as image/png)", async () => {
     expect(imageKind(Buffer.from("hello"))).toBe("unknown");
   });
 });
+
+describe("share text follows the match state", () => {
+  it("live, half-time and upcoming", async () => {
+    const { shareText, telegramShareUrl } = await import("@/lib/seo/shareCardData");
+    const base = {
+      id: 7, slug: "juventus-celta-vigo-7", competitionId: 3, seasonYear: 2026, kickoffUtc: "2026-10-15T19:00:00Z",
+      homeTeamId: 496, awayTeamId: 538, homeTeam: { id: 496, slug: "j", name: "Juventus" }, awayTeam: { id: 538, slug: "c", name: "Celta Vigo" },
+      competition: { id: 3, slug: "europa-league", name: "UEFA Europa League" },
+    } as const;
+    expect(shareText({ ...base, status: "live", minute: 63, homeScore: 1, awayScore: 0 })).toBe(
+      "🔴 LIVE: Juventus 1–0 Celta Vigo (63') · UEFA Europa League ⚽ follow it on myfootballtracker.com",
+    );
+    expect(shareText({ ...base, status: "live", minute: 90, extraMinute: 3, homeScore: 0, awayScore: 0 })).toContain("(90+3')");
+    expect(shareText({ ...base, status: "ht", homeScore: 0, awayScore: 0 })).toContain("Juventus 0–0 Celta Vigo (HT)");
+    expect(shareText({ ...base, status: "scheduled" })).toBe("Juventus vs Celta Vigo · Thu 15 Oct, 20:00 UK · UEFA Europa League ⚽ via myfootballtracker.com");
+    const tg = new URL(telegramShareUrl({ ...base, status: "scheduled" }));
+    expect(tg.searchParams.get("url")).toContain("utm_medium=telegram");
+  });
+});

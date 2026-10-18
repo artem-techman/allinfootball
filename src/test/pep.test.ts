@@ -1,0 +1,49 @@
+import { describe, it, expect } from "vitest";
+import { PEP_KINDS, SHIFT_GAP_MS, currentRoom, parseStatus, safeLink } from "@/lib/pep/model";
+
+describe("Pep's status reports", () => {
+  it("accepts a well-formed report and cleans the text", () => {
+    const r = parseStatus({ kind: "posting", title: "  Posted the\nChelsea 5–1 recap  ", link: "https://www.threads.net/@myfootballtracker/post/1", monthlyVisitors: 3412 });
+    expect(r).toEqual({
+      ok: true,
+      activity: { kind: "posting", title: "Posted the Chelsea 5–1 recap", detail: undefined, link: "https://www.threads.net/@myfootballtracker/post/1" },
+      monthlyVisitors: 3412,
+    });
+  });
+  it("rejects unknown kinds, empty titles, bad links and silly numbers", () => {
+    expect(parseStatus({ kind: "hacking", title: "x".repeat(10) }).ok).toBe(false);
+    expect(parseStatus({ kind: "posting", title: "  " }).ok).toBe(false);
+    expect(parseStatus({ kind: "posting", title: "Hello there", link: "https://evil.example/phish" }).ok).toBe(false);
+    expect(parseStatus({ kind: "posting", title: "Hello there", link: "javascript:alert(1)" }).ok).toBe(false);
+    expect(parseStatus({ kind: "analysing", title: "Numbers", monthlyVisitors: -5 }).ok).toBe(false);
+    expect(parseStatus(null).ok).toBe(false);
+  });
+  it("only links to our site and known platforms, over https", () => {
+    expect(safeLink("https://myfootballtracker.com/match/x-1")).toBeTruthy();
+    expect(safeLink("https://bsky.app/profile/x")).toBeTruthy();
+    expect(safeLink("http://myfootballtracker.com/")).toBeUndefined();
+    expect(safeLink("https://myfootballtracker.com.evil.io/")).toBeUndefined();
+  });
+  it("caps long text", () => {
+    const r = parseStatus({ kind: "writing", title: "t".repeat(400), detail: "d".repeat(900) });
+    expect(r.ok && r.activity.title.length).toBe(140);
+    expect(r.ok && r.activity.detail?.length).toBe(500);
+  });
+});
+
+describe("where Pep is standing", () => {
+  const now = Date.parse("2026-10-18T12:00:00Z");
+  const act = (kind: keyof typeof PEP_KINDS, minsAgo: number) => ({
+    current: { id: 1, kind, title: "x", at: new Date(now - minsAgo * 60_000).toISOString() },
+  });
+  it("goes to the room for his latest task while he's on shift", () => {
+    expect(currentRoom(act("posting", 5), now)).toEqual({ room: "studio", onShift: true });
+    expect(currentRoom(act("outreach", 30), now)).toEqual({ room: "press", onShift: true });
+    expect(currentRoom(act("watching", 1), now)).toEqual({ room: "match", onShift: true });
+  });
+  it("recharges at the dock between shifts or before his first report", () => {
+    expect(currentRoom(act("posting", SHIFT_GAP_MS / 60_000 + 1), now)).toEqual({ room: "lobby", onShift: false });
+    expect(currentRoom(act("resting", 1), now)).toEqual({ room: "lobby", onShift: false });
+    expect(currentRoom({ current: null }, now)).toEqual({ room: "lobby", onShift: false });
+  });
+});

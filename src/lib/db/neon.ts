@@ -138,6 +138,20 @@ const SCHEMA: string[] = [
     body       jsonb       not null,
     fetched_at timestamptz not null default now()
   )`,
+  // Pep (the AI CEO) reports what he's doing; /pep shows it live.
+  `create table if not exists pep_activity (
+    id      bigserial   primary key,
+    at      timestamptz not null default now(),
+    kind    text        not null,
+    title   text        not null,
+    detail  text,
+    link    text
+  )`,
+  `create table if not exists pep_scoreboard (
+    id               bigserial   primary key,
+    at               timestamptz not null default now(),
+    monthly_visitors integer     not null
+  )`,
 ];
 
 let schemaReady: Promise<boolean> | null = null;

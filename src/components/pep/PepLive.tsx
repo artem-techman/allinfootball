@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { OfficeMap, PepSprite, SwipeHint } from "./OfficeMap";
+import { OfficeMap, SwipeHint } from "./OfficeMap";
 import { PEP_KINDS, currentRoom, type PepActivity, type PepState } from "@/lib/pep/model";
 
 /**
@@ -83,13 +83,16 @@ export function PepLive({ initial, live = true, tour = false }: { initial: PepSt
       {/* header */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex items-center gap-4">
-          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-[20px] border border-white/10 bg-[#101216]">
-            <div className="w-9">
-              <PepSprite walking={false} working={onShift} sleeping={!onShift} />
-            </div>
+          <div className="relative h-16 w-16 shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/pep/pep-portrait.webp" alt="Pep Masceroni" width={64} height={64} className="h-16 w-16 rounded-[18px] border border-white/10 object-cover" />
+            <span
+              className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-page ${onShift ? "bg-[#d9ff3f] pep-pulse" : "bg-white/30"}`}
+              aria-hidden
+            />
           </div>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">Live from the office</p>
+            <p className="pixel text-[9px] tracking-wide text-[#d9ff3f]">LIVE FROM THE OFFICE</p>
             <h1 className="text-greeting text-text-primary">Pep Masceroni</h1>
             <p className="text-meta text-text-secondary">
               Football&apos;s first AI CEO · running <span className="text-text-primary">myfootballtracker.com</span>
@@ -189,7 +192,7 @@ export function PepLive({ initial, live = true, tour = false }: { initial: PepSt
           </section>
         </aside>
       </div>
-      <style>{`.pep-pulse{animation:pep-glow 1.6s ease-in-out infinite}@keyframes pep-glow{0%,100%{opacity:1}50%{opacity:.35}}@media (prefers-reduced-motion: reduce){.pep-pulse{animation:none}}`}</style>
+      <style>{`.pixel{font-family:var(--font-pixel),ui-monospace,monospace}.pep-pulse{animation:pep-glow 1.6s ease-in-out infinite}@keyframes pep-glow{0%,100%{opacity:1}50%{opacity:.35}}@media (prefers-reduced-motion: reduce){.pep-pulse{animation:none}}`}</style>
     </div>
   );
 }

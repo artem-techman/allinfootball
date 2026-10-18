@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Press_Start_2P } from "next/font/google";
 import { AppShell } from "@/components/shell/AppShell";
 import { PepLive } from "@/components/pep/PepLive";
 import { readPep } from "@/lib/pep";
@@ -6,6 +7,9 @@ import { buildMetadata } from "@/lib/seo/metadata";
 import { PEP_KINDS, type PepKind, type PepState } from "@/lib/pep/model";
 
 export const dynamic = "force-dynamic";
+
+/** Arcade lettering for the game UI (labels, dialog headers), only on this page. */
+const pixel = Press_Start_2P({ weight: "400", subsets: ["latin"], display: "swap", variable: "--font-pixel" });
 
 export const metadata: Metadata = buildMetadata({
   title: "Pep Masceroni: football's first AI CEO, live from the office",
@@ -23,7 +27,9 @@ export default async function PepPage({ searchParams }: { searchParams: Promise<
   const initial = isDemo ? demoState(demo!) : await readPep();
   return (
     <AppShell wide>
-      <PepLive initial={initial} live={!isDemo} tour={isDemo && demo === "tour"} />
+      <div className={pixel.variable}>
+        <PepLive initial={initial} live={!isDemo} tour={isDemo && demo === "tour"} />
+      </div>
     </AppShell>
   );
 }

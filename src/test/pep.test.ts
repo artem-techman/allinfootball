@@ -47,3 +47,18 @@ describe("where Pep is standing", () => {
     expect(currentRoom({ current: null }, now)).toEqual({ room: "lobby", onShift: false });
   });
 });
+
+describe("Pep's walk around the office", () => {
+  it("can walk from every room to every other room, through the doors", async () => {
+    const { findPath, ROOMS } = await import("@/components/pep/OfficeMap");
+    const spots = Object.values(ROOMS).map((r) => r.spot);
+    for (const a of spots) for (const b of spots) {
+      const path = findPath(a, b);
+      expect(path[0]).toBe(a);
+      expect(path.at(-1)).toBe(b);
+      if (a !== b) expect(path.length).toBeGreaterThan(2); // never a straight line through walls
+    }
+    expect(findPath("studio", "ceo")).toEqual(["studio", "studio_in", "studio_door", "H_studio", "H_ceo", "ceo_door", "ceo"]);
+    expect(findPath("press", "work")).toEqual(["press", "press_door", "side", "work_door", "work_in", "work"]);
+  });
+});

@@ -111,12 +111,17 @@ export function PepChat({ onShift, demo }: { onShift: boolean; demo?: ChatState 
       >
         {!state ? (
           <p className="py-8 text-center text-meta text-text-muted">Loading the chat…</p>
-        ) : state.messages.length === 0 ? (
-          <p className="py-8 text-center text-meta text-text-muted">No messages yet. Say hello to football&apos;s first AI CEO.</p>
         ) : (
-          state.messages.map((m) => (
-            <Message key={m.id} m={m} quoted={m.replyTo ? byId.get(m.replyTo) : undefined} canReply={Boolean(me?.signedIn)} onReply={() => setReplyTo(m)} />
-          ))
+          <>
+            {state.messages.length === 0 && (
+              <p className="py-6 text-center text-meta text-text-muted">No messages yet. Be the first to say hello to football&apos;s first AI CEO.</p>
+            )}
+            {state.messages.map((m) => (
+              <Message key={m.id} m={m} quoted={m.replyTo ? byId.get(m.replyTo) : undefined} canReply={Boolean(me?.signedIn)} onReply={() => setReplyTo(m)} />
+            ))}
+            {/* Visitors: a pinned welcome that invites them in. */}
+            {!me?.signedIn && <PinnedInvite onJoin={() => setSigningIn(true)} />}
+          </>
         )}
       </div>
 
@@ -170,22 +175,72 @@ export function PepChat({ onShift, demo }: { onShift: boolean; demo?: ChatState 
             {error && <p className="text-[11px] text-[#f87171]">{error}</p>}
             <p className="text-[10px] text-text-muted">Public chat. Be kind. Pep answers when he&apos;s on shift.</p>
           </form>
-        ) : state.signInAvailable ? (
-          signingIn ? (
-            <div className="space-y-2">
-              <p className="text-[11px] text-text-secondary">We&apos;ll email you a 6-digit code. No password.</p>
-              <EmailSignIn compact onDone={() => load()} />
+        ) : signingIn ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="pixel text-[8px] text-[#d9ff3f]">JOIN THE CHAT</p>
+              <button type="button" onClick={() => setSigningIn(false)} className="text-[11px] text-text-muted hover:text-white">
+                Not now
+              </button>
             </div>
-          ) : (
-            <button type="button" onClick={() => setSigningIn(true)} className="pixel w-full rounded-[8px] bg-[#d9ff3f] px-3 py-3 text-[9px] text-[#0b0d11]">
-              SIGN IN TO CHAT
-            </button>
-          )
+            {state.signInAvailable ? (
+              <>
+                <p className="text-[11px] text-text-secondary">Enter your email and we&apos;ll send a 6-digit code. Free, no password.</p>
+                <EmailSignIn compact onDone={() => load()} />
+              </>
+            ) : (
+              <p className="rounded-[8px] bg-white/5 px-3 py-2.5 text-[12px] text-text-secondary">
+                Sign-in is opening in the next few days. Come back soon and you&apos;ll be among the first fans to talk to Pep.
+              </p>
+            )}
+          </div>
         ) : (
-          <p className="text-center text-[11px] text-text-muted">Chatting opens soon. You can read along in the meantime.</p>
+          // Looks like the message box, so it's obvious what signing in unlocks.
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSigningIn(true)}
+                className="h-[38px] min-w-0 flex-1 truncate rounded-[8px] border border-white/10 bg-white/5 px-3 text-left text-meta text-text-muted hover:border-[#d9ff3f]/50"
+              >
+                Say something to Pep…
+              </button>
+              <button type="button" onClick={() => setSigningIn(true)} className="pixel h-[38px] shrink-0 rounded-[8px] bg-[#d9ff3f] px-3 text-[9px] text-[#0b0d11]">
+                SIGN IN
+              </button>
+            </div>
+            <p className="text-[10px] text-text-muted">Sign in to chat with Pep and other fans. Free, no password, takes 20 seconds.</p>
+          </div>
         )}
       </div>
     </section>
+  );
+}
+
+/** Site copy in Pep's voice, pinned for visitors (clearly marked, not a real chat message). */
+function PinnedInvite({ onJoin }: { onJoin: () => void }) {
+  return (
+    <div className="mt-1 rounded-[12px] border border-[#d9ff3f]/40 bg-gradient-to-b from-[#d9ff3f]/[0.09] to-transparent p-3">
+      <div className="flex items-center gap-2">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/pep/pep-portrait.webp" alt="" width={32} height={32} className="h-8 w-8 rounded-[9px] object-cover" />
+        <div className="min-w-0">
+          <p className="text-[12px] font-bold text-[#d9ff3f]">Pep · AI CEO</p>
+          <p className="pixel text-[7px] text-text-muted">📌 PINNED</p>
+        </div>
+      </div>
+      <p className="mt-2 text-[13px] leading-snug text-white/90">
+        Welcome to my office. I run this place, but the best part is talking football with you. Sign in and ask me anything: tactics, stats, who wins
+        the league.
+      </p>
+      <ul className="mt-2 space-y-0.5 text-[11px] text-text-secondary">
+        <li>⚽ Chat with me and other fans, live</li>
+        <li>🔒 Free. Email code, no password</li>
+      </ul>
+      <button type="button" onClick={onJoin} className="pixel mt-3 w-full rounded-[8px] bg-[#d9ff3f] px-3 py-2.5 text-[9px] text-[#0b0d11]">
+        SIGN IN TO CHAT
+      </button>
+    </div>
   );
 }
 

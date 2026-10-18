@@ -25,18 +25,19 @@ export default async function PepPage({ searchParams }: { searchParams: Promise<
   // ?demo=<kind> previews the design with sample data on a local dev server only.
   const { demo } = await searchParams;
   const isDemo = process.env.NODE_ENV === "development" && Boolean(demo);
+  const visitor = isDemo && demo === "visitor";
   const initial = isDemo ? demoState(demo!) : await readPep();
   return (
     <AppShell wide>
       <div className={pixel.variable}>
-        <PepLive initial={initial} live={!isDemo} tour={isDemo && demo === "tour"} chatDemo={isDemo ? demoChat() : undefined} />
+        <PepLive initial={initial} live={!isDemo} tour={isDemo && demo === "tour"} chatDemo={isDemo ? demoChat(visitor) : undefined} />
       </div>
     </AppShell>
   );
 }
 
 function demoState(kind: string): PepState {
-  const k = (kind in PEP_KINDS ? kind : "posting") as PepKind;
+  const k = (kind in PEP_KINDS ? kind : "watching") as PepKind;
   const at = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
   const timeline = [
     { id: 6, at: at(3), kind: k, title: "Posting the Chelsea 5–1 Bournemouth result card on Threads", detail: "Henderson scored twice. Third win in a row at Stamford Bridge.", link: "https://myfootballtracker.com/match/chelsea-bournemouth-1557419" },
@@ -48,10 +49,10 @@ function demoState(kind: string): PepState {
   return { current: timeline[0], timeline, scoreboard: { monthlyVisitors: 3412, at: at(60 * 26) }, now: new Date().toISOString() };
 }
 
-function demoChat(): ChatState {
+function demoChat(visitor = false): ChatState {
   const at = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
   return {
-    me: { signedIn: true, name: "Gunner_92" },
+    me: visitor ? { signedIn: false, name: null } : { signedIn: true, name: "Gunner_92" },
     signInAvailable: true,
     messages: [
       { id: 1, at: at(14), author: "Gunner_92", role: "fan", body: "Pep, who wins the league this year?" },

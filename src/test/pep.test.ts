@@ -62,3 +62,21 @@ describe("Pep's walk around the office", () => {
     expect(findPath("press", "work")).toEqual(["press", "press_door", "side", "work_door", "work_in", "work"]);
   });
 });
+
+describe("community chat rules", () => {
+  it("cleans messages and caps their length", async () => {
+    const { cleanBody } = await import("@/lib/pep/chatModel");
+    expect(cleanBody("  hello   Pep ​ ")).toEqual({ ok: true, body: "hello Pep" });
+    expect(cleanBody("   ").ok).toBe(false);
+    expect(cleanBody("x".repeat(281)).ok).toBe(false);
+    expect(cleanBody(42).ok).toBe(false);
+  });
+  it("chat names: sensible, and nobody can pose as Pep or staff", async () => {
+    const { cleanName } = await import("@/lib/pep/chatModel");
+    expect(cleanName("Gunner_92")).toEqual({ ok: true, name: "Gunner_92" });
+    expect(cleanName("Zoë Müller")).toEqual({ ok: true, name: "Zoë Müller" });
+    for (const bad of ["P", "Pep", "the real pep", "Admin", "MyFootballTracker", "<script>", "x".repeat(21)]) {
+      expect(cleanName(bad).ok).toBe(false);
+    }
+  });
+});

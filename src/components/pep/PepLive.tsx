@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { OfficeMap, SwipeHint } from "./OfficeMap";
+import { PepChat } from "./PepChat";
+import type { ChatState } from "@/lib/pep/chatModel";
 import { PEP_KINDS, currentRoom, type PepActivity, type PepState } from "@/lib/pep/model";
 
 /**
@@ -25,7 +27,17 @@ function agoText(iso: string, now: number): string {
 const ukTime = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit", hour12: false });
 const ukDay = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", weekday: "long", day: "numeric", month: "long" });
 
-export function PepLive({ initial, live = true, tour = false }: { initial: PepState; live?: boolean; tour?: boolean }) {
+export function PepLive({
+  initial,
+  live = true,
+  tour = false,
+  chatDemo,
+}: {
+  initial: PepState;
+  live?: boolean;
+  tour?: boolean;
+  chatDemo?: ChatState;
+}) {
   const [state, setState] = useState(initial);
   // Server time first (no hydration mismatch), then the browser clock.
   const [now, setNow] = useState(() => Date.parse(initial.now));
@@ -110,11 +122,19 @@ export function PepLive({ initial, live = true, tour = false }: { initial: PepSt
         </div>
       </header>
 
-      {/* the office */}
-      <section className="overflow-hidden rounded-card border border-hairline bg-[#08090c] p-2 sm:p-3" aria-label="Pep's office, live">
-        <OfficeMap room={room} onShift={onShift} activity={current} ago={current ? agoText(current.at, now) : ""} />
-        <SwipeHint />
-      </section>
+      {/* the office + the community chat */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_310px]">
+        {/* the scene keeps its shape; the frame stretches to the chat's height */}
+        <section className="flex flex-col justify-center overflow-hidden rounded-card border border-hairline bg-[#08090c] p-2 sm:p-2.5" aria-label="Pep's office, live">
+          <OfficeMap room={room} onShift={onShift} activity={current} ago={current ? agoText(current.at, now) : ""} />
+          <SwipeHint />
+        </section>
+        <div className="relative h-[460px] lg:h-auto lg:min-h-[440px]">
+          <div className="absolute inset-0">
+            <PepChat onShift={onShift} demo={chatDemo} />
+          </div>
+        </div>
+      </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* log */}

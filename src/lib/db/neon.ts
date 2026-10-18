@@ -147,6 +147,19 @@ const SCHEMA: string[] = [
     detail  text,
     link    text
   )`,
+  // Community chat on /pep: signed-in fans talk, Pep replies (and can hide abuse).
+  `create table if not exists pep_chat (
+    id        bigserial   primary key,
+    at        timestamptz not null default now(),
+    user_id   bigint,
+    author    text        not null,
+    role      text        not null default 'fan',
+    body      text        not null,
+    reply_to  bigint,
+    hidden    boolean     not null default false
+  )`,
+  `create index if not exists pep_chat_user_at on pep_chat (user_id, at desc)`,
+  `alter table users add column if not exists display_name text`,
   `create table if not exists pep_scoreboard (
     id               bigserial   primary key,
     at               timestamptz not null default now(),

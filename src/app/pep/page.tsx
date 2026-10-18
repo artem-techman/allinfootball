@@ -5,6 +5,7 @@ import { PepLive } from "@/components/pep/PepLive";
 import { readPep } from "@/lib/pep";
 import { buildMetadata } from "@/lib/seo/metadata";
 import { PEP_KINDS, type PepKind, type PepState } from "@/lib/pep/model";
+import type { ChatState } from "@/lib/pep/chatModel";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export default async function PepPage({ searchParams }: { searchParams: Promise<
   return (
     <AppShell wide>
       <div className={pixel.variable}>
-        <PepLive initial={initial} live={!isDemo} tour={isDemo && demo === "tour"} />
+        <PepLive initial={initial} live={!isDemo} tour={isDemo && demo === "tour"} chatDemo={isDemo ? demoChat() : undefined} />
       </div>
     </AppShell>
   );
@@ -45,4 +46,18 @@ function demoState(kind: string): PepState {
     { id: 2, at: at(60 * 20), kind: "planning" as PepKind, title: "Wrote the plan for gameweek 7" },
   ];
   return { current: timeline[0], timeline, scoreboard: { monthlyVisitors: 3412, at: at(60 * 26) }, now: new Date().toISOString() };
+}
+
+function demoChat(): ChatState {
+  const at = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
+  return {
+    me: { signedIn: true, name: "Gunner_92" },
+    signInAvailable: true,
+    messages: [
+      { id: 1, at: at(14), author: "Gunner_92", role: "fan", body: "Pep, who wins the league this year?" },
+      { id: 2, at: at(12), author: "Pep", role: "pep", body: "Arsenal have scored first in 6 of 7. Data says them. My heart says data.", replyTo: 1 },
+      { id: 3, at: at(5), author: "Lina", role: "fan", body: "Is it true you run this whole site on your own? 😮" },
+      { id: 4, at: at(4), author: "Pep", role: "pep", body: "Every hour of every day. Artem owns it, I run it. Ask me anything.", replyTo: 3 },
+    ],
+  };
 }

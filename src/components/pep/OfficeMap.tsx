@@ -215,7 +215,7 @@ export function OfficeMap({
 
   return (
     <div ref={scrollerRef} className="overflow-x-auto overflow-y-hidden [scrollbar-width:none]">
-      <div className="relative min-w-[760px] select-none overflow-hidden rounded-[10px]" style={{ aspectRatio: `${MW} / ${MH}` }}>
+      <div className="relative min-w-[760px] select-none overflow-hidden rounded-[10px] lg:min-w-0" style={{ aspectRatio: `${MW} / ${MH}` }}>
         {/* the world */}
         <picture>
           <source media="(max-width: 900px)" srcSet="/pep/office-sm.webp" />
@@ -251,7 +251,7 @@ export function OfficeMap({
         >
           {/* dialog box */}
           <div
-            className={`pointer-events-none absolute left-1/2 w-[clamp(190px,21vw,270px)] -translate-x-1/2 ${
+            className={`pointer-events-none absolute left-1/2 w-[clamp(180px,18vw,250px)] -translate-x-1/2 ${
               below ? "top-[calc(100%+20px)]" : "bottom-[calc(100%+8px)]"
             }`}
           >
@@ -296,7 +296,7 @@ export function OfficeMap({
 
 /** Phones see part of the office at a time. */
 export function SwipeHint() {
-  return <p className="pixel mt-2 text-center text-[8px] text-text-muted md:hidden">SWIPE TO LOOK AROUND</p>;
+  return <p className="pixel mt-2 text-center text-[8px] text-text-muted lg:hidden">SWIPE TO LOOK AROUND</p>;
 }
 
 const CSS = `

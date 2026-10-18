@@ -9,6 +9,8 @@ like the approved mockup. The UI brand is **All In Football** everywhere (the mo
 > Full product spec and build protocol live in [`CLAUDE.md`](./CLAUDE.md). This README
 > covers setup, env vars, the provider swap, the rate budget and the domain connection.
 
+> **Contributing:** `main` is protected; changes arrive as pull requests. Read [CONTRIBUTING.md](CONTRIBUTING.md) for the scope rules, local setup and PR format.
+
 ## Tech stack
 
 - **Next.js 15** (App Router) · **TypeScript** (strict) · **Node 20 LTS**

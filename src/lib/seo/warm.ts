@@ -4,6 +4,7 @@ import { COMPETITIONS, getCompetitionByLeagueId } from "@/lib/constants/competit
 import { seasonYearFor } from "@/lib/season";
 import { ingestFetch } from "@/lib/providers/apiFootball";
 import { archiveFinishedMatch, archivedIds } from "@/lib/db/matchStore";
+import { readyDb } from "@/lib/db/neon";
 import { lastGoodSavedAt, saveLastGood, saveLastGoodMany } from "@/lib/db/lastGood";
 import { playerSeason } from "@/lib/seo/players";
 import { groupRounds, indexableRounds } from "@/lib/seo/rounds";
@@ -55,6 +56,14 @@ export interface WarmReport {
 export async function warmForCrawlers(): Promise<WarmReport> {
   const report: WarmReport = { archived: 0, archivePending: 0, h2hWarmed: 0, h2hPending: 0, teamsWarmed: 0, teamsPending: 0, playerTeamsWarmed: 0, playersSaved: 0, playerTeamsPending: 0, injuryFixturesWarmed: 0, injuryFixturesPending: 0, indexNowSubmitted: 0, calls: 0, errors: [] };
   const now = Date.now();
+  // Everything below decides what to fetch by checking what's already saved.
+  // Without the database every check says "missing", and the job would refetch
+  // the whole season every 10 minutes (on 2026-10-25 that burned the day's
+  // quota). No database → no work.
+  if (!(await readyDb(5_000))) {
+    report.errors.push("database unavailable: skipped (no provider calls)");
+    return report;
+  }
   const lists = await Promise.all(
     COMPETITIONS.map((c) => provider.getFixturesByLeague(c.leagueId, seasonYearFor(c)).catch(() => [] as Match[])),
   );

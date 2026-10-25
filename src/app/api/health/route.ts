@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { brownoutLevel } from "@/lib/providers/apiFootball";
 import { readLiveSnapshot } from "@/lib/db/matchStore";
-import { readyDb } from "@/lib/db/neon";
+import { db as rawDb, lastDbError, readyDb } from "@/lib/db/neon";
 import { redis, getJson } from "@/lib/store/redis";
 import { K, type LiveSnapshot } from "@/lib/store/keys";
 
@@ -69,6 +69,7 @@ export async function GET(request: Request) {
           budget: brownout.budget,
           liveSnapshotAgeSeconds: snapshot ? Math.round(snapshot.ageSeconds) : null,
           storeLiveAgeSeconds: worker?.liveAgeS ?? null,
+          dbError: db ? null : (lastDbError ?? (await probeDb())),
         }
       : {}),
   };
@@ -76,4 +77,16 @@ export async function GET(request: Request) {
     status: status === "down" ? 503 : 200,
     headers: { "Cache-Control": "no-store" },
   });
+}
+
+/** Why the database is unreachable (private health check only). */
+async function probeDb(): Promise<string> {
+  const sql = rawDb();
+  if (!sql) return "no DATABASE_URL";
+  try {
+    await sql`select 1`;
+    return "select 1 ok (schema setup slow or failing)";
+  } catch (err) {
+    return err instanceof Error ? err.message.slice(0, 300) : String(err);
+  }
 }

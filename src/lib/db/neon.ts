@@ -168,14 +168,18 @@ const SCHEMA: string[] = [
 ];
 
 let schemaReady: Promise<boolean> | null = null;
+/** The last database setup error, for the private health check. */
+export let lastDbError: string | null = null;
 
 function ensureSchema(sql: NeonQueryFunction<false, false>): Promise<boolean> {
   schemaReady ??= (async () => {
     for (const stmt of SCHEMA) await sql.query(stmt);
+    lastDbError = null;
     return true;
   })().catch((err) => {
     schemaReady = null; // retry on a later request
-    console.warn("[db] schema setup failed:", err instanceof Error ? err.message : err);
+    lastDbError = err instanceof Error ? err.message.slice(0, 300) : String(err);
+    console.warn("[db] schema setup failed:", lastDbError);
     return false;
   });
   return schemaReady;

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { brownoutLevel } from "@/lib/providers/apiFootball";
 import { readLiveSnapshot } from "@/lib/db/matchStore";
-import { db as rawDb, lastDbError, readyDb } from "@/lib/db/neon";
+import { db as rawDb, dbProvider, lastDbError, readyDb } from "@/lib/db/neon";
 import { redis, getJson } from "@/lib/store/redis";
 import { K, type LiveSnapshot } from "@/lib/store/keys";
 
@@ -69,6 +69,7 @@ export async function GET(request: Request) {
           budget: brownout.budget,
           liveSnapshotAgeSeconds: snapshot ? Math.round(snapshot.ageSeconds) : null,
           storeLiveAgeSeconds: worker?.liveAgeS ?? null,
+          dbProvider: dbProvider(),
           dbError: db ? null : (lastDbError ?? (await probeDb())),
         }
       : {}),

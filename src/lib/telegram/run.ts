@@ -53,6 +53,12 @@ export async function runTelegram(): Promise<RunReport> {
   const sql = await readyDb(8_000);
   if (!sql) throw new Error("database unavailable");
   const report: RunReport = { posted: [], skipped: [], errors: [] };
+  // A brand-new post log means the database was replaced: for its first 20
+  // minutes, record what's due as already posted instead of re-posting the
+  // last 48 hours of results and highlights.
+  const fresh = (await sql`select coalesce(min(posted_at) > now() - interval '20 minutes', true) as fresh from telegram_posts`) as { fresh: boolean }[];
+  bootstrap = Boolean(fresh[0]?.fresh);
+  if (bootstrap) report.skipped.push("bootstrap: new post log, marking current items as sent without posting");
   const step = async (name: string, fn: () => Promise<void>) => {
     try {
       await fn();
@@ -182,8 +188,16 @@ async function alreadyPosted(sql: Sql, key: string): Promise<boolean> {
   return r.length > 0 && !(r[0].status === "failed" && r[0].attempts < 3);
 }
 
+/** Set per run: true on the first run against an empty post log. */
+let bootstrap = false;
+
 /** Claim → send → record. A key that was sent is never sent again. */
 async function post(sql: Sql, key: string, kind: string, report: RunReport, send: () => Promise<number>) {
+  if (bootstrap) {
+    await sql`insert into telegram_posts (key, kind, status, detail) values (${key}, ${kind}, 'sent', 'bootstrap') on conflict (key) do nothing`;
+    report.skipped.push(`${key}: bootstrap`);
+    return;
+  }
   const claimed = (await sql`
     insert into telegram_posts (key, kind) values (${key}, ${kind})
     on conflict (key) do update set attempts = telegram_posts.attempts + 1, status = 'claimed'

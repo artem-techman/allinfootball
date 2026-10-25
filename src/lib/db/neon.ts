@@ -1,31 +1,65 @@
 import "server-only";
-import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
+import { neon } from "@neondatabase/serverless";
+import postgres from "postgres";
 
 /**
- * Neon (serverless Postgres) client for My Football Tracker.
+ * Postgres client for My Football Tracker.
  *
- * The app moved off Supabase (its free-tier project kept auto-pausing once the
- * two active-project slots were taken by other apps, which silently took the
- * raffle + match cache offline). Neon's free tier doesn't hard-pause — it
- * suspends idle compute and resumes on the next query — and it's a fine fit for
- * this app's light workload (a small raffle-leads table + two cache tables).
+ * History: Supabase (July) → Neon (Sept, free tier) → Supabase Pro (25 Oct
+ * 2026). Neon's free plan caps compute at 100 CU-hours a month and our
+ * once-a-minute jobs keep the database awake around the clock, so it ran out
+ * mid-month (HTTP 402) and took tables, the archive and accounts offline.
  *
- * Connection is server-side only via DATABASE_URL (the pooled Neon connection
- * string). The database is never exposed to the browser — only our route
- * handlers and server components query it — so there's no RLS/anon-key layer to
- * maintain, unlike Supabase's PostgREST. `db()` returns null when DATABASE_URL
- * is unset so every caller degrades gracefully instead of throwing.
+ * SUPABASE_DB_URL (the Supabase transaction-pooler URI) wins when set;
+ * otherwise DATABASE_URL (Neon) is used. Both expose the same tiny surface:
+ * a tagged-template query returning rows, plus .query() for raw DDL.
+ * Server-side only; on Supabase every table has row-level security switched on
+ * with no policies, so the public Data API (anon key) can't read or write them.
+ * `db()` returns null when no URL is set so callers degrade gracefully.
  */
 
-let cached: NeonQueryFunction<false, false> | null | undefined;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export interface Sql {
+  (strings: TemplateStringsArray, ...values: unknown[]): Promise<any[]>;
+  query(text: string, params?: unknown[]): Promise<any[]>;
+}
 
-export function db(): NeonQueryFunction<false, false> | null {
+let cached: Sql | null | undefined;
+
+function fromSupabase(url: string): Sql {
+  const pg = postgres(url, {
+    prepare: false, // required by the transaction pooler
+    max: 3,
+    idle_timeout: 20,
+    connect_timeout: 8,
+    onnotice: () => {},
+  });
+  const fn = ((strings: TemplateStringsArray, ...values: unknown[]) => pg(strings, ...(values as any[]))) as unknown as Sql;
+  fn.query = (text, params) => pg.unsafe(text, (params ?? []) as any[]) as unknown as Promise<any[]>;
+  return fn;
+}
+
+function fromNeon(url: string): Sql {
+  const n = neon(url);
+  const fn = ((strings: TemplateStringsArray, ...values: unknown[]) => n(strings, ...values)) as unknown as Sql;
+  fn.query = (text, params) => n.query(text, params as any[]) as unknown as Promise<any[]>;
+  return fn;
+}
+
+export function db(): Sql | null {
   if (cached === undefined) {
-    const url = process.env.DATABASE_URL;
-    cached = url ? neon(url) : null;
+    const supabase = process.env.SUPABASE_DB_URL;
+    const neonUrl = process.env.DATABASE_URL;
+    cached = supabase ? fromSupabase(supabase) : neonUrl ? fromNeon(neonUrl) : null;
   }
   return cached;
 }
+
+/** Which database is in use (private health check). */
+export function dbProvider(): "supabase" | "neon" | "none" {
+  return process.env.SUPABASE_DB_URL ? "supabase" : process.env.DATABASE_URL ? "neon" : "none";
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 /** Guard any query so a slow/suspended database can never hang a page/request. */
 export async function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -165,13 +199,21 @@ const SCHEMA: string[] = [
     at               timestamptz not null default now(),
     monthly_visitors integer     not null
   )`,
+  // Lock every table away from Supabase's public Data API: RLS on, no policies.
+  // Our server connects as the owner, which RLS doesn't restrict.
+  `do $$ declare t text; begin
+     for t in select tablename from pg_tables where schemaname = 'public' and tablename = any(array[
+       'feedback','live_snapshot','match_archive','users','login_codes','sessions','potm_votes','email_log',
+       'telegram_posts','provider_cache','pep_activity','pep_chat','pep_scoreboard','leads'])
+     loop execute format('alter table public.%I enable row level security', t); end loop;
+   end $$`,
 ];
 
 let schemaReady: Promise<boolean> | null = null;
 /** The last database setup error, for the private health check. */
 export let lastDbError: string | null = null;
 
-function ensureSchema(sql: NeonQueryFunction<false, false>): Promise<boolean> {
+function ensureSchema(sql: Sql): Promise<boolean> {
   schemaReady ??= (async () => {
     for (const stmt of SCHEMA) await sql.query(stmt);
     lastDbError = null;
@@ -190,7 +232,7 @@ function ensureSchema(sql: NeonQueryFunction<false, false>): Promise<boolean> {
  * DATABASE_URL, or setup failed / is slow). Callers treat null exactly like "no
  * database" and fall back to the provider, so a DB problem never blocks a page.
  */
-export async function readyDb(timeoutMs = 3_000): Promise<NeonQueryFunction<false, false> | null> {
+export async function readyDb(timeoutMs = 3_000): Promise<Sql | null> {
   const sql = db();
   if (!sql) return null;
   const ok = await withTimeout(ensureSchema(sql), timeoutMs, false);

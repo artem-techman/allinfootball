@@ -31,11 +31,26 @@ function fromSupabase(url: string): Sql {
     prepare: false, // required by the transaction pooler
     max: 3,
     idle_timeout: 20,
+    max_lifetime: 60 * 10, // recycle connections before the pooler drops them
     connect_timeout: 8,
     onnotice: () => {},
   });
-  const fn = ((strings: TemplateStringsArray, ...values: unknown[]) => pg(strings, ...(values as any[]))) as unknown as Sql;
-  fn.query = (text, params) => pg.unsafe(text, (params ?? []) as any[]) as unknown as Promise<any[]>;
+  // A pooled TCP connection can die while Vercel keeps the function frozen; the
+  // first query after that fails once. Retry connection-level failures once
+  // (a fresh connection is opened automatically). Query errors are not retried.
+  const retryOnce = async <T,>(run: () => Promise<T>): Promise<T> => {
+    try {
+      return await run();
+    } catch (err) {
+      const code = (err as { code?: string })?.code ?? "";
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/CONNECT|ECONNRESET|EPIPE|ETIMEDOUT|CONNECTION_(CLOSED|ENDED|DESTROYED)|terminat/i.test(`${code} ${msg}`)) return run();
+      throw err;
+    }
+  };
+  const fn = ((strings: TemplateStringsArray, ...values: unknown[]) =>
+    retryOnce(() => pg(strings, ...(values as any[])) as unknown as Promise<any[]>)) as unknown as Sql;
+  fn.query = (text, params) => retryOnce(() => pg.unsafe(text, (params ?? []) as any[]) as unknown as Promise<any[]>);
   return fn;
 }
 
@@ -63,6 +78,9 @@ export function dbProvider(): "supabase" | "neon" | "none" {
 
 /** Guard any query so a slow/suspended database can never hang a page/request. */
 export async function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  // If the timeout wins, the query may still fail later: swallow that so it can
+  // never surface as an unhandled rejection and take the request down.
+  Promise.resolve(p).catch(() => {});
   let timer: ReturnType<typeof setTimeout>;
   const timeout = new Promise<T>((resolve) => {
     timer = setTimeout(() => resolve(fallback), ms);

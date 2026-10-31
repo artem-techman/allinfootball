@@ -17,13 +17,14 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
-    "@next/third-parties": "^15.5.19",
+    "@next/third-parties": "^15.5.28",
     "html-to-image": "^1.11.13",
-    "next": "^15.5.19",
+    "next": "^15.5.28",
     "postgres": "3.4.9",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "server-only": "^0.0.1"
+    "server-only": "^0.0.1",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@types/node": "20.17.0",
@@ -31,8 +32,8 @@
     "@types/react-dom": "19.0.0",
     "autoprefixer": "10.4.20",
     "eslint": "8.57.1",
-    "eslint-config-next": "^15.5.19",
-    "postcss": "8.4.49",
+    "eslint-config-next": "^15.5.28",
+    "postcss": "^8.5.32",
     "tailwindcss": "3.4.17",
     "tsx": "4.19.2",
     "typescript": "5.7.3",

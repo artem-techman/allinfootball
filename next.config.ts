@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Don't advertise the framework (and its version range) in every response.
+  poweredByHeader: false,
   reactStrictMode: true,
   // Put <title>, description, canonical and social tags in <head> for EVERY
   // visitor. Next 15 otherwise streams them into <body> for most user agents

@@ -1,4 +1,5 @@
 import "server-only";
+import { asJson } from "./lastGood";
 import { cache as reactCache } from "react";
 import { readyDb, withTimeout } from "@/lib/db/neon";
 import { cache } from "@/lib/cache";
@@ -55,6 +56,7 @@ export async function readLiveSnapshot(): Promise<{ matches: Match[]; ageSeconds
       [],
     );
     const row = rows[0];
+    if (row) row.matches = asJson(row.matches) as typeof row.matches;
     if (!row || !Array.isArray(row.matches)) return null;
     const ageSeconds = (Date.now() - new Date(row.fetched_at).getTime()) / 1000;
     return { matches: row.matches, ageSeconds };
@@ -70,7 +72,7 @@ export async function writeLiveSnapshot(matches: Match[]): Promise<void> {
     await withTimeout(
       sql`
         insert into live_snapshot (id, matches, fetched_at)
-        values (${LIVE_SNAPSHOT_ID}, ${JSON.stringify(matches)}::jsonb, now())
+        values (${LIVE_SNAPSHOT_ID}, ${JSON.stringify(matches)}::text::jsonb, now())
         on conflict (id) do update
           set matches = excluded.matches, fetched_at = excluded.fetched_at
       ` as unknown as Promise<unknown>,
@@ -113,6 +115,8 @@ async function readArchivedRow(id: number): Promise<ArchivedMatch | null> {
     );
     const row = rows[0];
     if (!row?.match) return null;
+    row.match = asJson(row.match) as typeof row.match;
+    row.details = asJson(row.details) as typeof row.details;
     const details = row.details
       ? { ...row.details, events: fixLegacyEvents(row.details.events ?? [], row.mapper_version) }
       : null;
@@ -146,8 +150,8 @@ export async function archiveFinishedMatch(match: Match, details: ArchivedDetail
         insert into match_archive (id, match, details, status, kickoff_utc, competition_id, updated_at, mapper_version)
         values (
           ${match.id},
-          ${JSON.stringify(match)}::jsonb,
-          ${JSON.stringify(details)}::jsonb,
+          ${JSON.stringify(match)}::text::jsonb,
+          ${JSON.stringify(details)}::text::jsonb,
           ${match.status},
           ${match.kickoffUtc},
           ${match.competitionId},

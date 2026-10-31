@@ -156,3 +156,14 @@ describe("worker + store end to end", () => {
     expect(calls).toEqual(["getFixturesByDate"]);
   });
 });
+
+describe("JSON read back from the database", () => {
+  it("decodes values that were stored as a JSON string", async () => {
+    const { asJson } = await import("@/lib/db/lastGood");
+    expect(asJson('[{"a":1}]')).toEqual([{ a: 1 }]);
+    expect(asJson([{ a: 1 }])).toEqual([{ a: 1 }]);
+    expect(asJson({ x: 2 })).toEqual({ x: 2 });
+    expect(asJson("not json")).toBe("not json");
+    expect(asJson(undefined)).toBeUndefined();
+  });
+});

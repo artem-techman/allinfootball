@@ -43,7 +43,7 @@ async function save(key: string, value: unknown): Promise<void> {
     await withTimeout(
       sql`
         insert into provider_cache (key, body, fetched_at)
-        values (${key}, ${JSON.stringify(value)}::jsonb, now())
+        values (${key}, ${JSON.stringify(value)}::text::jsonb, now())
         on conflict (key) do update set body = excluded.body, fetched_at = excluded.fetched_at
       ` as unknown as Promise<unknown>,
       TIMEOUT_MS,
@@ -69,7 +69,7 @@ async function load<T>(key: string): Promise<T | undefined> {
       TIMEOUT_MS,
       [],
     );
-    return rows[0]?.body;
+    return asJson(rows[0]?.body) as T | undefined;
   } catch {
     return undefined;
   }
@@ -112,5 +112,19 @@ export async function saveLastGoodMany(entries: [key: string, value: unknown][])
     `;
   } catch (err) {
     console.warn(`[lastGood] bulk save failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}
+
+/**
+ * JSON columns read back as values; a few rows written between 25 and 31 Oct
+ * 2026 were stored as a JSON *string* (a driver quirk after the move to
+ * Supabase), so decode those too. Exported for the match store.
+ */
+export function asJson(v: unknown): unknown {
+  if (typeof v !== "string") return v;
+  try {
+    return JSON.parse(v);
+  } catch {
+    return v;
   }
 }

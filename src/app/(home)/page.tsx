@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { HomeRecovery } from "@/components/home/HomeRecovery";
+import { saveLastGood } from "@/lib/db/lastGood";
+import { lastIndexError } from "@/lib/providers/scoped";
 import { AppShell } from "@/components/shell/AppShell";
 import { GreetingHeader } from "@/components/shell/GreetingHeader";
 import { HeroFeatureCard } from "@/components/cards/HeroFeatureCard";
@@ -41,10 +44,20 @@ const TOP_TABLE_SLUG = "premier-league";
 const TOP_SCORERS_SLUG = "premier-league";
 
 export default async function HomePage() {
-  const [{ upcoming, results, standings, tableSlug, scorers, news, transferNews, demo }, myClub] = await Promise.all([
+  const [{ upcoming, results, standings, tableSlug, scorers, news, transferNews, demo, errors }, myClub, clubPicked] = await Promise.all([
     loadHomeData(),
     loadMyClub(),
+    clubFromCookie().then(Boolean).catch(() => false),
   ]);
+
+  // Sections that came back empty because data briefly failed: refresh once
+  // client-side, and record what failed so the cause can be found.
+  const missing = demo
+    ? []
+    : [upcoming.length === 0 && "upcoming", scorers.length === 0 && "scorers", clubPicked && !myClub && "club"].filter(Boolean) as string[];
+  if (missing.length) {
+    await saveLastGood(`diag:home:${new Date().toISOString()}`, { missing, errors: errors ?? [], index: lastIndexError }).catch(() => {});
+  }
 
   // Sample data renders ONLY in the keyless demo. With a real key, a failed or
   // empty provider call must show nothing — never invented fixtures, results or
@@ -109,6 +122,7 @@ export default async function HomePage() {
         </>
       }
     >
+      <HomeRecovery missing={missing} />
       <GreetingHeader />
 
       {heroArticles.length > 0 ? (
@@ -200,6 +214,8 @@ async function loadHomeData(): Promise<{
   transferNews: Article[];
   /** True only in the keyless demo — the ONLY case where sample data may render. */
   demo: boolean;
+  /** What failed while building the page (diagnostics). */
+  errors?: string[];
 }> {
   const keyMissing = !process.env.FOOTBALL_API_KEY;
 
@@ -215,7 +231,8 @@ async function loadHomeData(): Promise<{
 
   // Fetch the fixtures window first, then default the Top Table to whatever
   // competition is being played (live, else today), falling back to the PL.
-  const windowMatches = await loadFixturesWindow();
+  const errors: string[] = [];
+  const windowMatches = await loadFixturesWindow(errors);
   const tableSlug = pickActiveTableSlug(windowMatches, TOP_TABLE_SLUG);
   const tableComp = getCompetitionBySlug(tableSlug);
 
@@ -225,7 +242,7 @@ async function loadHomeData(): Promise<{
           .then((season) => provider.getStandings(tableComp.leagueId, season))
           .catch(() => [])
       : Promise.resolve([]),
-    loadTopScorers(),
+    loadTopScorers(errors),
   ]);
   // One date window feeds both: soonest scheduled = upcoming, latest finished = results.
   const upcoming = windowMatches
@@ -238,11 +255,11 @@ async function loadHomeData(): Promise<{
     .filter((m) => m.status === "finished")
     .sort((a, b) => b.kickoffUtc.localeCompare(a.kickoffUtc))
     .slice(0, 5);
-  return { upcoming, results, standings, tableSlug, scorers, news, transferNews, demo: false };
+  return { upcoming, results, standings, tableSlug, scorers, news, transferNews, demo: false, errors };
 }
 
 /** Biggest goal scorers of the Premier League, as a compact leaderboard (top 5). */
-async function loadTopScorers(): Promise<ScorerItem[]> {
+async function loadTopScorers(errors: string[] = []): Promise<ScorerItem[]> {
   const comp = getCompetitionBySlug(TOP_SCORERS_SLUG);
   if (!comp) return [];
   try {
@@ -258,20 +275,29 @@ async function loadTopScorers(): Promise<ScorerItem[]> {
       goals: s.goals,
       assists: s.assists,
     }));
-  } catch {
+  } catch (err) {
+    errors.push(`scorers: ${err instanceof Error ? err.message : String(err)}`);
     return [];
   }
 }
 
 /** In-scope fixtures across a ±3 day window — the source for both Upcoming and
  *  Latest Results. Each date is cached upstream, so this stays quota-light. */
-async function loadFixturesWindow(): Promise<Match[]> {
+async function loadFixturesWindow(errors: string[] = []): Promise<Match[]> {
   try {
     const today = todayKey();
     const days = [-3, -2, -1, 0, 1, 2, 3].map((d) => shiftDateKey(today, d));
-    const batches = await Promise.all(days.map((d) => provider.getFixturesByDate(d).catch(() => [] as Match[])));
+    const batches = await Promise.all(
+      days.map((d) =>
+        provider.getFixturesByDate(d).catch((err) => {
+          errors.push(`fixtures ${d}: ${err instanceof Error ? err.message : String(err)}`);
+          return [] as Match[];
+        }),
+      ),
+    );
     return batches.flat().filter((m) => isInScope(m.competitionId, m.round));
-  } catch {
+  } catch (err) {
+    errors.push(`fixtures window: ${err instanceof Error ? err.message : String(err)}`);
     return [];
   }
 }

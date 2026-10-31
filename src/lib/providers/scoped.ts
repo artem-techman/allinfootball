@@ -55,7 +55,12 @@ interface ScopeIndex {
   byTeam: Map<number, Match[]>;
   /** Fixtures sorted by kickoff time, for fast live-window scans. */
   byKickoff: { ko: number; m: Match }[];
+  /** Season lists that failed to load into this index ("league/season: error"). */
+  failed: string[];
 }
+
+/** The last index-build failure on this instance (home-page diagnostics). */
+export let lastIndexError: string | null = null;
 
 async function buildIndex(inner: FootballProvider): Promise<ScopeIndex> {
   const jobs = COMPETITIONS.flatMap((c) =>
@@ -63,11 +68,13 @@ async function buildIndex(inner: FootballProvider): Promise<ScopeIndex> {
       inner
         .getFixturesByLeague(c.leagueId, season)
         .then((list) => ({ league: c.leagueId, season, list, ok: true }))
-        .catch(() => ({ league: c.leagueId, season, list: [] as Match[], ok: false })),
+        .catch((err) => ({ league: c.leagueId, season, list: [] as Match[], ok: false, error: err instanceof Error ? err.message : String(err) })),
     ),
   );
   const results = await Promise.all(jobs);
-  if (!results.some((r) => r.ok)) throw new Error("scope index: no fixture list could be loaded");
+  const failed = results.filter((r) => !r.ok).map((r) => `${r.league}/${r.season}: ${"error" in r ? String(r.error).slice(0, 160) : "failed"}`);
+  lastIndexError = failed.length ? `${failed.length}/${results.length} lists failed · ${failed[0]}` : null;
+  if (!results.some((r) => r.ok)) throw new Error(`scope index: no fixture list could be loaded (${failed[0] ?? "unknown"})`);
 
   const fixtures = new Map<number, Match>();
   const teams = new Map<number, TeamEntry>();
@@ -99,7 +106,7 @@ async function buildIndex(inner: FootballProvider): Promise<ScopeIndex> {
   }
   byKickoff.sort((a, b) => a.ko - b.ko);
   for (const list of byDate.values()) list.sort((a, b) => a.kickoffUtc.localeCompare(b.kickoffUtc));
-  return { fixtures, teams, byLeague, byDate, byTeam, byKickoff };
+  return { fixtures, teams, byLeague, byDate, byTeam, byKickoff, failed };
 }
 
 /** In-scope fixtures inside their live window right now (by kickoff time). */
@@ -170,8 +177,10 @@ export function normalizeName(s: string): string {
 export function guardProvider(inner: FootballProvider): FootballProvider {
   if (process.env.SCOPE_ENFORCE === "0") return inner;
 
+  // A complete index keeps 5 minutes; one with missing leagues only 30 seconds,
+  // so a single failed list can't hide a whole league on this instance for long.
   const index = () =>
-    swr("scope:index", 5 * 60, () => buildIndex(inner));
+    swr("scope:index", (idx: ScopeIndex) => (idx.failed.length ? 30 : 5 * 60), () => buildIndex(inner));
 
   /**
    * Final bundles of matches we've seen end (per instance). Once a match is over

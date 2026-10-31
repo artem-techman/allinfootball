@@ -211,6 +211,7 @@ const SCHEMA: string[] = [
     hidden    boolean     not null default false
   )`,
   `create index if not exists pep_chat_user_at on pep_chat (user_id, at desc)`,
+  `create index if not exists sessions_user_idx on sessions (user_id)`,
   `alter table users add column if not exists display_name text`,
   `create table if not exists pep_scoreboard (
     id               bigserial   primary key,

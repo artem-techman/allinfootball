@@ -10,7 +10,7 @@ import {
 import { entitySlug } from "@/lib/utils/slug";
 import { mapStatus } from "./statusMap";
 import { seasonYearFor } from "@/lib/season";
-import { withLastGood } from "@/lib/db/lastGood";
+import { isSavedCopy, withLastGood } from "@/lib/db/lastGood";
 import type {
   Competition,
   FootballProvider,
@@ -1130,11 +1130,17 @@ export const apiFootball: FootballProvider = {
     const comp = getCompetitionByLeagueId(leagueId);
     const past = comp != null && season < seasonYearFor(comp);
     const ttl = past ? 24 * 60 * 60 : TTL.seasonFixtures;
-    return swr(`fixtures:league:${leagueId}:${season}`, ttl, () =>
-      withLastGood(`fixtures:league:${leagueId}:${season}`, async () => {
-        const env = await apiGet<RawFixture>("/fixtures", { league: leagueId, season }, { revalidate: ttl });
-        return mapFixtures(env.response);
-      }),
+    // A saved copy served because the provider was slow is kept only a minute,
+    // so this instance picks up the fresh list as soon as it lands.
+    return swr(`fixtures:league:${leagueId}:${season}`, (list: Match[]) => (isSavedCopy(list) ? 60 : ttl), () =>
+      withLastGood(
+        `fixtures:league:${leagueId}:${season}`,
+        async () => {
+          const env = await apiGet<RawFixture>("/fixtures", { league: leagueId, season }, { revalidate: ttl });
+          return mapFixtures(env.response);
+        },
+        { preferSavedAfterMs: 2_500 },
+      ),
     );
   },
 

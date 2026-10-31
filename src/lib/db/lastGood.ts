@@ -19,13 +19,51 @@ const WRITE_EVERY_MS = 10 * 60_000;
 const TIMEOUT_MS = 1_500;
 const lastWrite = new Map<string, number>();
 
-export async function withLastGood<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
-  try {
+/** Values that came from the saved copy rather than the provider (see isSavedCopy). */
+const savedCopies = new WeakSet<object>();
+
+/** True when withLastGood answered with the saved copy (cache it briefly). */
+export function isSavedCopy(value: unknown): boolean {
+  return typeof value === "object" && value !== null && savedCopies.has(value);
+}
+
+async function loadSaved<T>(key: string): Promise<T | undefined> {
+  const saved = await load<T>(key);
+  if (typeof saved === "object" && saved !== null) savedCopies.add(saved);
+  return saved;
+}
+
+/**
+ * Provider data with a saved fallback. `preferSavedAfterMs`: if the provider
+ * hasn't answered by then, answer from the saved copy and let the fetch finish
+ * (and re-save) in the background. A brand-new server otherwise waited ~14s
+ * for every season list before it could draw the home page (Oct 2026).
+ */
+export async function withLastGood<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  opts: { preferSavedAfterMs?: number } = {},
+): Promise<T> {
+  const live = (async () => {
     const value = await fetcher();
     await save(key, value);
     return value;
+  })();
+  if (opts.preferSavedAfterMs) {
+    live.catch(() => {}); // may finish after we've answered
+    const first = await Promise.race([
+      live.then((value) => ({ value })),
+      new Promise<"slow">((resolve) => setTimeout(() => resolve("slow"), opts.preferSavedAfterMs)),
+    ]).catch(() => "failed" as const);
+    if (first !== "slow" && first !== "failed") return first.value;
+    const saved = await loadSaved<T>(key);
+    if (saved !== undefined) return saved;
+    return live; // nothing saved yet: wait for the provider after all
+  }
+  try {
+    return await live;
   } catch (err) {
-    const saved = await load<T>(key);
+    const saved = await loadSaved<T>(key);
     if (saved !== undefined) return saved;
     throw err;
   }

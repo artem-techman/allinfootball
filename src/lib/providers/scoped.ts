@@ -59,6 +59,9 @@ interface ScopeIndex {
   failed: string[];
 }
 
+/** The last failed live batch on this instance (private health check). */
+export let lastLiveBatchError: string | null = null;
+
 /** The last index-build failure on this instance (home-page diagnostics). */
 export let lastIndexError: string | null = null;
 
@@ -205,7 +208,12 @@ export function guardProvider(inner: FootballProvider): FootballProvider {
     const inPlayIds = open.filter((m) => Date.parse(m.kickoffUtc) <= now + 5 * 60_000).map((m) => m.id);
     const upcomingIds = open.filter((m) => Date.parse(m.kickoffUtc) > now + 5 * 60_000).map((m) => m.id);
     const [live, upcoming] = await Promise.all([
-      inPlayIds.length ? getFixtureBundles(inPlayIds, TTL.liveDetail).catch(() => null) : new Map<number, FixtureBundle>(),
+      inPlayIds.length
+        ? getFixtureBundles(inPlayIds, TTL.liveDetail).catch((err) => {
+            lastLiveBatchError = `${new Date().toISOString()} ${inPlayIds.length} ids: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300);
+            return null;
+          })
+        : new Map<number, FixtureBundle>(),
       upcomingIds.length ? getFixtureBundles(upcomingIds, TTL.preMatchDetail).catch(() => null) : new Map<number, FixtureBundle>(),
     ]);
     for (const [id, b] of live ?? []) if (SETTLED_STATUSES.has(b.match.status)) settled.set(id, b);

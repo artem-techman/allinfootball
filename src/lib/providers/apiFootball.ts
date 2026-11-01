@@ -135,16 +135,32 @@ export async function dailyUsage(): Promise<{ used: number; limit: number | null
       headers: { "x-apisports-key": key },
       next: { revalidate: 60 },
     });
-    if (!res.ok) return null;
-    const data = (await res.json()) as { response?: { requests?: { current?: number; limit_day?: number } } };
-    const current = data.response?.requests?.current;
-    const limit = data.response?.requests?.limit_day;
-    if (typeof current !== "number") return null;
+    if (!res.ok) {
+      lastStatusProblem = `HTTP ${res.status}`;
+      return null;
+    }
+    const data = (await res.json()) as {
+      response?: { requests?: { current?: number; limit_day?: number }; subscription?: { plan?: string; end?: string; active?: boolean } } | unknown[];
+      errors?: unknown;
+    };
+    const resp = Array.isArray(data.response) ? undefined : data.response;
+    const current = resp?.requests?.current;
+    const limit = resp?.requests?.limit_day;
+    if (typeof current !== "number") {
+      // e.g. an expired or suspended subscription: the account answers with errors, no usage.
+      lastStatusProblem = `no usage in /status: ${JSON.stringify(data.errors ?? data.response ?? {}).slice(0, 200)}`;
+      return null;
+    }
+    lastStatusProblem = resp?.subscription && resp.subscription.active === false ? `subscription inactive (ends ${resp.subscription.end})` : null;
     return { used: current, limit: typeof limit === "number" && limit > 0 ? limit : null };
-  } catch {
+  } catch (err) {
+    lastStatusProblem = `fetch failed: ${err instanceof Error ? err.message : String(err)}`;
     return null;
   }
 }
+
+/** Why the last /status read failed, for the private health check (never the key). */
+export let lastStatusProblem: string | null = null;
 
 /**
  * How important a call is. Under quota pressure we shed the least important

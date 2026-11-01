@@ -1,4 +1,5 @@
 import "server-only";
+import { after } from "next/server";
 import { readyDb, withTimeout } from "@/lib/db/neon";
 
 /**
@@ -51,6 +52,10 @@ export async function withLastGood<T>(
   })();
   if (opts.preferSavedAfterMs) {
     live.catch(() => {}); // may finish after we've answered
+    // ...but only if the function stays alive: Vercel freezes it once the page is
+    // sent, so the refresh never landed and a slow list stayed on its saved copy
+    // for hours (2026-11-01: this afternoon's games still "live" at 22:45).
+    keepAlive(live);
     const first = await Promise.race([
       live.then((value) => ({ value })),
       new Promise<"slow">((resolve) => setTimeout(() => resolve("slow"), opts.preferSavedAfterMs)),
@@ -66,6 +71,16 @@ export async function withLastGood<T>(
     const saved = await loadSaved<T>(key);
     if (saved !== undefined) return saved;
     throw err;
+  }
+}
+
+/** Let a promise finish after the response (next/server `after`); outside a
+ *  request (cron jobs, tests) there's nothing to keep alive. */
+function keepAlive(p: Promise<unknown>): void {
+  try {
+    after(() => p.catch(() => {}));
+  } catch {
+    /* not in a request scope */
   }
 }
 

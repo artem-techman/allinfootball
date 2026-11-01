@@ -332,6 +332,14 @@ async function apiGet<T>(
         // BYPASSED (cache:"no-store"), which both ignores the poisoned entry and
         // hits the API fresh. Real errors (bad params, etc.) still throw at once.
         const isRateLimit = /rate.?limit|too many requests/i.test(JSON.stringify(errs));
+        // A "daily request limit" refusal is cached the same way, and outlived the
+        // plan renewal on 2026-11-01 (live scores stayed blank after /status was
+        // healthy). We only get here when /status says there's quota, so the body
+        // is a leftover: refetch once, uncached.
+        if (/request limit/i.test(JSON.stringify(errs)) && !bypassCache) {
+          bypassCache = true;
+          continue;
+        }
         if (isRateLimit && attempt < RATE_LIMIT_RETRIES) {
           bypassCache = true;
           await sleep(Math.min(1500 * 2 ** attempt, 8000) + Math.random() * 250);

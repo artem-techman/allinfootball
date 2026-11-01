@@ -148,7 +148,12 @@ export async function dailyUsage(): Promise<{ used: number; limit: number | null
     const limit = resp?.requests?.limit_day;
     if (typeof current !== "number") {
       // e.g. an expired or suspended subscription: the account answers with errors, no usage.
-      lastStatusProblem = `no usage in /status: ${JSON.stringify(data.errors ?? data.response ?? {}).slice(0, 200)}`;
+      const errors = JSON.stringify(data.errors ?? data.response ?? {});
+      lastStatusProblem = `no usage in /status: ${errors.slice(0, 200)}`;
+      // The provider says the day's limit is spent (on 2026-11-01 the plan lapsed to
+      // Free mid-day): report the budget as used up so every tier stops calling
+      // until /status shows numbers again, instead of live/core retrying into refusals.
+      if (/request limit/i.test(errors)) return { used: DAILY_BUDGET, limit: null };
       return null;
     }
     lastStatusProblem = resp?.subscription && resp.subscription.active === false ? `subscription inactive (ends ${resp.subscription.end})` : null;

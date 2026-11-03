@@ -56,8 +56,17 @@ export function sportsEvent(match: Match, slug: string): Record<string, unknown>
     homeTeam: home,
     awayTeam: away,
     competitor: [home, away],
-    // The result card (finished matches only — the card route 404s otherwise).
-    ...(match.status === "finished" ? { image: `${SITE}/match/${slug}/card/square` } : {}),
+    // Finished: the result card (the card route 404s otherwise), the final score
+    // in words for assistants that quote it, and an approximate end time.
+    ...(match.status === "finished"
+      ? {
+          image: `${SITE}/match/${slug}/card/square`,
+          ...(match.homeScore != null && match.awayScore != null
+            ? { description: `Full time: ${match.homeTeam?.name} ${match.homeScore}–${match.awayScore} ${match.awayTeam?.name}${comp ? ` (${comp.name})` : ""}.` }
+            : {}),
+          endDate: new Date(Date.parse(match.kickoffUtc) + 115 * 60_000).toISOString(),
+        }
+      : {}),
     ...(match.competition
       ? {
           organizer: {

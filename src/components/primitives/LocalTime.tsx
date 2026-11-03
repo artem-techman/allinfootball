@@ -19,7 +19,8 @@ const DATE_PLACEHOLDER = " ";
  * client render show a neutral placeholder (B33: they used to show the UTC time,
  * e.g. 6:45 PM for an 8:45 PM CEST kickoff, until hydration) and the real local
  * value appears right after mount. "long" mode is timezone-free and renders
- * straight away. The ISO stays in `dateTime` for crawlers either way.
+ * straight away. The ISO stays in `dateTime`, and the server HTML also carries
+ * the UK time as hidden text for readers that never run JavaScript.
  */
 export function LocalTime({ iso, mode = "time" }: { iso: string; mode?: Mode }) {
   const [tz, setTz] = useState<string | null>(null);
@@ -32,11 +33,18 @@ export function LocalTime({ iso, mode = "time" }: { iso: string; mode?: Mode }) 
     }
   }, []);
 
-  let text: string;
-  if (mode === "long") text = formatLongDate(iso.slice(0, 10));
-  else if (tz == null) text = mode === "time" ? TIME_PLACEHOLDER : DATE_PLACEHOLDER;
-  else if (mode === "time") text = formatKickoffTime(iso, tz);
-  else text = formatShortDate(iso, tz);
-
-  return <time dateTime={iso}>{text}</time>;
+  if (mode === "long") return <time dateTime={iso}>{formatLongDate(iso.slice(0, 10))}</time>;
+  if (tz == null) {
+    // Before the timezone is known: a neutral placeholder on screen, and the UK
+    // time as hidden text, so AI assistants and other readers that don't run
+    // JavaScript still get a real kick-off time (they saw only "--:--").
+    const uk = mode === "time" ? `${formatKickoffTime(iso, "Europe/London")} UK time` : formatShortDate(iso, "Europe/London");
+    return (
+      <time dateTime={iso}>
+        <span aria-hidden>{mode === "time" ? TIME_PLACEHOLDER : DATE_PLACEHOLDER}</span>
+        <span className="sr-only">{uk}</span>
+      </time>
+    );
+  }
+  return <time dateTime={iso}>{mode === "time" ? formatKickoffTime(iso, tz) : formatShortDate(iso, tz)}</time>;
 }

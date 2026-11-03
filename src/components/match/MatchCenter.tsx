@@ -197,8 +197,16 @@ export function MatchCenter({ bundle, intro }: { bundle: MatchBundle; intro?: Re
           </>
         )}
         {tab === "live" && <CommentaryFeed events={events} match={match} />}
-        {tab === "lineups" && <LineupsView lineups={lineups} match={match} events={events} />}
-        {tab === "stats" && <StatsView home={homeStats} away={awayStats} />}
+        {/* Lineups and stats are always in the HTML, just hidden when another tab
+            is open: they answer the searches these pages rank for ("x vs y
+            lineups", "x vs y stats") and AI assistants read them without running
+            JavaScript. The other tabs render only when opened. */}
+        <div role="tabpanel" hidden={tab !== "lineups"}>
+          <LineupsView lineups={lineups} match={match} events={events} />
+        </div>
+        <div role="tabpanel" hidden={tab !== "stats"}>
+          <StatsView home={homeStats} away={awayStats} />
+        </div>
         {tab === "highlights" && <HighlightsTab highlight={bundle.highlight} status={match.status} />}
         {tab === "h2h" && <HeadToHead fixtures={bundle.h2h} match={match} />}
         {tab === "table" && (

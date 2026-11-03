@@ -17,12 +17,14 @@ export const metadata: Metadata = buildMetadata({
 /**
  * Highlights Feed: an Instagram/Reels-style vertical feed of match highlights
  * from the latest finished games, sourced from official YouTube channels and
- * embedded (never re-hosted). Clips autoplay as they scroll into view. Falls back
- * to preview clips until a YOUTUBE_API_KEY is configured.
+ * embedded (never re-hosted). Clips autoplay as they scroll into view. Sample
+ * clips show only in the keyless demo (no YOUTUBE_API_KEY).
  */
 export default async function FeedPage() {
   const feed = await highlights.getFeed({ limit: 48 });
-  const toShow = feed.length > 0 ? feed : PREVIEW_HIGHLIGHTS;
+  // Sample clips only in the keyless demo: on the live site an empty feed (a
+  // YouTube quota blip) must never be filled with made-up highlights.
+  const toShow = feed.length > 0 ? feed : process.env.YOUTUBE_API_KEY ? [] : PREVIEW_HIGHLIGHTS;
 
   return (
     <AppShell>
@@ -31,7 +33,13 @@ export default async function FeedPage() {
         <p className="mt-0.5 text-meta text-text-secondary">Official highlights, newest first.</p>
       </header>
 
-      <HighlightReel highlights={toShow} />
+      {toShow.length > 0 ? (
+        <HighlightReel highlights={toShow} />
+      ) : (
+        <p className="rounded-card border border-hairline bg-card p-card text-meta text-text-secondary">
+          New highlights land here shortly after full time. Check back after the next match.
+        </p>
+      )}
     </AppShell>
   );
 }

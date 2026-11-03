@@ -80,11 +80,18 @@ export default async function HomePage() {
       return n < 2;
     })
     .slice(0, 5);
+  // Real headlines only. Sample stories ("Haaland breaks the record…") once
+  // filled a thin news day on the live site, and visitors and AI assistants
+  // read them as fact (Nov 2026): now only the keyless demo shows them, and a
+  // short pool reuses the hero's articles instead.
   const storyPool = news.filter((a) => !heroArticles.includes(a));
+  const storySource = storyPool.length >= 3 ? storyPool : news;
   const stories =
-    storyPool.length >= 3
-      ? { featured: toStory(storyPool[0]), items: storyPool.slice(1, 5).map(toStory) }
-      : PREVIEW_STORIES;
+    storySource.length > 0
+      ? { featured: toStory(storySource[0]), items: storySource.slice(1, 5).map(toStory) }
+      : demo
+        ? PREVIEW_STORIES
+        : null;
 
   // Top scorers — rendered beside Top Stories on desktop, but moved to the very
   // end on mobile (after the stacked rail widgets), so it's the last section the
@@ -136,7 +143,7 @@ export default async function HomePage() {
             imageUrl: a.image,
           }))}
         />
-      ) : (
+      ) : demo ? (
         <HeroFeatureCard
           tag={PREVIEW_HERO.tag}
           headline={PREVIEW_HERO.headline}
@@ -146,7 +153,7 @@ export default async function HomePage() {
           imageUrl={PREVIEW_HERO.imageUrl}
           score={PREVIEW_HERO.score}
         />
-      )}
+      ) : null}
 
       {/* Live Now — surfaced above Upcoming on mobile so live games come first
           while scrolling; hidden on desktop where it lives in the right rail. */}
@@ -171,7 +178,7 @@ export default async function HomePage() {
           when the sidebar is collapsed — when it's expanded the main column is
           too narrow, so they stack to one column to avoid clipping. */}
       <section className="mt-7 grid grid-cols-1 gap-4 sidebar-collapsed:lg:grid-cols-[1.85fr_1fr]">
-        <TopStoriesCard featured={stories.featured} items={stories.items} />
+        {stories && <TopStoriesCard featured={stories.featured} items={stories.items} />}
         <div className="hidden lg:block">{topScorers}</div>
       </section>
     </AppShell>

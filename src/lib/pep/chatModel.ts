@@ -17,6 +17,8 @@ export interface ChatState {
   messages: ChatMessage[];
   me: { signedIn: boolean; name: string | null };
   signInAvailable: boolean;
+  /** Which ways to sign in are switched on. */
+  signInMethods: { google: boolean; email: boolean };
 }
 
 export const MAX_BODY = 280;

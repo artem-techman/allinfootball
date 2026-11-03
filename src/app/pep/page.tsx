@@ -54,6 +54,7 @@ function demoChat(visitor = false): ChatState {
   return {
     me: visitor ? { signedIn: false, name: null } : { signedIn: true, name: "Gunner_92" },
     signInAvailable: true,
+    signInMethods: { google: true, email: true },
     messages: [
       { id: 1, at: at(14), author: "Gunner_92", role: "fan", body: "Pep, who wins the league this year?" },
       { id: 2, at: at(12), author: "Pep", role: "pep", body: "Arsenal have scored first in 6 of 7. Data says them. My heart says data.", replyTo: 1 },

@@ -4,15 +4,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Crest } from "@/components/primitives/Crest";
 import { ClubPicker, type PickedClub } from "./ClubPicker";
-import { EmailSignIn } from "./EmailSignIn";
+import { SignInOptions, type SignInMethods } from "./SignInOptions";
 
 /**
- * First-time My Club setup: 1) pick a club, 2) sign in with email + code so it
+ * First-time My Club setup: 1) pick a club, 2) sign in (Google or email code) so it
  * follows you to any device and unlocks the matchday email. Step 2 can be
  * skipped — the club is already saved on this device.
  */
-export function MyClubOnboarding({ signedIn, canSignIn }: { signedIn: boolean; canSignIn: boolean }) {
+export function MyClubOnboarding({ signedIn, methods }: { signedIn: boolean; methods: SignInMethods }) {
   const router = useRouter();
+  const canSignIn = methods.google || methods.email;
   const [club, setClub] = useState<PickedClub | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +27,7 @@ export function MyClubOnboarding({ signedIn, canSignIn }: { signedIn: boolean; c
       setError("We couldn't save that club. Try again.");
       return;
     }
-    // No sign-in step when it can't work (email not configured) or isn't needed.
+    // No sign-in step when it can't work (no sign-in method configured) or isn't needed.
     if (signedIn || !canSignIn) router.refresh();
     else setClub(c);
   }
@@ -49,10 +50,10 @@ export function MyClubOnboarding({ signedIn, canSignIn }: { signedIn: boolean; c
             <h2 className="text-section text-text-primary">{club.name} it is.</h2>
           </div>
           <p className="mb-5 mt-3 text-meta text-text-secondary">
-            Sign in with your email to keep {club.name} on every device and get the matchday email: lineups before
-            kickoff, the result and scorers at full time. No password, just a code.
+            Sign in to keep {club.name} on every device and get the matchday email: lineups before kickoff, the
+            result and scorers at full time. No password.
           </p>
-          <EmailSignIn onDone={() => router.refresh()} />
+          <SignInOptions methods={methods} onDone={() => router.refresh()} />
           <button type="button" onClick={() => router.refresh()} className="mt-4 text-meta text-text-muted hover:text-text-primary">
             Not now, keep it on this device
           </button>

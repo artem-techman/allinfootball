@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { EmailSignIn } from "@/components/club/EmailSignIn";
+import { SignInOptions } from "@/components/club/SignInOptions";
 import { MAX_BODY, type ChatMessage, type ChatState } from "@/lib/pep/chatModel";
 
 /**
@@ -185,8 +185,8 @@ export function PepChat({ onShift, demo }: { onShift: boolean; demo?: ChatState 
             </div>
             {state.signInAvailable ? (
               <>
-                <p className="text-[11px] text-text-secondary">Enter your email and we&apos;ll send a 6-digit code. Free, no password.</p>
-                <EmailSignIn compact onDone={() => load()} />
+                <p className="text-[11px] text-text-secondary">Free, no password, takes 20 seconds.</p>
+                <SignInOptions compact methods={state.signInMethods} onDone={() => load()} />
               </>
             ) : (
               <p className="rounded-[8px] bg-white/5 px-3 py-2.5 text-[12px] text-text-secondary">

@@ -120,6 +120,34 @@ export async function verifyLoginCode(email: string, code: string): Promise<User
   return toUser(users[0]);
 }
 
+/**
+ * Find or create the account for a verified Google identity. An existing email
+ * account is linked to the Google id rather than duplicated.
+ */
+export async function upsertGoogleUser(p: { sub: string; email: string; name: string | null; picture: string | null }): Promise<User> {
+  const sql = await db();
+  const rows = (await sql`
+    insert into users (email, unsubscribe_token, last_login_at, google_sub, avatar_url, display_name)
+    values (${p.email}, ${randomBytes(24).toString("base64url")}, now(), ${p.sub}, ${p.picture}, ${p.name})
+    on conflict (email) do update set
+      last_login_at = now(),
+      google_sub = excluded.google_sub,
+      avatar_url = coalesce(excluded.avatar_url, users.avatar_url),
+      display_name = coalesce(users.display_name, excluded.display_name)
+    returning *
+  `) as UserRow[];
+  return toUser(rows[0]);
+}
+
+/** Note how a fan signed in, and the country they first signed up from. */
+export async function markSignIn(userId: number, method: "google" | "email", country: string | null): Promise<void> {
+  const sql = await db();
+  await sql`
+    update users set sign_in_method = ${method}, country = coalesce(country, ${country})
+    where id = ${userId}
+  `;
+}
+
 /** Start a session for this user and set the cookie (route handlers only). */
 export async function startSession(userId: number): Promise<void> {
   const token = randomBytes(32).toString("base64url");

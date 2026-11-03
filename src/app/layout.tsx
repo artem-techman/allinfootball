@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { ClubSeenBeacon } from "@/components/club/ClubSeenBeacon";
 import { JsonLd, organization, website } from "@/components/seo/JsonLd";
 import { buildMetadata, SITE_NAME, SITE_URL } from "@/lib/seo/metadata";
 import { COMPETITIONS } from "@/lib/constants/competitions";
@@ -93,6 +94,7 @@ export default function RootLayout({
           </defs>
         </svg>
         {children}
+        <ClubSeenBeacon />
       </body>
       {GA_ID && <GoogleAnalytics gaId={GA_ID} />}
     </html>

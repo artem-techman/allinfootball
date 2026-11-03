@@ -2,19 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { EmailSignIn } from "./EmailSignIn";
+import { SignInOptions, type SignInMethods } from "./SignInOptions";
 
 /** Account box on My Club: sign in, matchday email switch, change club, sign out. */
 export function AccountPanel({
   email,
   matchdayEmail,
   clubName,
-  canSignIn,
+  methods,
 }: {
   email: string | null;
   matchdayEmail: boolean;
   clubName: string;
-  canSignIn: boolean;
+  methods: SignInMethods;
 }) {
   const router = useRouter();
   const [on, setOn] = useState(matchdayEmail);
@@ -51,12 +51,12 @@ export function AccountPanel({
             </span>
           </label>
         </>
-      ) : canSignIn ? (
+      ) : methods.google || methods.email ? (
         <>
           <p className="mb-4 mt-1 text-meta text-text-secondary">
-            Sign in to keep {clubName} on every device and get the matchday email. No password, just a code.
+            Sign in to keep {clubName} on every device and get the matchday email. No password.
           </p>
-          <EmailSignIn compact onDone={() => router.refresh()} />
+          <SignInOptions compact methods={methods} onDone={() => router.refresh()} />
         </>
       ) : (
         <p className="mt-1 text-meta text-text-secondary">

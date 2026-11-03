@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { currentUser, sameOrigin } from "@/lib/auth";
-import { emailEnabled } from "@/lib/email";
+import { signInMethods } from "@/lib/auth/methods";
 import { displayName, hideMessage, postFan, postPep, readChat, setDisplayName } from "@/lib/pep/chat";
 import { cleanBody, cleanName, type ChatState } from "@/lib/pep/chatModel";
 
 /**
  * Community chat on /pep.
- *  GET  /api/pep/chat[?after=<id>]  → { messages, me, signInAvailable } (public read)
+ *  GET  /api/pep/chat[?after=<id>]  → { messages, me, signInAvailable, signInMethods } (public read)
  *  POST /api/pep/chat
  *    fans (signed in, same origin): { text, name?, replyTo? }  (name once, to pick a chat name)
  *    Pep  (Bearer PEP_STATUS_TOKEN): { text, replyTo? } to reply, or { hide: <id> } to moderate
@@ -20,7 +20,8 @@ export async function GET(request: Request) {
   const after = Number(new URL(request.url).searchParams.get("after")) || undefined;
   const [messages, user] = await Promise.all([readChat(80, after), currentUser().catch(() => null)]);
   const name = user ? await displayName(user.id).catch(() => null) : null;
-  const state: ChatState = { messages, me: { signedIn: Boolean(user), name }, signInAvailable: emailEnabled() };
+  const methods = signInMethods();
+  const state: ChatState = { messages, me: { signedIn: Boolean(user), name }, signInAvailable: methods.google || methods.email, signInMethods: methods };
   return json(state);
 }
 

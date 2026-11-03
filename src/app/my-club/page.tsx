@@ -6,7 +6,7 @@ import { AccountPanel } from "@/components/club/AccountPanel";
 import { clubFromCookie, clubOverview } from "@/lib/club";
 import { currentUser } from "@/lib/auth";
 import { buildMetadata } from "@/lib/seo/metadata";
-import { emailEnabled } from "@/lib/email";
+import { signInMethods } from "@/lib/auth/methods";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * My Club. No club yet → pick one, then sign in by email code (skippable).
+ * My Club. No club yet → pick one, then sign in with Google or an email code (skippable).
  * With a club → its dashboard, plus the account box (sign in, matchday email).
  * All match data comes from stored reads — no provider calls.
  */
@@ -26,14 +26,14 @@ export default async function MyClubPage() {
     return (
       <AppShell>
         <h1 className="mb-5 text-greeting text-text-primary">My Club</h1>
-        <MyClubOnboarding signedIn={user != null} canSignIn={emailEnabled()} />
+        <MyClubOnboarding signedIn={user != null} methods={signInMethods()} />
       </AppShell>
     );
   }
   const overview = await clubOverview(club);
   return (
     <AppShell
-      rail={<AccountPanel email={user?.email ?? null} matchdayEmail={user?.matchdayEmail ?? true} clubName={club.name} canSignIn={emailEnabled()} />}
+      rail={<AccountPanel email={user?.email ?? null} matchdayEmail={user?.matchdayEmail ?? true} clubName={club.name} methods={signInMethods()} />}
     >
       <ClubDashboard overview={overview} />
     </AppShell>

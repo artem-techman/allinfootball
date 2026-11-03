@@ -218,12 +218,31 @@ const SCHEMA: string[] = [
     at               timestamptz not null default now(),
     monthly_visitors integer     not null
   )`,
+  // Accounts made with Google, and where a fan signed up from.
+  `alter table users add column if not exists google_sub text`,
+  `alter table users add column if not exists avatar_url text`,
+  `alter table users add column if not exists sign_in_method text`,
+  `alter table users add column if not exists country text`,
+  `create unique index if not exists users_google_sub on users (google_sub) where google_sub is not null`,
+  // Every My Club choice, signed in or not: who follows which club. A visitor is
+  // an anonymous random id (cookie), linked to the account once they sign in.
+  `create table if not exists club_picks (
+    id          bigserial   primary key,
+    at          timestamptz not null default now(),
+    visitor_id  text        not null,
+    user_id     bigint,
+    team_id     integer,
+    team_name   text,
+    action      text        not null,
+    country     text
+  )`,
+  `create index if not exists club_picks_visitor on club_picks (visitor_id, at desc)`,
   // Lock every table away from Supabase's public Data API: RLS on, no policies.
   // Our server connects as the owner, which RLS doesn't restrict.
   `do $$ declare t text; begin
      for t in select tablename from pg_tables where schemaname = 'public' and tablename = any(array[
        'feedback','live_snapshot','match_archive','users','login_codes','sessions','potm_votes','email_log',
-       'telegram_posts','provider_cache','pep_activity','pep_chat','pep_scoreboard','leads'])
+       'telegram_posts','provider_cache','pep_activity','pep_chat','pep_scoreboard','leads','club_picks'])
      loop execute format('alter table public.%I enable row level security', t); end loop;
    end $$`,
 ];

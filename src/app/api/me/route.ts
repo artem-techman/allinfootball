@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { currentUser, sameOrigin, updateUser } from "@/lib/auth";
 import { clubFromCookie, resolveClub, setClubCookie } from "@/lib/club";
-import { emailEnabled } from "@/lib/email";
+import { recordClubPick } from "@/lib/club/picks";
+import { signInMethods } from "@/lib/auth/methods";
 
 /**
- * GET  /api/me → { user: {email, matchdayEmail} | null, club, emailEnabled }
+ * GET  /api/me → { user: {email, matchdayEmail} | null, club, signIn: {google, email} }
  * POST /api/me { clubId?: number | null, matchdayEmail?: boolean } → updates the
- *   club (cookie, and the account when signed in) and email preference.
+ *   club (cookie, and the account when signed in) and email preference. Every
+ *   club change is also logged in club_picks.
  */
 export const dynamic = "force-dynamic";
 
@@ -16,7 +18,7 @@ export async function GET() {
     {
       user: user ? { email: user.email, matchdayEmail: user.matchdayEmail } : null,
       club,
-      emailEnabled: emailEnabled(),
+      signIn: signInMethods(),
     },
     { headers: { "Cache-Control": "no-store" } },
   );
@@ -32,12 +34,14 @@ export async function POST(request: Request) {
     club = null;
     await setClubCookie(null);
     if (user) await updateUser(user.id, { club: null });
+    await recordClubPick("clear", null, user?.id ?? null);
   } else if (typeof body.clubId === "number") {
     const resolved = await resolveClub(body.clubId);
     if (!resolved) return NextResponse.json({ error: "unknown_club" }, { status: 400 });
     club = resolved;
     await setClubCookie(resolved);
     if (user) await updateUser(user.id, { club: resolved });
+    await recordClubPick("pick", resolved, user?.id ?? null);
   }
   if (typeof body.matchdayEmail === "boolean") {
     if (!user) return NextResponse.json({ error: "sign_in_required" }, { status: 401 });

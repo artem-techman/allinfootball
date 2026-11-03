@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import { normalizeEmail, sameOrigin, startSession, updateUser, verifyLoginCode } from "@/lib/auth";
-import { clubFromCookie, resolveClub, setClubCookie } from "@/lib/club";
+import { normalizeEmail, sameOrigin, verifyLoginCode } from "@/lib/auth";
+import { completeSignIn } from "@/lib/auth/complete";
 
 /**
- * POST /api/auth/verify {email, code} — check the code, sign in, and reconcile
- * the club: a club picked before signing in is saved to the account; otherwise
- * the account's saved club is restored on this device.
+ * POST /api/auth/verify {email, code} — check the code, then sign in (session,
+ * club reconcile, club-pick history: see completeSignIn).
  */
 export const dynamic = "force-dynamic";
 
@@ -18,15 +17,7 @@ export async function POST(request: Request) {
   try {
     const result = await verifyLoginCode(email, code);
     if ("error" in result) return NextResponse.json({ error: result.error }, { status: 400 });
-    let user = result;
-    await startSession(user.id);
-    const local = await clubFromCookie();
-    if (local && local.id !== user.clubTeamId) {
-      const club = await resolveClub(local.id);
-      if (club) user = (await updateUser(user.id, { club })) ?? user;
-    } else if (!local && user.clubTeamId && user.clubTeamName) {
-      await setClubCookie({ id: user.clubTeamId, name: user.clubTeamName, crest: user.clubCrest ?? undefined });
-    }
+    const user = await completeSignIn(result, "email");
     return NextResponse.json({ ok: true, email: user.email });
   } catch {
     return NextResponse.json({ error: "unavailable" }, { status: 503 });

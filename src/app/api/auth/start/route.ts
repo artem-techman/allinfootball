@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const issued = await createLoginCode(email);
     if ("error" in issued) return NextResponse.json({ error: issued.error }, { status: 429 });
     const code = issued.code;
-    await sendEmail({
+    const sent = await sendEmail({
       to: email,
       subject: `${code} is your My Football Tracker code`,
       text: `Your sign-in code is ${code}. It expires in 10 minutes. If you didn't ask for it, ignore this email.`,
@@ -28,6 +28,8 @@ export async function POST(request: Request) {
         "If you didn't ask for this code, you can ignore this email.",
       ),
     });
+    // Never say "code sent" when it wasn't (sendEmail reports failures instead of throwing).
+    if (!sent && process.env.NODE_ENV === "production") return NextResponse.json({ error: "unavailable" }, { status: 503 });
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "unavailable" }, { status: 503 });
